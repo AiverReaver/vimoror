@@ -1,0 +1,262 @@
+[
+  {
+    "id": "proven/d2w",
+    "buffer": [
+      "alpha beta gamma delta"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "d2w",
+    "groups": [
+      "d2w"
+    ],
+    "note": "operator + count + motion, the canonical grammar case",
+    "encodedKeys": "d2w",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "alpha beta "
+        },
+        "-": {
+          "type": "v",
+          "text": "alpha beta "
+        }
+      },
+      "buffer": [
+        "gamma delta"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "proven/ci-paren",
+    "buffer": [
+      "fn(a, b, c) end"
+    ],
+    "cursor": [
+      1,
+      7
+    ],
+    "keys": "ci(X<Esc>",
+    "groups": [
+      "ci(X<Esc>"
+    ],
+    "note": "text object with an inner change",
+    "encodedKeys": "ci(X\u001b",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a, b, c"
+        },
+        "-": {
+          "type": "v",
+          "text": "a, b, c"
+        }
+      },
+      "buffer": [
+        "fn(X) end"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "proven/dw-eol-wart",
+    "buffer": [
+      "foo bar"
+    ],
+    "cursor": [
+      1,
+      5
+    ],
+    "keys": "dw",
+    "groups": [
+      "dw"
+    ],
+    "note": "dw on the LAST word of a line does not eat the newline, unlike dw anywhere else. Nobody writes this from memory — it is the entire argument for goldens over hand-written expectations.",
+    "encodedKeys": "dw",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "bar"
+        },
+        "-": {
+          "type": "v",
+          "text": "bar"
+        }
+      },
+      "buffer": [
+        "foo "
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "proven/named-register",
+    "buffer": [
+      "keep me",
+      "kill me"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "\"ayyjdd",
+    "groups": [
+      "\"ayyjdd"
+    ],
+    "note": "named register yank must not be clobbered by a later unnamed delete",
+    "encodedKeys": "\"ayyjdd",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "kill me\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "kill me\n"
+        },
+        "a": {
+          "type": "V",
+          "text": "keep me\n"
+        }
+      },
+      "buffer": [
+        "keep me"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "proven/subst-g",
+    "buffer": [
+      "x a x a x"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ":s/x/Q/g<CR>",
+    "groups": [
+      ":s/x/Q/g<CR>"
+    ],
+    "note": "ex command with a flag",
+    "encodedKeys": ":s/x/Q/g\r",
+    "expect": {
+      "registers": {
+        "/": {
+          "type": "v",
+          "text": "x"
+        }
+      },
+      "buffer": [
+        "Q a Q a Q"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "proven/dot-repeat",
+    "buffer": [
+      "one two three four"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "dw..",
+    "groups": [
+      "dw.."
+    ],
+    "note": ". repeats the last change, not the last keystroke",
+    "encodedKeys": "dw..",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "three "
+        },
+        "-": {
+          "type": "v",
+          "text": "three "
+        }
+      },
+      "buffer": [
+        "four"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "proven/find-repeat",
+    "buffer": [
+      "a,b,c,d"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "f,;x",
+    "groups": [
+      "f,;x"
+    ],
+    "note": "; repeats f, then x deletes — proves ; is a motion, not a change",
+    "encodedKeys": "f,;x",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": ","
+        },
+        "-": {
+          "type": "v",
+          "text": ","
+        }
+      },
+      "buffer": [
+        "a,bc,d"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  }
+]

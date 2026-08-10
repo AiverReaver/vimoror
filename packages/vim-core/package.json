@@ -1,0 +1,13 @@
+{
+  "name": "@vimorror/core",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Vim interpreter. Zero dependencies, zero DOM, fully deterministic.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  }
+}

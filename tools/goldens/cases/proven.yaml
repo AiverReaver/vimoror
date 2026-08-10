@@ -1,0 +1,54 @@
+# The seven cases the prototype already validated against real Vim 9.1.
+#
+# These are the harness's own smoke test: their expected results are written
+# down in MergedPlan.md, so if the rebuilt harness reproduces them exactly we
+# know it is wired up the same way the prototype was. `tools/goldens/proven.test.ts`
+# asserts the generated goldens against those documented values.
+
+cases:
+  - id: proven/d2w
+    note: operator + count + motion, the canonical grammar case
+    buffer: 'alpha beta gamma delta'
+    cursor: [1, 1]
+    keys: 'd2w'
+
+  - id: proven/ci-paren
+    note: text object with an inner change
+    buffer: 'fn(a, b, c) end'
+    cursor: [1, 7]
+    keys: 'ci(X<Esc>'
+
+  - id: proven/dw-eol-wart
+    note: >-
+      dw on the LAST word of a line does not eat the newline, unlike dw
+      anywhere else. Nobody writes this from memory — it is the entire
+      argument for goldens over hand-written expectations.
+    buffer: 'foo bar'
+    cursor: [1, 5]
+    keys: 'dw'
+
+  - id: proven/named-register
+    note: named register yank must not be clobbered by a later unnamed delete
+    buffer:
+      - 'keep me'
+      - 'kill me'
+    cursor: [1, 1]
+    keys: '"ayyjdd'
+
+  - id: proven/subst-g
+    note: ex command with a flag
+    buffer: 'x a x a x'
+    cursor: [1, 1]
+    keys: ':s/x/Q/g<CR>'
+
+  - id: proven/dot-repeat
+    note: '. repeats the last change, not the last keystroke'
+    buffer: 'one two three four'
+    cursor: [1, 1]
+    keys: 'dw..'
+
+  - id: proven/find-repeat
+    note: '; repeats f, then x deletes — proves ; is a motion, not a change'
+    buffer: 'a,b,c,d'
+    cursor: [1, 1]
+    keys: 'f,;x'

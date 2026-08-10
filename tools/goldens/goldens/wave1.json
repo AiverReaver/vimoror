@@ -1,0 +1,3192 @@
+[
+  {
+    "id": "wave1/h-basic",
+    "buffer": [
+      "alpha beta"
+    ],
+    "cursor": [
+      1,
+      5
+    ],
+    "keys": "h",
+    "groups": [
+      "h"
+    ],
+    "encodedKeys": "h",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "alpha beta"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "wave1/h-at-col1-fails",
+    "buffer": [
+      "one",
+      "two"
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": "h",
+    "groups": [
+      "h"
+    ],
+    "note": "h at column 1 must fail, not wrap to the previous line",
+    "encodedKeys": "h",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "one",
+        "two"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "wave1/h-count-overshoot",
+    "buffer": [
+      "alpha beta"
+    ],
+    "cursor": [
+      1,
+      4
+    ],
+    "keys": "9h",
+    "groups": [
+      "9h"
+    ],
+    "encodedKeys": "9h",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "alpha beta"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "wave1/l-basic",
+    "buffer": [
+      "alpha"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "l",
+    "groups": [
+      "l"
+    ],
+    "encodedKeys": "l",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "alpha"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "wave1/l-at-eol-fails",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "l",
+    "groups": [
+      "l"
+    ],
+    "note": "l stops on the last character in normal mode",
+    "encodedKeys": "l",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "abc"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "wave1/l-count-overshoot",
+    "buffer": [
+      "abcdef"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "99l",
+    "groups": [
+      "99l"
+    ],
+    "encodedKeys": "99l",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "abcdef"
+      ],
+      "cursor": [
+        1,
+        6
+      ],
+      "error": "",
+      "curswant": 6
+    }
+  },
+  {
+    "id": "wave1/l-on-empty-line",
+    "buffer": [
+      "",
+      "x"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "l",
+    "groups": [
+      "l"
+    ],
+    "encodedKeys": "l",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "",
+        "x"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "wave1/zero-col",
+    "buffer": [
+      "   indented"
+    ],
+    "cursor": [
+      1,
+      8
+    ],
+    "keys": "0",
+    "groups": [
+      "0"
+    ],
+    "encodedKeys": "0",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "   indented"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "wave1/caret-first-nonblank",
+    "buffer": [
+      "   indented"
+    ],
+    "cursor": [
+      1,
+      11
+    ],
+    "keys": "^",
+    "groups": [
+      "^"
+    ],
+    "encodedKeys": "^",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "   indented"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "wave1/caret-all-blank",
+    "buffer": [
+      "     "
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "^",
+    "groups": [
+      "^"
+    ],
+    "encodedKeys": "^",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "     "
+      ],
+      "cursor": [
+        1,
+        5
+      ],
+      "error": "",
+      "curswant": 5
+    }
+  },
+  {
+    "id": "wave1/dollar",
+    "buffer": [
+      "alpha beta"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "$",
+    "groups": [
+      "$"
+    ],
+    "encodedKeys": "$",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "alpha beta"
+      ],
+      "cursor": [
+        1,
+        10
+      ],
+      "error": "",
+      "curswant": 2147483647
+    }
+  },
+  {
+    "id": "wave1/dollar-empty-line",
+    "buffer": [
+      "",
+      "x"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "$",
+    "groups": [
+      "$"
+    ],
+    "encodedKeys": "$",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "",
+        "x"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 2147483647
+    }
+  },
+  {
+    "id": "wave1/dollar-count",
+    "buffer": [
+      "one",
+      "three"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "2$",
+    "groups": [
+      "2$"
+    ],
+    "note": "2$ goes to the end of the NEXT line",
+    "encodedKeys": "2$",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "one",
+        "three"
+      ],
+      "cursor": [
+        2,
+        5
+      ],
+      "error": "",
+      "curswant": 2147483647
+    }
+  },
+  {
+    "id": "wave1/j-basic",
+    "buffer": [
+      "one",
+      "two"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "j",
+    "groups": [
+      "j"
+    ],
+    "encodedKeys": "j",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "one",
+        "two"
+      ],
+      "cursor": [
+        2,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "wave1/k-at-top-fails",
+    "buffer": [
+      "one",
+      "two"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "k",
+    "groups": [
+      "k"
+    ],
+    "encodedKeys": "k",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "one",
+        "two"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "wave1/j-at-bottom-fails",
+    "buffer": [
+      "one",
+      "two"
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": "j",
+    "groups": [
+      "j"
+    ],
+    "encodedKeys": "j",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "one",
+        "two"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "wave1/j-through-short-line",
+    "buffer": [
+      "a much longer line",
+      "ab",
+      "another long line"
+    ],
+    "cursor": [
+      1,
+      15
+    ],
+    "keys": "jj",
+    "groups": [
+      "jj"
+    ],
+    "note": "the remembered column must survive a short line in between",
+    "encodedKeys": "jj",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "a much longer line",
+        "ab",
+        "another long line"
+      ],
+      "cursor": [
+        3,
+        15
+      ],
+      "error": "",
+      "curswant": 15
+    }
+  },
+  {
+    "id": "wave1/dollar-then-j-sticks-to-eol",
+    "buffer": [
+      "short",
+      "a much longer line",
+      "mid"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "$jj",
+    "groups": [
+      "$jj"
+    ],
+    "note": "after $ the cursor stays at end of each line, however long",
+    "encodedKeys": "$jj",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "short",
+        "a much longer line",
+        "mid"
+      ],
+      "cursor": [
+        3,
+        3
+      ],
+      "error": "",
+      "curswant": 2147483647
+    }
+  },
+  {
+    "id": "wave1/j-onto-empty-line",
+    "buffer": [
+      "abcdef",
+      "",
+      "ghijkl"
+    ],
+    "cursor": [
+      1,
+      4
+    ],
+    "keys": "jj",
+    "groups": [
+      "jj"
+    ],
+    "encodedKeys": "jj",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "abcdef",
+        "",
+        "ghijkl"
+      ],
+      "cursor": [
+        3,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "wave1/j-count-overshoot",
+    "buffer": [
+      "a",
+      "b",
+      "c"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "9j",
+    "groups": [
+      "9j"
+    ],
+    "encodedKeys": "9j",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "a",
+        "b",
+        "c"
+      ],
+      "cursor": [
+        3,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "wave1/G-last-line",
+    "buffer": [
+      "one",
+      "  two",
+      "three"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "G",
+    "groups": [
+      "G"
+    ],
+    "encodedKeys": "G",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "one",
+        "  two",
+        "three"
+      ],
+      "cursor": [
+        3,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "wave1/G-count",
+    "buffer": [
+      "one",
+      "  two",
+      "three"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "2G",
+    "groups": [
+      "2G"
+    ],
+    "note": "{n}G lands on the first non-blank of line n",
+    "encodedKeys": "2G",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "one",
+        "  two",
+        "three"
+      ],
+      "cursor": [
+        2,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "wave1/G-count-overshoot",
+    "buffer": [
+      "one",
+      "two"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "99G",
+    "groups": [
+      "99G"
+    ],
+    "encodedKeys": "99G",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "one",
+        "two"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "wave1/gg-first-line",
+    "buffer": [
+      "  one",
+      "two",
+      "three"
+    ],
+    "cursor": [
+      3,
+      3
+    ],
+    "keys": "gg",
+    "groups": [
+      "gg"
+    ],
+    "encodedKeys": "gg",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "  one",
+        "two",
+        "three"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "wave1/gg-count",
+    "buffer": [
+      "one",
+      "  two",
+      "three"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "2gg",
+    "groups": [
+      "2gg"
+    ],
+    "encodedKeys": "2gg",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "one",
+        "  two",
+        "three"
+      ],
+      "cursor": [
+        2,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "wave1/plus-next-line-nonblank",
+    "buffer": [
+      "one",
+      "   two"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "+",
+    "groups": [
+      "+"
+    ],
+    "encodedKeys": "+",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "one",
+        "   two"
+      ],
+      "cursor": [
+        2,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "wave1/minus-prev-line-nonblank",
+    "buffer": [
+      "   one",
+      "two"
+    ],
+    "cursor": [
+      2,
+      3
+    ],
+    "keys": "-",
+    "groups": [
+      "-"
+    ],
+    "encodedKeys": "-",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "   one",
+        "two"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "wave1/underscore",
+    "buffer": [
+      "   one",
+      "two"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "_",
+    "groups": [
+      "_"
+    ],
+    "encodedKeys": "_",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "   one",
+        "two"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "wave1/underscore-count",
+    "buffer": [
+      "one",
+      "   two",
+      "three"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "2_",
+    "groups": [
+      "2_"
+    ],
+    "encodedKeys": "2_",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "one",
+        "   two",
+        "three"
+      ],
+      "cursor": [
+        2,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "wave1/w-basic",
+    "buffer": [
+      "alpha beta gamma"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "w",
+    "groups": [
+      "w"
+    ],
+    "encodedKeys": "w",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "alpha beta gamma"
+      ],
+      "cursor": [
+        1,
+        7
+      ],
+      "error": "",
+      "curswant": 7
+    }
+  },
+  {
+    "id": "wave1/w-count",
+    "buffer": [
+      "alpha beta gamma"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "2w",
+    "groups": [
+      "2w"
+    ],
+    "encodedKeys": "2w",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "alpha beta gamma"
+      ],
+      "cursor": [
+        1,
+        12
+      ],
+      "error": "",
+      "curswant": 12
+    }
+  },
+  {
+    "id": "wave1/w-punctuation-is-a-word",
+    "buffer": [
+      "foo.bar baz"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "w",
+    "groups": [
+      "w"
+    ],
+    "note": "a run of punctuation counts as its own word for w, but not for W",
+    "encodedKeys": "w",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "foo.bar baz"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "wave1/W-skips-punctuation",
+    "buffer": [
+      "foo.bar baz"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "W",
+    "groups": [
+      "W"
+    ],
+    "encodedKeys": "W",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "foo.bar baz"
+      ],
+      "cursor": [
+        1,
+        9
+      ],
+      "error": "",
+      "curswant": 9
+    }
+  },
+  {
+    "id": "wave1/w-across-lines",
+    "buffer": [
+      "one two",
+      "three"
+    ],
+    "cursor": [
+      1,
+      5
+    ],
+    "keys": "w",
+    "groups": [
+      "w"
+    ],
+    "encodedKeys": "w",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "one two",
+        "three"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "wave1/w-onto-empty-line",
+    "buffer": [
+      "one",
+      "",
+      "two"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "w",
+    "groups": [
+      "w"
+    ],
+    "note": "an empty line is itself a word",
+    "encodedKeys": "w",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "one",
+        "",
+        "two"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "wave1/w-at-eof",
+    "buffer": [
+      "last"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "w",
+    "groups": [
+      "w"
+    ],
+    "encodedKeys": "w",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "last"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "wave1/w-count-overshoot",
+    "buffer": [
+      "one two",
+      "three"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "9w",
+    "groups": [
+      "9w"
+    ],
+    "encodedKeys": "9w",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "one two",
+        "three"
+      ],
+      "cursor": [
+        2,
+        5
+      ],
+      "error": "",
+      "curswant": 5
+    }
+  },
+  {
+    "id": "wave1/w-leading-whitespace",
+    "buffer": [
+      "   indented word"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "w",
+    "groups": [
+      "w"
+    ],
+    "encodedKeys": "w",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "   indented word"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "wave1/w-trailing-whitespace",
+    "buffer": [
+      "foo   ",
+      "bar"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "w",
+    "groups": [
+      "w"
+    ],
+    "encodedKeys": "w",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "foo   ",
+        "bar"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "wave1/w-all-blank-buffer",
+    "buffer": [
+      "   ",
+      "   "
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "w",
+    "groups": [
+      "w"
+    ],
+    "encodedKeys": "w",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "   ",
+        "   "
+      ],
+      "cursor": [
+        2,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "wave1/wb-all-blank-buffer",
+    "buffer": [
+      "   ",
+      "   "
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "wb",
+    "groups": [
+      "wb"
+    ],
+    "encodedKeys": "wb",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "   ",
+        "   "
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "wave1/b-from-end-all-blank",
+    "buffer": [
+      "   ",
+      "   "
+    ],
+    "cursor": [
+      2,
+      3
+    ],
+    "keys": "b",
+    "groups": [
+      "b"
+    ],
+    "encodedKeys": "b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "   ",
+        "   "
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "wave1/w-single-blank-line",
+    "buffer": [
+      "   "
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "w",
+    "groups": [
+      "w"
+    ],
+    "encodedKeys": "w",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "   "
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "wave1/e-all-blank-buffer",
+    "buffer": [
+      "   ",
+      "   "
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "e",
+    "groups": [
+      "e"
+    ],
+    "encodedKeys": "e",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "   ",
+        "   "
+      ],
+      "cursor": [
+        2,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "wave1/w-empty-buffer",
+    "buffer": [
+      ""
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "w",
+    "groups": [
+      "w"
+    ],
+    "encodedKeys": "w",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        ""
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "wave1/wb-empty-lines",
+    "buffer": [
+      "",
+      "",
+      ""
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "wb",
+    "groups": [
+      "wb"
+    ],
+    "encodedKeys": "wb",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "",
+        "",
+        ""
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "wave1/b-basic",
+    "buffer": [
+      "alpha beta gamma"
+    ],
+    "cursor": [
+      1,
+      12
+    ],
+    "keys": "b",
+    "groups": [
+      "b"
+    ],
+    "encodedKeys": "b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "alpha beta gamma"
+      ],
+      "cursor": [
+        1,
+        7
+      ],
+      "error": "",
+      "curswant": 7
+    }
+  },
+  {
+    "id": "wave1/b-mid-word",
+    "buffer": [
+      "alpha beta"
+    ],
+    "cursor": [
+      1,
+      9
+    ],
+    "keys": "b",
+    "groups": [
+      "b"
+    ],
+    "encodedKeys": "b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "alpha beta"
+      ],
+      "cursor": [
+        1,
+        7
+      ],
+      "error": "",
+      "curswant": 7
+    }
+  },
+  {
+    "id": "wave1/b-count",
+    "buffer": [
+      "alpha beta gamma"
+    ],
+    "cursor": [
+      1,
+      12
+    ],
+    "keys": "2b",
+    "groups": [
+      "2b"
+    ],
+    "encodedKeys": "2b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "alpha beta gamma"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "wave1/b-across-lines",
+    "buffer": [
+      "one two",
+      "three"
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": "b",
+    "groups": [
+      "b"
+    ],
+    "encodedKeys": "b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "one two",
+        "three"
+      ],
+      "cursor": [
+        1,
+        5
+      ],
+      "error": "",
+      "curswant": 5
+    }
+  },
+  {
+    "id": "wave1/b-at-start-fails",
+    "buffer": [
+      "alpha"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "b",
+    "groups": [
+      "b"
+    ],
+    "encodedKeys": "b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "alpha"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "wave1/b-punctuation",
+    "buffer": [
+      "foo.bar"
+    ],
+    "cursor": [
+      1,
+      5
+    ],
+    "keys": "b",
+    "groups": [
+      "b"
+    ],
+    "encodedKeys": "b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "foo.bar"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "wave1/B-punctuation",
+    "buffer": [
+      "foo.bar baz"
+    ],
+    "cursor": [
+      1,
+      9
+    ],
+    "keys": "B",
+    "groups": [
+      "B"
+    ],
+    "encodedKeys": "B",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "foo.bar baz"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "wave1/e-basic",
+    "buffer": [
+      "alpha beta"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "e",
+    "groups": [
+      "e"
+    ],
+    "encodedKeys": "e",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "alpha beta"
+      ],
+      "cursor": [
+        1,
+        5
+      ],
+      "error": "",
+      "curswant": 5
+    }
+  },
+  {
+    "id": "wave1/e-from-word-end",
+    "buffer": [
+      "alpha beta"
+    ],
+    "cursor": [
+      1,
+      5
+    ],
+    "keys": "e",
+    "groups": [
+      "e"
+    ],
+    "note": "e already at a word end must advance to the NEXT word end",
+    "encodedKeys": "e",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "alpha beta"
+      ],
+      "cursor": [
+        1,
+        10
+      ],
+      "error": "",
+      "curswant": 10
+    }
+  },
+  {
+    "id": "wave1/e-count",
+    "buffer": [
+      "alpha beta gamma"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "2e",
+    "groups": [
+      "2e"
+    ],
+    "encodedKeys": "2e",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "alpha beta gamma"
+      ],
+      "cursor": [
+        1,
+        10
+      ],
+      "error": "",
+      "curswant": 10
+    }
+  },
+  {
+    "id": "wave1/e-punctuation",
+    "buffer": [
+      "foo.bar"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "e",
+    "groups": [
+      "e"
+    ],
+    "encodedKeys": "e",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "foo.bar"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "wave1/E-punctuation",
+    "buffer": [
+      "foo.bar baz"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "E",
+    "groups": [
+      "E"
+    ],
+    "encodedKeys": "E",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "foo.bar baz"
+      ],
+      "cursor": [
+        1,
+        7
+      ],
+      "error": "",
+      "curswant": 7
+    }
+  },
+  {
+    "id": "wave1/e-across-lines",
+    "buffer": [
+      "one",
+      "two"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "e",
+    "groups": [
+      "e"
+    ],
+    "encodedKeys": "e",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "one",
+        "two"
+      ],
+      "cursor": [
+        2,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "wave1/ge-basic",
+    "buffer": [
+      "alpha beta gamma"
+    ],
+    "cursor": [
+      1,
+      12
+    ],
+    "keys": "ge",
+    "groups": [
+      "ge"
+    ],
+    "encodedKeys": "ge",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "alpha beta gamma"
+      ],
+      "cursor": [
+        1,
+        10
+      ],
+      "error": "",
+      "curswant": 10
+    }
+  },
+  {
+    "id": "wave1/ge-count",
+    "buffer": [
+      "alpha beta gamma"
+    ],
+    "cursor": [
+      1,
+      12
+    ],
+    "keys": "2ge",
+    "groups": [
+      "2ge"
+    ],
+    "encodedKeys": "2ge",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "alpha beta gamma"
+      ],
+      "cursor": [
+        1,
+        5
+      ],
+      "error": "",
+      "curswant": 5
+    }
+  },
+  {
+    "id": "wave1/gE-punctuation",
+    "buffer": [
+      "foo.bar baz"
+    ],
+    "cursor": [
+      1,
+      9
+    ],
+    "keys": "gE",
+    "groups": [
+      "gE"
+    ],
+    "encodedKeys": "gE",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "foo.bar baz"
+      ],
+      "cursor": [
+        1,
+        7
+      ],
+      "error": "",
+      "curswant": 7
+    }
+  },
+  {
+    "id": "wave1/f-basic",
+    "buffer": [
+      "a,b,c,d"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "f,",
+    "groups": [
+      "f,"
+    ],
+    "encodedKeys": "f,",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "a,b,c,d"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "wave1/f-count",
+    "buffer": [
+      "a,b,c,d"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "2f,",
+    "groups": [
+      "2f,"
+    ],
+    "encodedKeys": "2f,",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "a,b,c,d"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "wave1/f-not-found-fails",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "fz",
+    "groups": [
+      "fz"
+    ],
+    "encodedKeys": "fz",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "abc"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "wave1/f-does-not-cross-lines",
+    "buffer": [
+      "abc",
+      "xyz"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "fz",
+    "groups": [
+      "fz"
+    ],
+    "encodedKeys": "fz",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "abc",
+        "xyz"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "wave1/F-basic",
+    "buffer": [
+      "a,b,c,d"
+    ],
+    "cursor": [
+      1,
+      7
+    ],
+    "keys": "F,",
+    "groups": [
+      "F,"
+    ],
+    "encodedKeys": "F,",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "a,b,c,d"
+      ],
+      "cursor": [
+        1,
+        6
+      ],
+      "error": "",
+      "curswant": 6
+    }
+  },
+  {
+    "id": "wave1/t-basic",
+    "buffer": [
+      "a,b,c,d"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "t,",
+    "groups": [
+      "t,"
+    ],
+    "encodedKeys": "t,",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "a,b,c,d"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "wave1/t-repeat-makes-progress",
+    "buffer": [
+      "a,b,c,d"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "t,;",
+    "groups": [
+      "t,;"
+    ],
+    "note": "; after t must advance rather than stick in place",
+    "encodedKeys": "t,;",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "a,b,c,d"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "wave1/T-basic",
+    "buffer": [
+      "a,b,c,d"
+    ],
+    "cursor": [
+      1,
+      7
+    ],
+    "keys": "T,",
+    "groups": [
+      "T,"
+    ],
+    "encodedKeys": "T,",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "a,b,c,d"
+      ],
+      "cursor": [
+        1,
+        7
+      ],
+      "error": "",
+      "curswant": 7
+    }
+  },
+  {
+    "id": "wave1/semicolon-repeat",
+    "buffer": [
+      "a,b,c,d"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "f,;",
+    "groups": [
+      "f,;"
+    ],
+    "encodedKeys": "f,;",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "a,b,c,d"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "wave1/comma-reverse",
+    "buffer": [
+      "a,b,c,d"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "f,f,,",
+    "groups": [
+      "f,f,,"
+    ],
+    "encodedKeys": "f,f,,",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "a,b,c,d"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "wave1/semicolon-without-find-fails",
+    "buffer": [
+      "a,b,c"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ";",
+    "groups": [
+      ";"
+    ],
+    "encodedKeys": ";",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "a,b,c"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "wave1/percent-forward",
+    "buffer": [
+      "fn(a, b) end"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "%",
+    "groups": [
+      "%"
+    ],
+    "encodedKeys": "%",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "fn(a, b) end"
+      ],
+      "cursor": [
+        1,
+        8
+      ],
+      "error": "",
+      "curswant": 8
+    }
+  },
+  {
+    "id": "wave1/percent-backward",
+    "buffer": [
+      "fn(a, b) end"
+    ],
+    "cursor": [
+      1,
+      8
+    ],
+    "keys": "%",
+    "groups": [
+      "%"
+    ],
+    "encodedKeys": "%",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "fn(a, b) end"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "wave1/percent-scans-forward-to-bracket",
+    "buffer": [
+      "fn(a, b) end"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "%",
+    "groups": [
+      "%"
+    ],
+    "note": "% jumps from the first bracket at or after the cursor",
+    "encodedKeys": "%",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "fn(a, b) end"
+      ],
+      "cursor": [
+        1,
+        8
+      ],
+      "error": "",
+      "curswant": 8
+    }
+  },
+  {
+    "id": "wave1/percent-nested",
+    "buffer": [
+      "a(b(c)d)e"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "%",
+    "groups": [
+      "%"
+    ],
+    "encodedKeys": "%",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "a(b(c)d)e"
+      ],
+      "cursor": [
+        1,
+        8
+      ],
+      "error": "",
+      "curswant": 8
+    }
+  },
+  {
+    "id": "wave1/percent-square-and-curly",
+    "buffer": [
+      "x[y{z}]w"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "%",
+    "groups": [
+      "%"
+    ],
+    "encodedKeys": "%",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "x[y{z}]w"
+      ],
+      "cursor": [
+        1,
+        7
+      ],
+      "error": "",
+      "curswant": 7
+    }
+  },
+  {
+    "id": "wave1/percent-unmatched-fails",
+    "buffer": [
+      "a(b"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "%",
+    "groups": [
+      "%"
+    ],
+    "encodedKeys": "%",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "a(b"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "wave1/percent-across-lines",
+    "buffer": [
+      "fn(",
+      "  arg",
+      ")"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "%",
+    "groups": [
+      "%"
+    ],
+    "encodedKeys": "%",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "fn(",
+        "  arg",
+        ")"
+      ],
+      "cursor": [
+        3,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "wave1/percent-no-bracket-fails",
+    "buffer": [
+      "plain text"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "%",
+    "groups": [
+      "%"
+    ],
+    "encodedKeys": "%",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "plain text"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "wave1/x-basic",
+    "buffer": [
+      "abcdef"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "x",
+    "groups": [
+      "x"
+    ],
+    "encodedKeys": "x",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "c"
+        },
+        "-": {
+          "type": "v",
+          "text": "c"
+        }
+      },
+      "buffer": [
+        "abdef"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "wave1/x-count",
+    "buffer": [
+      "abcdef"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "3x",
+    "groups": [
+      "3x"
+    ],
+    "encodedKeys": "3x",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "bcd"
+        },
+        "-": {
+          "type": "v",
+          "text": "bcd"
+        }
+      },
+      "buffer": [
+        "aef"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "wave1/x-count-overshoot",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "9x",
+    "groups": [
+      "9x"
+    ],
+    "note": "x with too large a count deletes to end of line, it does not fail",
+    "encodedKeys": "9x",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "bc"
+        },
+        "-": {
+          "type": "v",
+          "text": "bc"
+        }
+      },
+      "buffer": [
+        "a"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "wave1/x-at-eol",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "x",
+    "groups": [
+      "x"
+    ],
+    "encodedKeys": "x",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "c"
+        },
+        "-": {
+          "type": "v",
+          "text": "c"
+        }
+      },
+      "buffer": [
+        "ab"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "wave1/x-last-char-on-line",
+    "buffer": [
+      "a",
+      "b"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "x",
+    "groups": [
+      "x"
+    ],
+    "note": "deleting the only character leaves an empty line and clamps the cursor",
+    "encodedKeys": "x",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a"
+        },
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "",
+        "b"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "wave1/x-on-empty-line-fails",
+    "buffer": [
+      "",
+      "b"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "x",
+    "groups": [
+      "x"
+    ],
+    "encodedKeys": "x",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "",
+        "b"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "wave1/x-does-not-join-lines",
+    "buffer": [
+      "ab",
+      "cd"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "xx",
+    "groups": [
+      "xx"
+    ],
+    "encodedKeys": "xx",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a"
+        },
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "",
+        "cd"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "wave1/X-basic",
+    "buffer": [
+      "abcdef"
+    ],
+    "cursor": [
+      1,
+      4
+    ],
+    "keys": "X",
+    "groups": [
+      "X"
+    ],
+    "encodedKeys": "X",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "c"
+        },
+        "-": {
+          "type": "v",
+          "text": "c"
+        }
+      },
+      "buffer": [
+        "abdef"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "wave1/X-at-col1-fails",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "X",
+    "groups": [
+      "X"
+    ],
+    "encodedKeys": "X",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "abc"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "wave1/X-count-overshoot",
+    "buffer": [
+      "abcdef"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "9X",
+    "groups": [
+      "9X"
+    ],
+    "encodedKeys": "9X",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "ab"
+        },
+        "-": {
+          "type": "v",
+          "text": "ab"
+        }
+      },
+      "buffer": [
+        "cdef"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "wave1/r-basic",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "rZ",
+    "groups": [
+      "rZ"
+    ],
+    "encodedKeys": "rZ",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "aZc"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "wave1/r-count",
+    "buffer": [
+      "abcdef"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "3rZ",
+    "groups": [
+      "3rZ"
+    ],
+    "encodedKeys": "3rZ",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "aZZZef"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "wave1/r-count-past-eol-fails",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "9rZ",
+    "groups": [
+      "9rZ"
+    ],
+    "note": "r never does a partial replace",
+    "encodedKeys": "9rZ",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "abc"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "wave1/r-esc-cancels",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "r<Esc>",
+    "groups": [
+      "r<Esc>"
+    ],
+    "encodedKeys": "r\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "abc"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "wave1/u-single-change",
+    "buffer": [
+      "abcdef"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "xu",
+    "groups": [
+      "xu"
+    ],
+    "encodedKeys": "xu",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "c"
+        },
+        "-": {
+          "type": "v",
+          "text": "c"
+        }
+      },
+      "buffer": [
+        "abcdef"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "wave1/u-at-oldest-is-noop",
+    "buffer": [
+      "abcdef"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "u",
+    "groups": [
+      "u"
+    ],
+    "note": "u as the very first key must do nothing — undo history starts empty",
+    "encodedKeys": "u",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "abcdef"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "wave1/u-multiple-changes",
+    "buffer": [
+      "abcdef"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "xxxuu",
+    "groups": [
+      "x",
+      "x",
+      "x",
+      "u",
+      "u"
+    ],
+    "note": "Listed as groups so each x is its own undo block. Fed as one string, feedkeys collapses all three deletions into a single block and one u would restore everything — which is not what interactive Vim does.",
+    "encodedKeys": "xxxuu",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "c"
+        },
+        "-": {
+          "type": "v",
+          "text": "c"
+        }
+      },
+      "buffer": [
+        "bcdef"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "wave1/redo-after-undo",
+    "buffer": [
+      "abcdef"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "xu<C-r>",
+    "groups": [
+      "xu<C-r>"
+    ],
+    "encodedKeys": "xu\u0012",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "c"
+        },
+        "-": {
+          "type": "v",
+          "text": "c"
+        }
+      },
+      "buffer": [
+        "abdef"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "wave1/redo-without-undo-is-noop",
+    "buffer": [
+      "abcdef"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "x<C-r>",
+    "groups": [
+      "x<C-r>"
+    ],
+    "encodedKeys": "x\u0012",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "c"
+        },
+        "-": {
+          "type": "v",
+          "text": "c"
+        }
+      },
+      "buffer": [
+        "abdef"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "wave1/undo-restores-cursor",
+    "buffer": [
+      "abc",
+      "def"
+    ],
+    "cursor": [
+      2,
+      2
+    ],
+    "keys": "xu",
+    "groups": [
+      "xu"
+    ],
+    "encodedKeys": "xu",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "e"
+        },
+        "-": {
+          "type": "v",
+          "text": "e"
+        }
+      },
+      "buffer": [
+        "abc",
+        "def"
+      ],
+      "cursor": [
+        2,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "wave1/undo-redo-undo",
+    "buffer": [
+      "abcdef"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "xxu<C-r>u",
+    "groups": [
+      "x",
+      "x",
+      "u",
+      "<C-r>",
+      "u"
+    ],
+    "encodedKeys": "xxu\u0012u",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "b"
+        },
+        "-": {
+          "type": "v",
+          "text": "b"
+        }
+      },
+      "buffer": [
+        "bcdef"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "wave1/count-zero-is-motion",
+    "buffer": [
+      "alpha beta"
+    ],
+    "cursor": [
+      1,
+      7
+    ],
+    "keys": "0",
+    "groups": [
+      "0"
+    ],
+    "note": "0 is the line-start motion, never a count digit",
+    "encodedKeys": "0",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "alpha beta"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "wave1/count-then-zero-is-digit",
+    "buffer": [
+      "a",
+      "b",
+      "c",
+      "d",
+      "e",
+      "f",
+      "g",
+      "h",
+      "i",
+      "j",
+      "k"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "10G",
+    "groups": [
+      "10G"
+    ],
+    "encodedKeys": "10G",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "a",
+        "b",
+        "c",
+        "d",
+        "e",
+        "f",
+        "g",
+        "h",
+        "i",
+        "j",
+        "k"
+      ],
+      "cursor": [
+        10,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "wave1/x-into-named-register",
+    "buffer": [
+      "abcdef"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "\"a3x",
+    "groups": [
+      "\"a3x"
+    ],
+    "encodedKeys": "\"a3x",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "v",
+          "text": "abc"
+        },
+        "\"": {
+          "type": "v",
+          "text": "abc"
+        },
+        "a": {
+          "type": "v",
+          "text": "abc"
+        }
+      },
+      "buffer": [
+        "def"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "wave1/x-into-blackhole",
+    "buffer": [
+      "abcdef"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "x\"_x",
+    "groups": [
+      "x\"_x"
+    ],
+    "note": "the black hole must not clobber the unnamed register",
+    "encodedKeys": "x\"_x",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a"
+        },
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "cdef"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "wave1/esc-cancels-count",
+    "buffer": [
+      "abcdef"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "3<Esc>x",
+    "groups": [
+      "3<Esc>x"
+    ],
+    "encodedKeys": "3\u001bx",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a"
+        },
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "bcdef"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  }
+]

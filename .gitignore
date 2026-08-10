@@ -1,0 +1,11 @@
+node_modules/
+dist/
+*.tsbuildinfo
+.DS_Store
+.vite/
+coverage/
+
+# Scratch output from the golden harness. The goldens themselves
+# (tools/goldens/goldens/*.json) ARE committed on purpose, so CI never
+# needs Vim installed.
+tools/goldens/.work/

@@ -1,0 +1,483 @@
+# Wave 1 — substrate + motions.
+#
+# hjkl, 0 ^ $, gg G {n}G, w b e W B E ge, f F t T ; ,, %, counts, x X r, u <C-r>.
+# Weighted toward edges: empty lines, single-char buffers, cursor at EOL/EOF,
+# counts that overshoot, motions that must FAIL rather than clamp.
+
+cases:
+  # --- h l 0 ^ $ ------------------------------------------------------------
+  - id: wave1/h-basic
+    buffer: 'alpha beta'
+    cursor: [1, 5]
+    keys: 'h'
+  - id: wave1/h-at-col1-fails
+    note: h at column 1 must fail, not wrap to the previous line
+    buffer: ['one', 'two']
+    cursor: [2, 1]
+    keys: 'h'
+  - id: wave1/h-count-overshoot
+    buffer: 'alpha beta'
+    cursor: [1, 4]
+    keys: '9h'
+  - id: wave1/l-basic
+    buffer: 'alpha'
+    cursor: [1, 1]
+    keys: 'l'
+  - id: wave1/l-at-eol-fails
+    note: l stops on the last character in normal mode
+    buffer: 'abc'
+    cursor: [1, 3]
+    keys: 'l'
+  - id: wave1/l-count-overshoot
+    buffer: 'abcdef'
+    cursor: [1, 1]
+    keys: '99l'
+  - id: wave1/l-on-empty-line
+    buffer: ['', 'x']
+    cursor: [1, 1]
+    keys: 'l'
+  - id: wave1/zero-col
+    buffer: '   indented'
+    cursor: [1, 8]
+    keys: '0'
+  - id: wave1/caret-first-nonblank
+    buffer: '   indented'
+    cursor: [1, 11]
+    keys: '^'
+  - id: wave1/caret-all-blank
+    buffer: '     '
+    cursor: [1, 3]
+    keys: '^'
+  - id: wave1/dollar
+    buffer: 'alpha beta'
+    cursor: [1, 1]
+    keys: '$'
+  - id: wave1/dollar-empty-line
+    buffer: ['', 'x']
+    cursor: [1, 1]
+    keys: '$'
+  - id: wave1/dollar-count
+    note: 2$ goes to the end of the NEXT line
+    buffer: ['one', 'three']
+    cursor: [1, 1]
+    keys: '2$'
+
+  # --- j k and desiredCol ---------------------------------------------------
+  - id: wave1/j-basic
+    buffer: ['one', 'two']
+    cursor: [1, 2]
+    keys: 'j'
+  - id: wave1/k-at-top-fails
+    buffer: ['one', 'two']
+    cursor: [1, 1]
+    keys: 'k'
+  - id: wave1/j-at-bottom-fails
+    buffer: ['one', 'two']
+    cursor: [2, 1]
+    keys: 'j'
+  - id: wave1/j-through-short-line
+    note: the remembered column must survive a short line in between
+    buffer: ['a much longer line', 'ab', 'another long line']
+    cursor: [1, 15]
+    keys: 'jj'
+  - id: wave1/dollar-then-j-sticks-to-eol
+    note: after $ the cursor stays at end of each line, however long
+    buffer: ['short', 'a much longer line', 'mid']
+    cursor: [1, 1]
+    keys: '$jj'
+  - id: wave1/j-onto-empty-line
+    buffer: ['abcdef', '', 'ghijkl']
+    cursor: [1, 4]
+    keys: 'jj'
+  - id: wave1/j-count-overshoot
+    buffer: ['a', 'b', 'c']
+    cursor: [1, 1]
+    keys: '9j'
+
+  # --- gg G {n}G ------------------------------------------------------------
+  - id: wave1/G-last-line
+    buffer: ['one', '  two', 'three']
+    cursor: [1, 1]
+    keys: 'G'
+  - id: wave1/G-count
+    note: '{n}G lands on the first non-blank of line n'
+    buffer: ['one', '  two', 'three']
+    cursor: [1, 1]
+    keys: '2G'
+  - id: wave1/G-count-overshoot
+    buffer: ['one', 'two']
+    cursor: [1, 1]
+    keys: '99G'
+  - id: wave1/gg-first-line
+    buffer: ['  one', 'two', 'three']
+    cursor: [3, 3]
+    keys: 'gg'
+  - id: wave1/gg-count
+    buffer: ['one', '  two', 'three']
+    cursor: [1, 1]
+    keys: '2gg'
+
+  # --- + - _ ----------------------------------------------------------------
+  - id: wave1/plus-next-line-nonblank
+    buffer: ['one', '   two']
+    cursor: [1, 1]
+    keys: '+'
+  - id: wave1/minus-prev-line-nonblank
+    buffer: ['   one', 'two']
+    cursor: [2, 3]
+    keys: '-'
+  - id: wave1/underscore
+    buffer: ['   one', 'two']
+    cursor: [1, 1]
+    keys: '_'
+  - id: wave1/underscore-count
+    buffer: ['one', '   two', 'three']
+    cursor: [1, 1]
+    keys: '2_'
+
+  # --- w W ------------------------------------------------------------------
+  - id: wave1/w-basic
+    buffer: 'alpha beta gamma'
+    cursor: [1, 1]
+    keys: 'w'
+  - id: wave1/w-count
+    buffer: 'alpha beta gamma'
+    cursor: [1, 1]
+    keys: '2w'
+  - id: wave1/w-punctuation-is-a-word
+    note: a run of punctuation counts as its own word for w, but not for W
+    buffer: 'foo.bar baz'
+    cursor: [1, 1]
+    keys: 'w'
+  - id: wave1/W-skips-punctuation
+    buffer: 'foo.bar baz'
+    cursor: [1, 1]
+    keys: 'W'
+  - id: wave1/w-across-lines
+    buffer: ['one two', 'three']
+    cursor: [1, 5]
+    keys: 'w'
+  - id: wave1/w-onto-empty-line
+    note: an empty line is itself a word
+    buffer: ['one', '', 'two']
+    cursor: [1, 1]
+    keys: 'w'
+  - id: wave1/w-at-eof
+    buffer: 'last'
+    cursor: [1, 1]
+    keys: 'w'
+  - id: wave1/w-count-overshoot
+    buffer: ['one two', 'three']
+    cursor: [1, 1]
+    keys: '9w'
+  - id: wave1/w-leading-whitespace
+    buffer: '   indented word'
+    cursor: [1, 1]
+    keys: 'w'
+  - id: wave1/w-trailing-whitespace
+    buffer: ['foo   ', 'bar']
+    cursor: [1, 1]
+    keys: 'w'
+
+  # --- degenerate all-blank buffers -----------------------------------------
+  # Found by a property test ("w then b never lands past the start"), which is
+  # exactly the wart class goldens exist to settle rather than reason about.
+  - id: wave1/w-all-blank-buffer
+    buffer: ['   ', '   ']
+    cursor: [1, 1]
+    keys: 'w'
+  - id: wave1/wb-all-blank-buffer
+    buffer: ['   ', '   ']
+    cursor: [1, 1]
+    keys: 'wb'
+  - id: wave1/b-from-end-all-blank
+    buffer: ['   ', '   ']
+    cursor: [2, 3]
+    keys: 'b'
+  - id: wave1/w-single-blank-line
+    buffer: '   '
+    cursor: [1, 1]
+    keys: 'w'
+  - id: wave1/e-all-blank-buffer
+    buffer: ['   ', '   ']
+    cursor: [1, 1]
+    keys: 'e'
+  - id: wave1/w-empty-buffer
+    buffer: ['']
+    cursor: [1, 1]
+    keys: 'w'
+  - id: wave1/wb-empty-lines
+    buffer: ['', '', '']
+    cursor: [1, 1]
+    keys: 'wb'
+
+  # --- b B ------------------------------------------------------------------
+  - id: wave1/b-basic
+    buffer: 'alpha beta gamma'
+    cursor: [1, 12]
+    keys: 'b'
+  - id: wave1/b-mid-word
+    buffer: 'alpha beta'
+    cursor: [1, 9]
+    keys: 'b'
+  - id: wave1/b-count
+    buffer: 'alpha beta gamma'
+    cursor: [1, 12]
+    keys: '2b'
+  - id: wave1/b-across-lines
+    buffer: ['one two', 'three']
+    cursor: [2, 1]
+    keys: 'b'
+  - id: wave1/b-at-start-fails
+    buffer: 'alpha'
+    cursor: [1, 1]
+    keys: 'b'
+  - id: wave1/b-punctuation
+    buffer: 'foo.bar'
+    cursor: [1, 5]
+    keys: 'b'
+  - id: wave1/B-punctuation
+    buffer: 'foo.bar baz'
+    cursor: [1, 9]
+    keys: 'B'
+
+  # --- e E ge ---------------------------------------------------------------
+  - id: wave1/e-basic
+    buffer: 'alpha beta'
+    cursor: [1, 1]
+    keys: 'e'
+  - id: wave1/e-from-word-end
+    note: e already at a word end must advance to the NEXT word end
+    buffer: 'alpha beta'
+    cursor: [1, 5]
+    keys: 'e'
+  - id: wave1/e-count
+    buffer: 'alpha beta gamma'
+    cursor: [1, 1]
+    keys: '2e'
+  - id: wave1/e-punctuation
+    buffer: 'foo.bar'
+    cursor: [1, 1]
+    keys: 'e'
+  - id: wave1/E-punctuation
+    buffer: 'foo.bar baz'
+    cursor: [1, 1]
+    keys: 'E'
+  - id: wave1/e-across-lines
+    buffer: ['one', 'two']
+    cursor: [1, 3]
+    keys: 'e'
+  - id: wave1/ge-basic
+    buffer: 'alpha beta gamma'
+    cursor: [1, 12]
+    keys: 'ge'
+  - id: wave1/ge-count
+    buffer: 'alpha beta gamma'
+    cursor: [1, 12]
+    keys: '2ge'
+  - id: wave1/gE-punctuation
+    buffer: 'foo.bar baz'
+    cursor: [1, 9]
+    keys: 'gE'
+
+  # --- f F t T ; , ----------------------------------------------------------
+  - id: wave1/f-basic
+    buffer: 'a,b,c,d'
+    cursor: [1, 1]
+    keys: 'f,'
+  - id: wave1/f-count
+    buffer: 'a,b,c,d'
+    cursor: [1, 1]
+    keys: '2f,'
+  - id: wave1/f-not-found-fails
+    buffer: 'abc'
+    cursor: [1, 1]
+    keys: 'fz'
+  - id: wave1/f-does-not-cross-lines
+    buffer: ['abc', 'xyz']
+    cursor: [1, 1]
+    keys: 'fz'
+  - id: wave1/F-basic
+    buffer: 'a,b,c,d'
+    cursor: [1, 7]
+    keys: 'F,'
+  - id: wave1/t-basic
+    buffer: 'a,b,c,d'
+    cursor: [1, 1]
+    keys: 't,'
+  - id: wave1/t-repeat-makes-progress
+    note: ; after t must advance rather than stick in place
+    buffer: 'a,b,c,d'
+    cursor: [1, 1]
+    keys: 't,;'
+  - id: wave1/T-basic
+    buffer: 'a,b,c,d'
+    cursor: [1, 7]
+    keys: 'T,'
+  - id: wave1/semicolon-repeat
+    buffer: 'a,b,c,d'
+    cursor: [1, 1]
+    keys: 'f,;'
+  - id: wave1/comma-reverse
+    buffer: 'a,b,c,d'
+    cursor: [1, 1]
+    keys: 'f,f,,'
+  - id: wave1/semicolon-without-find-fails
+    buffer: 'a,b,c'
+    cursor: [1, 1]
+    keys: ';'
+
+  # --- % --------------------------------------------------------------------
+  - id: wave1/percent-forward
+    buffer: 'fn(a, b) end'
+    cursor: [1, 3]
+    keys: '%'
+  - id: wave1/percent-backward
+    buffer: 'fn(a, b) end'
+    cursor: [1, 8]
+    keys: '%'
+  - id: wave1/percent-scans-forward-to-bracket
+    note: '% jumps from the first bracket at or after the cursor'
+    buffer: 'fn(a, b) end'
+    cursor: [1, 1]
+    keys: '%'
+  - id: wave1/percent-nested
+    buffer: 'a(b(c)d)e'
+    cursor: [1, 2]
+    keys: '%'
+  - id: wave1/percent-square-and-curly
+    buffer: 'x[y{z}]w'
+    cursor: [1, 2]
+    keys: '%'
+  - id: wave1/percent-unmatched-fails
+    buffer: 'a(b'
+    cursor: [1, 2]
+    keys: '%'
+  - id: wave1/percent-across-lines
+    buffer: ['fn(', '  arg', ')']
+    cursor: [1, 3]
+    keys: '%'
+  - id: wave1/percent-no-bracket-fails
+    buffer: 'plain text'
+    cursor: [1, 1]
+    keys: '%'
+
+  # --- x X r ----------------------------------------------------------------
+  - id: wave1/x-basic
+    buffer: 'abcdef'
+    cursor: [1, 3]
+    keys: 'x'
+  - id: wave1/x-count
+    buffer: 'abcdef'
+    cursor: [1, 2]
+    keys: '3x'
+  - id: wave1/x-count-overshoot
+    note: x with too large a count deletes to end of line, it does not fail
+    buffer: 'abc'
+    cursor: [1, 2]
+    keys: '9x'
+  - id: wave1/x-at-eol
+    buffer: 'abc'
+    cursor: [1, 3]
+    keys: 'x'
+  - id: wave1/x-last-char-on-line
+    note: deleting the only character leaves an empty line and clamps the cursor
+    buffer: ['a', 'b']
+    cursor: [1, 1]
+    keys: 'x'
+  - id: wave1/x-on-empty-line-fails
+    buffer: ['', 'b']
+    cursor: [1, 1]
+    keys: 'x'
+  - id: wave1/x-does-not-join-lines
+    buffer: ['ab', 'cd']
+    cursor: [1, 2]
+    keys: 'xx'
+  - id: wave1/X-basic
+    buffer: 'abcdef'
+    cursor: [1, 4]
+    keys: 'X'
+  - id: wave1/X-at-col1-fails
+    buffer: 'abc'
+    cursor: [1, 1]
+    keys: 'X'
+  - id: wave1/X-count-overshoot
+    buffer: 'abcdef'
+    cursor: [1, 3]
+    keys: '9X'
+  - id: wave1/r-basic
+    buffer: 'abc'
+    cursor: [1, 2]
+    keys: 'rZ'
+  - id: wave1/r-count
+    buffer: 'abcdef'
+    cursor: [1, 2]
+    keys: '3rZ'
+  - id: wave1/r-count-past-eol-fails
+    note: r never does a partial replace
+    buffer: 'abc'
+    cursor: [1, 2]
+    keys: '9rZ'
+  - id: wave1/r-esc-cancels
+    buffer: 'abc'
+    cursor: [1, 2]
+    keys: 'r<Esc>'
+
+  # --- u <C-r> --------------------------------------------------------------
+  - id: wave1/u-single-change
+    buffer: 'abcdef'
+    cursor: [1, 3]
+    keys: 'xu'
+  - id: wave1/u-at-oldest-is-noop
+    note: u as the very first key must do nothing — undo history starts empty
+    buffer: 'abcdef'
+    cursor: [1, 3]
+    keys: 'u'
+  - id: wave1/u-multiple-changes
+    note: >-
+      Listed as groups so each x is its own undo block. Fed as one string,
+      feedkeys collapses all three deletions into a single block and one u
+      would restore everything — which is not what interactive Vim does.
+    buffer: 'abcdef'
+    cursor: [1, 1]
+    keys: ['x', 'x', 'x', 'u', 'u']
+  - id: wave1/redo-after-undo
+    buffer: 'abcdef'
+    cursor: [1, 3]
+    keys: 'xu<C-r>'
+  - id: wave1/redo-without-undo-is-noop
+    buffer: 'abcdef'
+    cursor: [1, 3]
+    keys: 'x<C-r>'
+  - id: wave1/undo-restores-cursor
+    buffer: ['abc', 'def']
+    cursor: [2, 2]
+    keys: 'xu'
+  - id: wave1/undo-redo-undo
+    buffer: 'abcdef'
+    cursor: [1, 1]
+    keys: ['x', 'x', 'u', '<C-r>', 'u']
+
+  # --- counts and registers -------------------------------------------------
+  - id: wave1/count-zero-is-motion
+    note: 0 is the line-start motion, never a count digit
+    buffer: 'alpha beta'
+    cursor: [1, 7]
+    keys: '0'
+  - id: wave1/count-then-zero-is-digit
+    buffer: ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k']
+    cursor: [1, 1]
+    keys: '10G'
+  - id: wave1/x-into-named-register
+    buffer: 'abcdef'
+    cursor: [1, 1]
+    keys: '"a3x'
+  - id: wave1/x-into-blackhole
+    note: the black hole must not clobber the unnamed register
+    buffer: 'abcdef'
+    cursor: [1, 1]
+    keys: 'x"_x'
+  - id: wave1/esc-cancels-count
+    buffer: 'abcdef'
+    cursor: [1, 1]
+    keys: '3<Esc>x'
