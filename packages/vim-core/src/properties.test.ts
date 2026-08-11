@@ -139,6 +139,39 @@ describe('invariants', () => {
     );
   });
 
+  it('visual mode entered and abandoned is a no-op, whatever was selected', () => {
+    // The selection lives entirely in `visualStart` plus the cursor, so an
+    // abandoned selection must leave no trace at all — no buffer change, no
+    // register write, and no lingering anchor to poison the next command.
+    const inVisual = fc.tuple(
+      fc.constantFrom('v', 'V', '<C-v>'),
+      fc.array(fc.constantFrom('h', 'l', 'j', 'k', 'w', 'b', 'e', '$', '0', 'o'), { maxLength: 6 }),
+    );
+    fc.assert(
+      fc.property(arbState, inVisual, (s0, [enter, moves]) => {
+        const s = replay(s0, [...tokenize(enter), ...moves, '<Esc>']);
+        expect(s.lines).toEqual(s0.lines);
+        expect(s.registers).toEqual(s0.registers);
+        expect(s.mode).toBe('normal');
+        expect(s.visualStart).toBeUndefined();
+      }),
+    );
+  });
+
+  it('an operator over a selection always ends the selection', () => {
+    // Whatever the operator did, visual mode must be over and the anchor gone.
+    // A surviving anchor is the bug that makes the NEXT command operate on a
+    // selection the player can no longer see.
+    const ops = fc.constantFrom('d', 'y', 'x', '>', '<', 'U', 'u', '~', 'D', 'Y', 'C', 'S');
+    fc.assert(
+      fc.property(arbState, fc.constantFrom('v', 'V', '<C-v>'), ops, (s0, enter, op) => {
+        const s = replay(s0, [...tokenize(enter), 'j', 'l', op, '<Esc>']);
+        expect(s.visualStart).toBeUndefined();
+        expect(s.mode).toBe('normal');
+      }),
+    );
+  });
+
   it('a rejected key leaves the buffer untouched', () => {
     fc.assert(
       fc.property(arbState, (s0) => {

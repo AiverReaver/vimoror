@@ -22,6 +22,7 @@ const FAMILIES = [
   'wave2-insert',
   'wave3-paste',
   'wave3-textobj',
+  'wave3-visual',
 ];
 
 for (const family of FAMILIES) {

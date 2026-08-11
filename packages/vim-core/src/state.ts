@@ -73,6 +73,11 @@ export type EditorState = {
   readonly keyPolicy: KeyPolicy | undefined;
   readonly options: O.EditorOptions;
   readonly insert: I.InsertSession | undefined;
+  /**
+   * The fixed end of a visual selection — Vim's `VIsual`. The other end is the
+   * cursor, which is why every motion works in visual mode for free.
+   */
+  readonly visualStart: Pos | undefined;
 };
 
 export function initState(
@@ -94,6 +99,7 @@ export function initState(
     keyPolicy: undefined,
     options,
     insert: undefined,
+    visualStart: undefined,
   };
 }
 
@@ -310,6 +316,7 @@ function changeWordMotion(state: EditorState, big: boolean, count: number): Moti
 export function step(state: EditorState, key: KeyToken): StepResult {
   if (!isPolicyAllowed(state.keyPolicy, key)) return reject(state, key, 'key-locked');
   if (state.mode === 'insert' || state.mode === 'replace') return stepInsert(state, key);
+  if (isVisual(state.mode)) return stepVisual(state, key);
   if (state.mode === 'normal' || state.mode === 'operator-pending') return stepNormal(state, key);
   return reject(state, key, 'not-in-mode');
 }
@@ -348,8 +355,7 @@ function stepNormal(state: EditorState, key: KeyToken): StepResult {
     // An object names its region outright, so the operated text starts at the
     // region's own start — column ZERO for a linewise object, which is why
     // `yip` lands on column one while `yy` keeps the column it had.
-    const opStart: Pos = range.kind === 'linewise' ? { line: range.firstLine, col: 0 } : range.start;
-    return runOperator(state, p.operator!, range, opStart, false, true);
+    return runOperator(state, p.operator!, range, O.rangeStart(range), false, true);
   }
 
   if (p.awaiting === 'replace') {
@@ -521,6 +527,16 @@ function stepNormal(state: EditorState, key: KeyToken): StepResult {
     case 'R':
       return enterInsert(state, { at: state.cursor, count, replace: true, changeStart: state.cursor });
 
+    // Visual mode entry. The anchor is the cursor; from here every motion
+    // extends the selection, which is why visual mode needs no motion code of
+    // its own.
+    case 'v':
+      return enterVisual(state, 'visual');
+    case 'V':
+      return enterVisual(state, 'visual-line');
+    case '<C-v>':
+      return enterVisual(state, 'visual-block');
+
     default:
       return reject(state, key, 'unknown-key');
   }
@@ -571,10 +587,15 @@ function runOperator(
   forcesNumbered: boolean,
   /** The region came from a text object rather than from a motion. */
   fromObject = false,
+  /**
+   * How many times to apply a SHIFT. In visual mode a count before `>` means
+   * "shift this much", so `2>` moves two shiftwidths — unlike normal mode's
+   * `2>>`, where the count means two LINES.
+   */
+  shiftCount = 1,
 ): StepResult {
   const explicit = state.pending.register;
-  const firstLine = range.kind === 'linewise' ? range.firstLine : range.start.line;
-  const lastRangeLine = range.kind === 'linewise' ? range.lastLine : range.end.line;
+  const { first: firstLine, last: lastRangeLine } = O.rangeLines(range);
 
   // A charwise motion that could not move at all (`l` on an empty line, `h` at
   // column one) produces a DEGENERATE region — Vim's `oap->empty`. Such a
@@ -598,7 +619,7 @@ function runOperator(
   }
 
   if (op === '>' || op === '<') {
-    const r = O.applyIndent(state.lines, op, range, state.options);
+    const r = O.applyIndent(state.lines, op, range, state.options, shiftCount);
     return {
       state: commit(state, r.lines, r.cursor, undefined, opStart),
       events: [bufferChanged(firstLine, lastRangeLine)],
@@ -670,7 +691,15 @@ function runOperator(
     // The delete half of a change must NOT close an undo block — the whole
     // change-plus-typing is one `u`, beginning where the operated text starts.
     const next = mutate({ ...state, registers, pending: EMPTY_PENDING }, r.lines, r.cursor, true);
-    const entered = enterInsert(next, { at: r.cursor, count: 1, fromChange: true, changeStart: opStart });
+    const entered = enterInsert(next, {
+      at: r.cursor,
+      count: 1,
+      fromChange: true,
+      changeStart: opStart,
+      ...(range.kind === 'blockwise'
+        ? { blockRows: { firstLine: range.firstLine, lastLine: range.lastLine, col: range.startCol } }
+        : {}),
+    });
     return {
       state: entered.state,
       events: [
@@ -690,6 +719,230 @@ function runOperator(
   };
 }
 
+// --- visual mode ------------------------------------------------------------
+
+function isVisual(mode: Mode): boolean {
+  return mode === 'visual' || mode === 'visual-line' || mode === 'visual-block';
+}
+
+function enterVisual(state: EditorState, mode: Mode): StepResult {
+  return {
+    state: { ...state, mode, visualStart: state.cursor, pending: EMPTY_PENDING },
+    events: [{ type: 'ModeChanged', from: state.mode, to: mode }],
+  };
+}
+
+function leaveVisual(state: EditorState): EditorState {
+  return { ...state, mode: 'normal', visualStart: undefined, pending: EMPTY_PENDING };
+}
+
+/**
+ * The selection as an operator range. `'selection'` is `inclusive` in the
+ * baseline, so the character under the cursor is part of it — which is why a
+ * one-character charwise selection is a real one-character region and never a
+ * degenerate one.
+ */
+function selectionRange(state: EditorState, anchor: Pos): O.OperatorRange {
+  const { cursor, mode } = state;
+  const backwards = comparePos(cursor, anchor) < 0;
+  const from = backwards ? cursor : anchor;
+  const to = backwards ? anchor : cursor;
+
+  if (mode === 'visual-line') {
+    return { kind: 'linewise', firstLine: from.line, lastLine: to.line };
+  }
+  if (mode === 'visual-block') {
+    // A block's columns are independent of which corner the cursor is in, so
+    // they are the min and max of the two — dragging left-and-down still
+    // selects a rectangle.
+    return {
+      kind: 'blockwise',
+      firstLine: from.line,
+      lastLine: to.line,
+      startCol: Math.min(anchor.col, cursor.col),
+      endCol: Math.max(anchor.col, cursor.col),
+    };
+  }
+  return { kind: 'charwise', start: from, end: { line: to.line, col: to.col + 1 } };
+}
+
+/** In visual mode these keys mean an operator over the selection, nothing else. */
+const VISUAL_OPERATORS: Record<string, O.OperatorName> = {
+  d: 'd', x: 'd', y: 'y', c: 'c', s: 'c',
+  '>': '>', '<': '<',
+  u: 'gu', U: 'gU', '~': 'g~',
+};
+
+/** …and these force the selection to whole lines first, whatever it was. */
+const VISUAL_LINEWISE_OPERATORS: Record<string, O.OperatorName> = {
+  D: 'd', X: 'd', Y: 'y', C: 'c', S: 'c', R: 'c',
+};
+
+function stepVisual(state: EditorState, key: KeyToken): StepResult {
+  const p = state.pending;
+  const keys = [...p.keyBuffer, key];
+  const bump = (patch: Partial<Pending>): Pending => ({ ...p, ...patch, keyBuffer: keys });
+  const anchor = state.visualStart ?? state.cursor;
+  const { count, hasCount } = countOf(p);
+
+  const ctx = (): M.MotionContext => motionCtx(state, count, hasCount, false);
+
+  /** Move the cursor, keeping the anchor — this is all "extending" ever is. */
+  const extendTo = (to: Pos, desiredCol?: number): StepResult => {
+    const cursor = clamp(state.lines, to, false);
+    return {
+      state: { ...state, cursor, desiredCol: desiredCol ?? cursor.col, pending: EMPTY_PENDING },
+      events: [{ type: 'CursorMoved', to: cursor }],
+    };
+  };
+
+  const runOverSelection = (op: O.OperatorName, forceLinewise: boolean): StepResult => {
+    const range = forceLinewise
+      ? ({
+          kind: 'linewise',
+          firstLine: Math.min(anchor.line, state.cursor.line),
+          lastLine: Math.max(anchor.line, state.cursor.line),
+        } as O.OperatorRange)
+      : selectionRange(state, anchor);
+    // Leave visual mode BEFORE the operator runs, so the resulting state is a
+    // normal-mode one and the operator's own cursor rules apply unchanged. The
+    // explicit register has to survive that transition — `leaveVisual` clears
+    // pending, and `runOperator` reads the register off it, so `v"ay` would
+    // otherwise silently write the unnamed register instead of `"a`.
+    const normal: EditorState = {
+      ...leaveVisual(state),
+      pending: { ...EMPTY_PENDING, register: p.register },
+    };
+    const result = runOperator(normal, op, range, O.rangeStart(range), false, true, count);
+    return {
+      state: { ...result.state, mode: result.state.insert === undefined ? 'normal' : result.state.mode },
+      events: [{ type: 'ModeChanged', from: state.mode, to: result.state.mode }, ...result.events],
+    };
+  };
+
+  // --- character arguments --------------------------------------------------
+
+  if (p.awaiting === 'register') {
+    if (!/^[a-zA-Z0-9"_\-]$/.test(key)) return invalid(state, keys.join(''), 'unknown-key');
+    return pendingOnly(state, bump({ register: key, awaiting: undefined }));
+  }
+
+  if (p.awaiting === 'find') {
+    if (key.length !== 1) return invalid(state, keys.join(''), 'unknown-key');
+    const cmd = p.findCmd!;
+    const r = M.moveFind(ctx(), cmd, key);
+    const remembered: EditorState = { ...state, lastFind: { cmd, ch: key } };
+    if (r === null) return invalid(remembered, keys.join(''), 'motion-failed');
+    const moved = extendTo(r.target);
+    return { ...moved, state: { ...moved.state, lastFind: { cmd, ch: key } } };
+  }
+
+  if (p.awaiting === 'textobject') {
+    if (key === '<Esc>') return { state: { ...state, pending: EMPTY_PENDING }, events: [] };
+    if (key.length !== 1) return invalid(state, keys.join(''), 'unknown-key');
+    const range = T.textObject(state.lines, state.cursor, p.textObjectKind!, key, count);
+    if (range === null) return invalid(state, keys.join(''), 'no-such-motion');
+    // An object REPLACES the selection with its own extent, anchor included.
+    const start = O.rangeStart(range);
+    const end =
+      range.kind === 'charwise'
+        ? { line: range.end.line, col: Math.max(0, range.end.col - 1) }
+        : { line: O.rangeLines(range).last, col: state.cursor.col };
+    return {
+      state: {
+        ...state,
+        visualStart: clamp(state.lines, start, false),
+        cursor: clamp(state.lines, end, false),
+        pending: EMPTY_PENDING,
+      },
+      events: [{ type: 'CursorMoved', to: clamp(state.lines, end, false) }],
+    };
+  }
+
+  if (p.awaiting === 'g') {
+    switch (key) {
+      case 'g':
+        return extendTo(M.moveGotoFirstLine(ctx()).target);
+      case 'e':
+      case 'E': {
+        const r = M.moveWordEndBackward({ ...ctx(), arg: key === 'E' ? 'gE' : 'ge' });
+        if (r === null) return invalid(state, keys.join(''), 'motion-failed');
+        return extendTo(r.target);
+      }
+      case 'u':
+        return runOverSelection('gu', false);
+      case 'U':
+        return runOverSelection('gU', false);
+      case '~':
+        return runOverSelection('g~', false);
+      default:
+        return invalid(state, keys.join(''), 'no-such-motion');
+    }
+  }
+
+  // --- prefixes -------------------------------------------------------------
+
+  if (/^[1-9]$/.test(key) || (key === '0' && p.count !== '')) {
+    return pendingOnly(state, bump({ count: p.count + key }));
+  }
+  if (key === '"') return pendingOnly(state, bump({ awaiting: 'register' }));
+  if (key === 'g') return pendingOnly(state, bump({ awaiting: 'g' }));
+  if (key === 'f' || key === 'F' || key === 't' || key === 'T') {
+    return pendingOnly(state, bump({ awaiting: 'find', findCmd: key }));
+  }
+  if (key === 'i' || key === 'a') {
+    return pendingOnly(state, bump({ awaiting: 'textobject', textObjectKind: key }));
+  }
+
+  // --- leaving, and switching between the three visual modes ----------------
+
+  if (key === '<Esc>') {
+    return { state: leaveVisual(state), events: [{ type: 'ModeChanged', from: state.mode, to: 'normal' }] };
+  }
+
+  const asVisual: Record<string, Mode> = { v: 'visual', V: 'visual-line', '<C-v>': 'visual-block' };
+  const wanted = asVisual[key];
+  if (wanted !== undefined) {
+    // The same key again leaves; a different one switches KIND while keeping
+    // the selection, so `v`-then-`V` promotes what you already had to lines.
+    if (wanted === state.mode) {
+      return { state: leaveVisual(state), events: [{ type: 'ModeChanged', from: state.mode, to: 'normal' }] };
+    }
+    return {
+      state: { ...state, mode: wanted, pending: EMPTY_PENDING },
+      events: [{ type: 'ModeChanged', from: state.mode, to: wanted }],
+    };
+  }
+
+  // `o` swaps which end of the selection the cursor holds.
+  if (key === 'o') {
+    return {
+      state: { ...state, visualStart: state.cursor, cursor: anchor, desiredCol: anchor.col, pending: EMPTY_PENDING },
+      events: [{ type: 'CursorMoved', to: anchor }],
+    };
+  }
+
+  // --- operators over the selection ----------------------------------------
+
+  const lineOp = VISUAL_LINEWISE_OPERATORS[key];
+  if (lineOp !== undefined) return runOverSelection(lineOp, true);
+
+  const op = VISUAL_OPERATORS[key];
+  if (op !== undefined) return runOverSelection(op, false);
+
+  // --- motions --------------------------------------------------------------
+
+  if (MOTION_KEYS.has(key)) {
+    const motion = resolveMotion(state, key, false, count, hasCount);
+    if (motion === null) return invalid(state, keys.join(''), 'motion-failed');
+    const desired = key === '$' ? MAX_COL : undefined;
+    const keep = motion.keepDesiredCol === true ? state.desiredCol : desired;
+    return extendTo(motion.target, keep);
+  }
+
+  return reject(state, key, 'unknown-key');
+}
+
 // --- insert mode ------------------------------------------------------------
 
 type EnterInsert = {
@@ -707,6 +960,8 @@ type EnterInsert = {
   readonly fromChange?: boolean;
   /** Where the whole change began, for the undo entry (Vim's `uh_cursor`). */
   readonly changeStart: Pos;
+  /** A blockwise change replicates what is typed down the rest of the block. */
+  readonly blockRows?: { readonly firstLine: number; readonly lastLine: number; readonly col: number };
 };
 
 function enterInsert(state: EditorState, opts: EnterInsert): StepResult {
@@ -729,6 +984,7 @@ function enterInsert(state: EditorState, opts: EnterInsert): StepResult {
         start: cursor,
         changeStart: clamp(state.lines, opts.changeStart, true),
         replaced: [],
+        blockRows: opts.blockRows,
       },
     },
     events: [{ type: 'ModeChanged', from: state.mode, to: mode }],
@@ -854,6 +1110,24 @@ function finishInsert(state: EditorState, session: I.InsertSession): StepResult 
       lines = out.lines;
       cursor = out.cursor;
       replay = out.session;
+    }
+  }
+
+  // A blockwise insert typed on the first row only; now put the same text on
+  // every other row of the block. Rows too short to reach the block's column
+  // are skipped rather than padded — that is Vim's rule, and it is why a block
+  // insert down a ragged edge silently misses the short lines.
+  const block = session.blockRows;
+  if (block !== undefined) {
+    const typed = lineAt(lines, block.firstLine).slice(block.col, cursor.col);
+    if (typed !== '' && !typed.includes('\n')) {
+      const next = [...lines];
+      for (let l = block.firstLine + 1; l <= Math.min(block.lastLine, lastLine(next)); l += 1) {
+        const text = next[l]!;
+        if (text.length < block.col) continue;
+        next[l] = text.slice(0, block.col) + typed + text.slice(block.col);
+      }
+      lines = next;
     }
   }
 

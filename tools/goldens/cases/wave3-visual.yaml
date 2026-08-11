@@ -1,0 +1,323 @@
+# Wave 3 — visual modes `v`, `V` and `<C-v>`.
+#
+# Visual mode needs no motion code of its own: the anchor stays put, the cursor
+# moves, and every Wave 1 motion extends the selection for free. What it DOES
+# need is a third range kind — a rectangle — because `<C-v>` is the only thing
+# in Vim that can produce one, and a blockwise register behaves like neither of
+# the other two when it is put back.
+#
+# These cases also finally pin the blockwise `p`/`P` written in Wave 3a, which
+# had no producer to test it with until now.
+#
+# `'selection'` is `inclusive` in the baseline, so the character under the
+# cursor is part of the selection — a one-character `v` selection is a real
+# one-character region, never a degenerate one.
+
+cases:
+  # --- charwise `v` ---------------------------------------------------------
+  - id: visual/v-l-d
+    buffer: 'abcdef'
+    cursor: [1, 1]
+    keys: 'vld'
+  - id: visual/v-single-char-d
+    note: the character under the cursor is already selected, so `vd` deletes one character
+    buffer: 'abcdef'
+    cursor: [1, 3]
+    keys: 'vd'
+  - id: visual/v-e-d
+    buffer: 'alpha beta'
+    cursor: [1, 1]
+    keys: 'ved'
+  - id: visual/v-w-d
+    buffer: 'alpha beta'
+    cursor: [1, 1]
+    keys: 'vwd'
+  - id: visual/v-dollar-d
+    buffer: 'alpha beta'
+    cursor: [1, 7]
+    keys: 'v$d'
+  - id: visual/v-backwards-h-d
+    note: extending BACKWARD past the anchor still yields the same rectangle-free span
+    buffer: 'abcdef'
+    cursor: [1, 4]
+    keys: 'vhhd'
+  - id: visual/v-across-lines-d
+    buffer: ['one two', 'three four']
+    cursor: [1, 5]
+    keys: 'vjd'
+  - id: visual/v-y-then-p
+    buffer: 'abcdef'
+    cursor: [1, 1]
+    keys: ['vly', '$', 'p']
+  - id: visual/v-c
+    buffer: 'alpha beta'
+    cursor: [1, 1]
+    keys: 'vecX<Esc>'
+  - id: visual/v-s-is-c
+    buffer: 'abcdef'
+    cursor: [1, 2]
+    keys: 'vlsZ<Esc>'
+  - id: visual/v-x-is-d
+    buffer: 'abcdef'
+    cursor: [1, 2]
+    keys: 'vlx'
+  - id: visual/v-U-uppercases
+    note: in visual mode `U` is an OPERATOR over the selection, not a command of its own
+    buffer: 'alpha beta'
+    cursor: [1, 1]
+    keys: 'veU'
+  - id: visual/v-u-lowercases
+    note: '`u` in visual mode lowercases the selection — it is NOT undo'
+    buffer: 'ALPHA BETA'
+    cursor: [1, 1]
+    keys: 'veu'
+  - id: visual/v-tilde-toggles
+    buffer: 'AlPha'
+    cursor: [1, 1]
+    keys: 'v$~'
+  - id: visual/v-gU
+    buffer: 'alpha beta'
+    cursor: [1, 1]
+    keys: 'vegU'
+  - id: visual/v-indent
+    buffer: ['one', 'two']
+    cursor: [1, 1]
+    keys: 'vj>'
+  - id: visual/v-esc-leaves-the-buffer-alone
+    buffer: 'abcdef'
+    cursor: [1, 2]
+    keys: 'vll<Esc>'
+  - id: visual/v-o-swaps-ends
+    note: after `o` the cursor holds the other end, so further motion grows the selection the other way
+    buffer: 'abcdef'
+    cursor: [1, 3]
+    keys: 'vllohd'
+  - id: visual/v-count-motion
+    buffer: 'abcdefgh'
+    cursor: [1, 1]
+    keys: 'v3ld'
+  - id: visual/v-f-motion
+    buffer: 'a,b,c,d'
+    cursor: [1, 1]
+    keys: 'vf,d'
+  - id: visual/v-text-object-replaces-the-selection
+    note: an object REPLACES the selection with its own extent, anchor and all
+    buffer: 'fn(a, b) end'
+    cursor: [1, 5]
+    keys: 'vi(d'
+  - id: visual/v-text-object-aw
+    buffer: 'alpha beta gamma'
+    cursor: [1, 8]
+    keys: 'vawd'
+  - id: visual/v-named-register-yank
+    buffer: 'abcdef'
+    cursor: [1, 1]
+    keys: 'vl"ay'
+  - id: visual/v-y-cursor-goes-to-the-start
+    buffer: 'abcdef'
+    cursor: [1, 5]
+    keys: 'vhhy'
+  - id: visual/v-d-then-u
+    buffer: 'abcdef'
+    cursor: [1, 2]
+    keys: ['vlld', 'u']
+
+  # --- linewise `V` ---------------------------------------------------------
+  - id: visual/V-d-one-line
+    buffer: ['one', 'two', 'three']
+    cursor: [2, 2]
+    keys: 'Vd'
+  - id: visual/V-j-d
+    buffer: ['one', 'two', 'three']
+    cursor: [1, 1]
+    keys: 'Vjd'
+  - id: visual/V-y-then-p
+    buffer: ['one', 'two']
+    cursor: [1, 1]
+    keys: ['Vy', 'p']
+  - id: visual/V-c
+    buffer: ['one', 'two', 'three']
+    cursor: [2, 2]
+    keys: 'VcZ<Esc>'
+  - id: visual/V-indent
+    buffer: ['one', 'two', 'three']
+    cursor: [1, 1]
+    keys: 'Vj>'
+  - id: visual/V-U
+    buffer: ['one', 'two']
+    cursor: [1, 1]
+    keys: 'VjU'
+  - id: visual/V-on-last-line
+    buffer: ['one', 'two']
+    cursor: [2, 1]
+    keys: 'Vd'
+  - id: visual/V-cursor-lands-on-first-nonblank
+    buffer: ['    indented', 'two', 'three']
+    cursor: [1, 6]
+    keys: 'Vjd'
+  - id: visual/v-then-V-promotes-to-lines
+    note: switching kind keeps the selection you already had and widens it to whole lines
+    buffer: ['one two', 'three four']
+    cursor: [1, 5]
+    keys: 'vjVd'
+  - id: visual/V-then-v-narrows-to-chars
+    buffer: ['one two', 'three four']
+    cursor: [1, 5]
+    keys: 'Vjvd'
+  - id: visual/V-Esc
+    buffer: ['one', 'two']
+    cursor: [1, 1]
+    keys: 'Vj<Esc>'
+
+  # --- blockwise `<C-v>` ----------------------------------------------------
+  - id: visual/block-d-two-columns
+    buffer: ['abcd', 'efgh', 'ijkl']
+    cursor: [1, 2]
+    keys: '<C-v>jld'
+  - id: visual/block-d-single-column
+    buffer: ['abcd', 'efgh']
+    cursor: [1, 2]
+    keys: '<C-v>jd'
+  - id: visual/block-y-register-is-blockwise
+    note: the register TYPE is the whole point — a blockwise value puts back as a rectangle
+    buffer: ['abcd', 'efgh']
+    cursor: [1, 2]
+    keys: '<C-v>jly'
+  - id: visual/block-columns-are-min-and-max
+    note: dragging left-and-down still selects a rectangle, not a parallelogram
+    buffer: ['abcd', 'efgh']
+    cursor: [1, 3]
+    keys: '<C-v>jhd'
+  - id: visual/block-over-a-short-line
+    note: rows too short to reach the block contribute nothing and are not padded
+    buffer: ['abcdef', 'gh', 'ijklmn']
+    cursor: [1, 3]
+    keys: '<C-v>jjld'
+  - id: visual/block-U
+    buffer: ['abcd', 'efgh']
+    cursor: [1, 2]
+    keys: '<C-v>jlU'
+  - id: visual/block-tilde
+    buffer: ['abcd', 'EFGH']
+    cursor: [1, 2]
+    keys: '<C-v>jl~'
+  - id: visual/block-indent-shifts-at-the-blocks-own-column
+    note: >-
+      the one exception to "indent is always linewise" — a block shift inserts
+      the whitespace at the BLOCK's left column, not at the start of the line,
+      so this gives `a    bcd` rather than `    abcd`
+    buffer: ['abcd', 'efgh']
+    cursor: [1, 2]
+    keys: '<C-v>jl>'
+  - id: visual/block-indent-at-column-zero
+    buffer: ['abcd', 'efgh']
+    cursor: [1, 1]
+    keys: '<C-v>jl>'
+  - id: visual/block-unindent-with-no-whitespace-there
+    note: nothing to remove at the block's column, so `<` changes nothing at all
+    buffer: ['    abcd', '    efgh']
+    cursor: [1, 6]
+    keys: '<C-v>jl<'
+  - id: visual/block-unindent-on-the-whitespace
+    buffer: ['    abcd', '    efgh']
+    cursor: [1, 1]
+    keys: '<C-v>jl<'
+  - id: visual/block-indent-count
+    buffer: ['abcd', 'efgh']
+    cursor: [1, 2]
+    keys: '<C-v>jl2>'
+  - id: visual/block-indent-skips-a-row-that-does-not-reach
+    buffer: ['abcdef', 'g', 'ijklmn']
+    cursor: [1, 3]
+    keys: '<C-v>jjl>'
+  - id: visual/block-c-replicates-down-the-rows
+    note: >-
+      typing happens on the FIRST row only, and `<Esc>` replicates it down the
+      block. This is the marquee blockwise feature and it lives entirely in the
+      insert session, not in the operator.
+    buffer: ['abcd', 'efgh', 'ijkl']
+    cursor: [1, 2]
+    keys: '<C-v>jjcXY<Esc>'
+  - id: visual/block-c-skips-short-rows
+    buffer: ['abcdef', 'g', 'ijklmn']
+    cursor: [1, 3]
+    keys: '<C-v>jjcZ<Esc>'
+  - id: visual/block-d-then-u
+    buffer: ['abcd', 'efgh']
+    cursor: [1, 2]
+    keys: ['<C-v>jld', 'u']
+  - id: visual/block-esc
+    buffer: ['abcd', 'efgh']
+    cursor: [1, 2]
+    keys: '<C-v>jl<Esc>'
+
+  # --- blockwise put, which had no producer until <C-v> existed -------------
+  - id: visual/block-y-then-p
+    note: >-
+      a blockwise put splices one row per line at the SAME column, which is
+      neither what a charwise nor a linewise register does
+    buffer: ['ab', 'cd']
+    cursor: [1, 1]
+    keys: ['<C-v>jy', '$', 'p']
+  - id: visual/block-y-then-P
+    buffer: ['ab', 'cd']
+    cursor: [1, 1]
+    keys: ['<C-v>jy', '$', 'P']
+  - id: visual/block-put-pads-short-lines
+    note: a short line must be padded out with spaces to reach the put column
+    buffer: ['abcd', 'e', 'fghi']
+    cursor: [1, 1]
+    keys: ['<C-v>jjy', 'G', '$', 'p']
+  - id: visual/block-put-past-the-last-line
+    note: the block is taller than what remains below, so lines get appended
+    buffer: ['abc', 'def']
+    cursor: [1, 1]
+    keys: ['<C-v>jy', 'G', 'p']
+  - id: visual/block-put-with-a-count
+    buffer: ['ab', 'cd']
+    cursor: [1, 1]
+    keys: ['<C-v>jy', '$', '2p']
+  - id: visual/block-put-onto-an-empty-line
+    buffer: ['ab', 'cd', '']
+    cursor: [1, 1]
+    keys: ['<C-v>jy', 'G', 'p']
+
+  # --- blockwise register append, unreachable before <C-v> ------------------
+  - id: visual/block-uppercase-register-append-stacks
+    note: >-
+      two blocks STACK, ragged — the rows are NOT padded out to a common width.
+      Authored guessing the opposite, and refuted on first generation: it is the
+      register's own recorded width that makes a block a rectangle again when it
+      is put back, so the stored rows need no padding. Wave 3a's append path had
+      no blockwise case at all, because nothing could produce one until now.
+    buffer: ['abcd', 'efgh', 'ijkl']
+    cursor: [1, 1]
+    keys: ['<C-v>l"ay', 'j', '<C-v>jll"Ay']
+  - id: visual/block-append-then-put
+    buffer: ['abcd', 'efgh', 'xy']
+    cursor: [1, 1]
+    keys: ['<C-v>"ay', 'j', '<C-v>"Ay', 'G', '$', '"ap']
+  - id: visual/block-into-a-linewise-register-append
+    note: linewise wins over blockwise when the two are merged
+    buffer: ['abcd', 'efgh']
+    cursor: [1, 1]
+    keys: ['"ayy', 'j', '<C-v>l"Ay']
+
+  # --- registers and numbered-shift behaviour for block deletes ------------
+  - id: visual/block-d-writes-unnamed
+    buffer: ['abcd', 'efgh']
+    cursor: [1, 2]
+    keys: '<C-v>jld'
+  - id: visual/block-d-single-line-is-a-small-delete
+    note: one row only — does that count as a small delete, or shift the numbered registers?
+    buffer: ['abcd', 'efgh']
+    cursor: [1, 2]
+    keys: '<C-v>ld'
+  - id: visual/V-d-shifts-numbered
+    buffer: ['one', 'two', 'three']
+    cursor: [1, 1]
+    keys: ['Vd', 'Vd']
+  - id: visual/block-blackhole-delete
+    buffer: ['abcd', 'efgh']
+    cursor: [1, 2]
+    keys: ['yy', '<C-v>jl"_d']

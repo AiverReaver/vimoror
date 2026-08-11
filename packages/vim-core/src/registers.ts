@@ -42,6 +42,13 @@ function write(regs: Registers, name: string, value: RegisterValue): Registers {
  */
 function appended(existing: RegisterValue | undefined, value: RegisterValue): RegisterValue {
   if (existing === undefined) return value;
+  // Two blocks STACK: the new rows go below the old ones, ragged. They are NOT
+  // padded out to a common width — measured, having guessed the opposite. The
+  // register's own width is what makes it a rectangle again when it is put back.
+  // Linewise wins over blockwise, so this must be tested before the linewise case.
+  if (existing.type === 'blockwise' && value.type === 'blockwise') {
+    return { text: `${existing.text}\n${value.text}`, type: 'blockwise' };
+  }
   if (existing.type === 'linewise' || value.type === 'linewise') {
     let text = existing.text;
     if (!text.endsWith('\n')) text += '\n';

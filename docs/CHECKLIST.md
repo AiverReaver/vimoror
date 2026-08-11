@@ -65,7 +65,7 @@ not a bug fix.
       register betrays it (`yank/yh-at-col1-clears-unnamed`).
 - [x] **≥400 cases** — 780 committed (proven 7, wave1 113, wave2 492 across
       8 families: caseops 62, change 55, delete 79, doubled 55, indent 59,
-      insert 69, shortcuts 55, yank 58; wave3 168 so far: paste 62, textobj 106)
+      insert 69, shortcuts 55, yank 58; wave3 234 so far: paste 62, textobj 106, visual 66)
 - [x] `expectError: true` per case, for a case that MEANS to fail. An
       undeclared error is a reported problem, and so is a declared one that
       did not happen — a case written to pin a failure that quietly started
@@ -209,7 +209,8 @@ fixed, and each now has a golden case or a unit test.
       root. Deferred and documented in `engine.ts`; revisit before the M0
       scripted-demo done-line, which round-trips through a JSON snapshot
 
-**Wave 3 — memory** `[~]`
+**Wave 3 — memory** `[~]` — registers/paste, text objects and visual modes
+landed; dot-repeat and marks not started
 
 - [x] Registers end to end: `"0`, `"1`–`"9` **with correct shift-on-delete**,
       `"a`–`"z`, `"A`–`"Z` append, `"_` blackhole, `"-` small delete. The WRITE
@@ -279,10 +280,37 @@ fixed, and each now has a golden case or a unit test.
       replay (that is how a counted insert works, and how Vim's redo buffer
       works), so the unit `.` repeats is the resolved command PLUS its raw
       insert keystrokes — not one or the other.
-- [ ] Blockwise register append (`"A` onto a blockwise value) is unhandled —
-      the append path currently promotes to linewise when either side is
-      linewise, and blockwise has no case yet
-- [ ] Visual modes `v V <C-v>`
+- [x] Blockwise register append (`"A` onto a blockwise value) — two blocks
+      STACK, and **ragged**: the rows are NOT padded out to a common width.
+      Authored guessing the opposite and refuted on first generation; it is the
+      register's own recorded width that restores the rectangle on put.
+      Linewise still wins when a block is appended onto a linewise value
+- [x] Visual modes `v V <C-v>`, with mode switching (`v` then `V` promotes the
+      selection you already had to whole lines), `o` to swap ends, counts,
+      motions, `f F t T`, text objects, and the operators `d x y c s > < ~ u U
+      gu gU g~` plus the force-linewise `D X Y C S R`. 66 `visual` goldens.
+      Visual mode needs no motion code of its own: the anchor is fixed, the
+      cursor moves, and every Wave 1 motion extends the selection for free
+- [x] A third range kind — `blockwise` — since `<C-v>` is the only thing in Vim
+      that produces a rectangle. This is what finally pinned the blockwise
+      `p`/`P` written in Wave 3a, which had no producer to test against
+- [x] Blockwise semantics measured off real Vim:
+      - a blockwise **shift** is the one exception to "indent is always
+        linewise": it inserts the whitespace at the BLOCK's own left column, so
+        `>` on a block at column one gives `a    bcd`, not `    abcd`. And a
+        count in visual mode multiplies the SHIFT (`2>` moves two shiftwidths),
+        unlike normal mode's `2>>` where the count means two LINES
+      - a row that REACHES the block's left column contributes its own slice to
+        the register even when empty; a row that stops SHORT contributes a full
+        block width of spaces. Identical for `d`, `y` and `c`
+      - blockwise `c` types on the FIRST row only and replicates on `<Esc>`,
+        skipping rows too short to reach the column. That lives in the insert
+        session, not in the operator, which is also how `<C-v>I`/`A` will work
+      - the explicit register has to survive the visual→normal transition, or
+        `v"ay` silently writes unnamed instead of `"a`
+- [ ] Still open in visual mode: `I`/`A` blockwise insert, `p` and `r` over a
+      selection, `gv` reselect, and `$`-to-end-of-line blocks (Vim's MAXCOL
+      curswant). The insert-session replication they need is already in place
 - [ ] Marks `m` `` ` `` `'`, plus `<C-o>`/`<C-i>`
 
 **Wave 4 — automation** `[ ]`

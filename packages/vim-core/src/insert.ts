@@ -48,6 +48,13 @@ export type InsertSession = {
    * or rejoin rather than plainly deleting.
    */
   readonly replaced: readonly (string | null)[];
+  /**
+   * A blockwise insert (`<C-v>c`, and later `I`/`A`): typing happens on the
+   * first row only, and on `<Esc>` the typed text is replicated down the other
+   * rows at the same column. Rows too short to reach that column are skipped,
+   * exactly as Vim skips them.
+   */
+  readonly blockRows: { readonly firstLine: number; readonly lastLine: number; readonly col: number } | undefined;
 };
 
 export type InsertStep = {
