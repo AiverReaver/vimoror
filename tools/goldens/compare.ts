@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url';
 
 import { VimEngine } from '../../packages/vim-core/src/index.ts';
 import { tokenize } from '../../packages/vim-core/src/keys.ts';
+import { DEFAULT_OPTIONS, type EditorOptions } from '../../packages/vim-core/src/operators.ts';
 import type { RegisterType } from '../../packages/vim-core/src/types.ts';
 import type { Golden } from './generate.ts';
 
@@ -51,11 +52,38 @@ export type Diff = {
   readonly actual: unknown;
 };
 
+/**
+ * Translate a case's `:set` overrides into engine options, so a case that runs
+ * real Vim with `shiftwidth=2` runs our engine that way too. Anything the
+ * engine does not model yet is ignored rather than silently mistranslated.
+ */
+export function optionsFrom(args: readonly string[] | undefined): EditorOptions {
+  let opts: EditorOptions = { ...DEFAULT_OPTIONS };
+  for (const raw of args ?? []) {
+    const arg = raw.trim();
+    const num = /^(shiftwidth|sw|tabstop|ts)=(\d+)$/.exec(arg);
+    if (num) {
+      const value = Number.parseInt(num[2]!, 10);
+      opts = num[1] === 'shiftwidth' || num[1] === 'sw' ? { ...opts, shiftwidth: value } : { ...opts, tabstop: value };
+      continue;
+    }
+    if (arg === 'expandtab' || arg === 'et') opts = { ...opts, expandtab: true };
+    if (arg === 'noexpandtab' || arg === 'noet') opts = { ...opts, expandtab: false };
+    if (arg === 'autoindent' || arg === 'ai') opts = { ...opts, autoindent: true };
+    if (arg === 'noautoindent' || arg === 'noai') opts = { ...opts, autoindent: false };
+  }
+  return opts;
+}
+
 export function runGolden(g: Golden): Diff[] {
-  const engine = new VimEngine(g.buffer, {
-    line: g.cursor[0] - 1,
-    col: byteColToCharIndex(g.buffer[g.cursor[0] - 1] ?? '', g.cursor[1]),
-  });
+  const engine = new VimEngine(
+    g.buffer,
+    {
+      line: g.cursor[0] - 1,
+      col: byteColToCharIndex(g.buffer[g.cursor[0] - 1] ?? '', g.cursor[1]),
+    },
+    optionsFrom(g.options),
+  );
 
   for (const key of tokenize(g.keys)) engine.feed(key);
 
@@ -76,9 +104,16 @@ export function runGolden(g: Golden): Diff[] {
     });
   }
 
-  // Only registers Vim actually reported are compared. Vim omits empty ones,
-  // and the engine is allowed to have not-yet-implemented registers absent
-  // rather than wrong.
+  // Registers are compared BOTH ways. Vim omits empty registers from the
+  // golden, so "absent from the golden" asserts empty-or-unset — an engine
+  // register holding real text that Vim left empty is a divergence (this is
+  // what catches an engine that clamps where Vim fails: buffer and cursor sit
+  // untouched either way, and only the stray register betrays it). The engine
+  // is allowed to have not-yet-implemented registers absent rather than wrong.
+  //
+  // `expect.curswant` is captured in every golden but deliberately NOT
+  // compared yet: it needs virtual-column conversion plus MAXCOL handling
+  // against the engine's desiredCol. Tracked in docs/CHECKLIST.md.
   const actualRegs = engine.snapshot().registers;
   for (const [name, expected] of Object.entries(g.expect.registers)) {
     if (name === '/') continue; // search register lands in Wave 4
@@ -90,6 +125,16 @@ export function runGolden(g: Golden): Diff[] {
       diffs.push({
         field: `register "${name}`,
         expected: `${JSON.stringify(expected.text)} (${wantType})`,
+        actual: `${JSON.stringify(actual.text)} (${actual.type})`,
+      });
+    }
+  }
+  for (const [name, actual] of Object.entries(actualRegs)) {
+    if (name === '/' || actual.text === '') continue;
+    if (!(name in g.expect.registers)) {
+      diffs.push({
+        field: `register "${name}`,
+        expected: '(empty or unset in vim)',
         actual: `${JSON.stringify(actual.text)} (${actual.type})`,
       });
     }

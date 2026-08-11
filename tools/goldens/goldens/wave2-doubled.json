@@ -1,0 +1,1957 @@
+[
+  {
+    "id": "doubled/dd-basic",
+    "buffer": [
+      "one",
+      "two",
+      "three"
+    ],
+    "cursor": [
+      2,
+      2
+    ],
+    "keys": "dd",
+    "groups": [
+      "dd"
+    ],
+    "encodedKeys": "dd",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "two\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "two\n"
+        }
+      },
+      "buffer": [
+        "one",
+        "three"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "doubled/dd-lands-first-nonblank",
+    "buffer": [
+      "one",
+      "two",
+      "    three"
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": "dd",
+    "groups": [
+      "dd"
+    ],
+    "note": "after dd the cursor sits on the first non-blank of the following line",
+    "encodedKeys": "dd",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "two\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "two\n"
+        }
+      },
+      "buffer": [
+        "one",
+        "    three"
+      ],
+      "cursor": [
+        2,
+        5
+      ],
+      "error": "",
+      "curswant": 5
+    }
+  },
+  {
+    "id": "doubled/dd-next-line-tab-indent",
+    "buffer": [
+      "alpha",
+      "\tbeta",
+      "gamma"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "dd",
+    "groups": [
+      "dd"
+    ],
+    "note": "first non-blank is a byte column, so a tab counts as one column",
+    "encodedKeys": "dd",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "alpha\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "alpha\n"
+        }
+      },
+      "buffer": [
+        "\tbeta",
+        "gamma"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 9
+    }
+  },
+  {
+    "id": "doubled/dd-next-line-all-blank",
+    "buffer": [
+      "one",
+      "    ",
+      "two"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "dd",
+    "groups": [
+      "dd"
+    ],
+    "note": "the surviving line has no non-blank at all; where the cursor lands is the same wart ^ has on an all-blank line",
+    "encodedKeys": "dd",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "one\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "one\n"
+        }
+      },
+      "buffer": [
+        "    ",
+        "two"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "doubled/dd-single-line-buffer",
+    "buffer": [
+      "only line"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "dd",
+    "groups": [
+      "dd"
+    ],
+    "note": "the buffer must not become zero lines — it becomes one empty line",
+    "encodedKeys": "dd",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "only line\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "only line\n"
+        }
+      },
+      "buffer": [
+        ""
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "doubled/dd-single-empty-line-buffer",
+    "buffer": [
+      ""
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "dd",
+    "groups": [
+      "dd"
+    ],
+    "note": "dd on the one empty line of an empty buffer changes nothing visible",
+    "encodedKeys": "dd",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "\n"
+        }
+      },
+      "buffer": [
+        ""
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "doubled/dd-on-empty-line",
+    "buffer": [
+      "one",
+      "",
+      "three"
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": "dd",
+    "groups": [
+      "dd"
+    ],
+    "encodedKeys": "dd",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "\n"
+        }
+      },
+      "buffer": [
+        "one",
+        "three"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "doubled/dd-all-empty-lines",
+    "buffer": [
+      "",
+      "",
+      ""
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": "dd",
+    "groups": [
+      "dd"
+    ],
+    "encodedKeys": "dd",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "\n"
+        }
+      },
+      "buffer": [
+        "",
+        ""
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "doubled/dd-last-line",
+    "buffer": [
+      "one",
+      "two",
+      "three"
+    ],
+    "cursor": [
+      3,
+      3
+    ],
+    "keys": "dd",
+    "groups": [
+      "dd"
+    ],
+    "note": "no following line, so the cursor moves UP",
+    "encodedKeys": "dd",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "three\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "three\n"
+        }
+      },
+      "buffer": [
+        "one",
+        "two"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "doubled/dd-last-line-prev-indented",
+    "buffer": [
+      "one",
+      "      two",
+      "three"
+    ],
+    "cursor": [
+      3,
+      1
+    ],
+    "keys": "dd",
+    "groups": [
+      "dd"
+    ],
+    "encodedKeys": "dd",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "three\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "three\n"
+        }
+      },
+      "buffer": [
+        "one",
+        "      two"
+      ],
+      "cursor": [
+        2,
+        7
+      ],
+      "error": "",
+      "curswant": 7
+    }
+  },
+  {
+    "id": "doubled/2dd-basic",
+    "buffer": [
+      "a",
+      "b",
+      "c",
+      "d"
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": "2dd",
+    "groups": [
+      "2dd"
+    ],
+    "encodedKeys": "2dd",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "b\nc\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "b\nc\n"
+        }
+      },
+      "buffer": [
+        "a",
+        "d"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "doubled/2dd-two-line-buffer",
+    "buffer": [
+      "first",
+      "second"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "2dd",
+    "groups": [
+      "2dd"
+    ],
+    "note": "deleting every line of a 2-line buffer still leaves one empty line",
+    "encodedKeys": "2dd",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "first\nsecond\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "first\nsecond\n"
+        }
+      },
+      "buffer": [
+        ""
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "doubled/2dd-reaches-eof",
+    "buffer": [
+      "one",
+      "two",
+      "three"
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": "2dd",
+    "groups": [
+      "2dd"
+    ],
+    "note": "the count consumes exactly the rest of the buffer",
+    "encodedKeys": "2dd",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "two\nthree\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "two\nthree\n"
+        }
+      },
+      "buffer": [
+        "one"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "doubled/3dd-overshoot",
+    "buffer": [
+      "one",
+      "two",
+      "three"
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": "3dd",
+    "groups": [
+      "3dd"
+    ],
+    "note": "only two lines remain below the cursor — does the count clamp or fail?",
+    "encodedKeys": "3dd",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "two\nthree\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "two\nthree\n"
+        }
+      },
+      "buffer": [
+        "one"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "doubled/2dd-from-last-line-overshoot",
+    "buffer": [
+      "one",
+      "two"
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": "2dd",
+    "groups": [
+      "2dd"
+    ],
+    "encodedKeys": "2dd",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "one",
+        "two"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "doubled/9dd-overshoot-whole-buffer",
+    "buffer": [
+      "one",
+      "two",
+      "three"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "9dd",
+    "groups": [
+      "9dd"
+    ],
+    "encodedKeys": "9dd",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "one\ntwo\nthree\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "one\ntwo\nthree\n"
+        }
+      },
+      "buffer": [
+        ""
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "doubled/dd-then-undo",
+    "buffer": [
+      "one",
+      "two",
+      "three"
+    ],
+    "cursor": [
+      2,
+      2
+    ],
+    "keys": "ddu",
+    "groups": [
+      "dd",
+      "u"
+    ],
+    "note": "undo must restore the line AND the cursor",
+    "encodedKeys": "ddu",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "two\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "two\n"
+        }
+      },
+      "buffer": [
+        "one",
+        "two",
+        "three"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "doubled/dd-dd-undo",
+    "buffer": [
+      "a",
+      "b",
+      "c",
+      "d"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "ddddu",
+    "groups": [
+      "dd",
+      "dd",
+      "u"
+    ],
+    "note": "groups, so each dd is its own undo block and one u restores one line",
+    "encodedKeys": "ddddu",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "b\n"
+        },
+        "2": {
+          "type": "V",
+          "text": "a\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "b\n"
+        }
+      },
+      "buffer": [
+        "b",
+        "c",
+        "d"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "doubled/yy-basic",
+    "buffer": [
+      "one",
+      "two",
+      "three"
+    ],
+    "cursor": [
+      2,
+      2
+    ],
+    "keys": "yy",
+    "groups": [
+      "yy"
+    ],
+    "note": "a linewise yank leaves the cursor exactly where it was",
+    "encodedKeys": "yy",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "two\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "two\n"
+        }
+      },
+      "buffer": [
+        "one",
+        "two",
+        "three"
+      ],
+      "cursor": [
+        2,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "doubled/yy-last-line",
+    "buffer": [
+      "one",
+      "two"
+    ],
+    "cursor": [
+      2,
+      3
+    ],
+    "keys": "yy",
+    "groups": [
+      "yy"
+    ],
+    "encodedKeys": "yy",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "two\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "two\n"
+        }
+      },
+      "buffer": [
+        "one",
+        "two"
+      ],
+      "cursor": [
+        2,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "doubled/yy-on-empty-line",
+    "buffer": [
+      "one",
+      "",
+      "three"
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": "yy",
+    "groups": [
+      "yy"
+    ],
+    "note": "the yanked register holds one empty line, not nothing",
+    "encodedKeys": "yy",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "\n"
+        }
+      },
+      "buffer": [
+        "one",
+        "",
+        "three"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "doubled/yy-single-line-buffer",
+    "buffer": [
+      "only"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "yy",
+    "groups": [
+      "yy"
+    ],
+    "encodedKeys": "yy",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "only\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "only\n"
+        }
+      },
+      "buffer": [
+        "only"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "doubled/3yy-count",
+    "buffer": [
+      "a",
+      "b",
+      "c",
+      "d"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "3yy",
+    "groups": [
+      "3yy"
+    ],
+    "encodedKeys": "3yy",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "a\nb\nc\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "a\nb\nc\n"
+        }
+      },
+      "buffer": [
+        "a",
+        "b",
+        "c",
+        "d"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "doubled/3yy-overshoot",
+    "buffer": [
+      "one",
+      "two",
+      "three"
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": "3yy",
+    "groups": [
+      "3yy"
+    ],
+    "note": "two lines available, three requested",
+    "encodedKeys": "3yy",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "two\nthree\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "two\nthree\n"
+        }
+      },
+      "buffer": [
+        "one",
+        "two",
+        "three"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "doubled/yy-then-undo-noop",
+    "buffer": [
+      "one",
+      "two"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "yyu",
+    "groups": [
+      "yy",
+      "u"
+    ],
+    "note": "a yank is not a change, so the u afterwards has nothing to undo",
+    "encodedKeys": "yyu",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "one\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "one\n"
+        }
+      },
+      "buffer": [
+        "one",
+        "two"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "doubled/cc-basic",
+    "buffer": [
+      "one",
+      "two",
+      "three"
+    ],
+    "cursor": [
+      2,
+      2
+    ],
+    "keys": "ccNEW<Esc>",
+    "groups": [
+      "ccNEW<Esc>"
+    ],
+    "encodedKeys": "ccNEW\u001b",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "two\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "two\n"
+        }
+      },
+      "buffer": [
+        "one",
+        "NEW",
+        "three"
+      ],
+      "cursor": [
+        2,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "doubled/cc-clears-indent",
+    "buffer": [
+      "    indented"
+    ],
+    "cursor": [
+      1,
+      7
+    ],
+    "keys": "ccnew<Esc>",
+    "groups": [
+      "ccnew<Esc>"
+    ],
+    "note": "with autoindent off, cc discards the original indentation",
+    "encodedKeys": "ccnew\u001b",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "    indented\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "    indented\n"
+        }
+      },
+      "buffer": [
+        "new"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "doubled/cc-autoindent-keeps-indent",
+    "buffer": [
+      "    indented"
+    ],
+    "cursor": [
+      1,
+      7
+    ],
+    "keys": "ccnew<Esc>",
+    "groups": [
+      "ccnew<Esc>"
+    ],
+    "options": [
+      "autoindent"
+    ],
+    "note": "the same case with autoindent on must keep the leading whitespace",
+    "encodedKeys": "ccnew\u001b",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "    indented\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "    indented\n"
+        }
+      },
+      "buffer": [
+        "    new"
+      ],
+      "cursor": [
+        1,
+        7
+      ],
+      "error": "",
+      "curswant": 7
+    }
+  },
+  {
+    "id": "doubled/cc-last-line",
+    "buffer": [
+      "one",
+      "two"
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": "ccZ<Esc>",
+    "groups": [
+      "ccZ<Esc>"
+    ],
+    "encodedKeys": "ccZ\u001b",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "two\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "two\n"
+        }
+      },
+      "buffer": [
+        "one",
+        "Z"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "doubled/cc-on-empty-line",
+    "buffer": [
+      "one",
+      "",
+      "three"
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": "cctext<Esc>",
+    "groups": [
+      "cctext<Esc>"
+    ],
+    "encodedKeys": "cctext\u001b",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "\n"
+        }
+      },
+      "buffer": [
+        "one",
+        "text",
+        "three"
+      ],
+      "cursor": [
+        2,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "doubled/cc-single-line-buffer",
+    "buffer": [
+      "only"
+    ],
+    "cursor": [
+      1,
+      4
+    ],
+    "keys": "ccreplaced<Esc>",
+    "groups": [
+      "ccreplaced<Esc>"
+    ],
+    "note": "cc never removes the line, so a one-line buffer stays one line",
+    "encodedKeys": "ccreplaced\u001b",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "only\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "only\n"
+        }
+      },
+      "buffer": [
+        "replaced"
+      ],
+      "cursor": [
+        1,
+        8
+      ],
+      "error": "",
+      "curswant": 8
+    }
+  },
+  {
+    "id": "doubled/cc-empty-replacement",
+    "buffer": [
+      "one",
+      "two"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "cc<Esc>",
+    "groups": [
+      "cc<Esc>"
+    ],
+    "note": "cc with no typed text leaves an empty line behind",
+    "encodedKeys": "cc\u001b",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "one\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "one\n"
+        }
+      },
+      "buffer": [
+        "",
+        "two"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "doubled/2cc",
+    "buffer": [
+      "a",
+      "b",
+      "c",
+      "d"
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": "2ccmerged<Esc>",
+    "groups": [
+      "2ccmerged<Esc>"
+    ],
+    "note": "two lines collapse into the single line that gets typed",
+    "encodedKeys": "2ccmerged\u001b",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "b\nc\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "b\nc\n"
+        }
+      },
+      "buffer": [
+        "a",
+        "merged",
+        "d"
+      ],
+      "cursor": [
+        2,
+        6
+      ],
+      "error": "",
+      "curswant": 6
+    }
+  },
+  {
+    "id": "doubled/3cc-overshoot",
+    "buffer": [
+      "one",
+      "two",
+      "three"
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": "3ccX<Esc>",
+    "groups": [
+      "3ccX<Esc>"
+    ],
+    "encodedKeys": "3ccX\u001b",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "two\nthree\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "two\nthree\n"
+        }
+      },
+      "buffer": [
+        "one",
+        "X"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "doubled/cc-then-undo",
+    "buffer": [
+      "one",
+      "two"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "ccnew<Esc>u",
+    "groups": [
+      "ccnew<Esc>",
+      "u"
+    ],
+    "encodedKeys": "ccnew\u001bu",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "one\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "one\n"
+        }
+      },
+      "buffer": [
+        "one",
+        "two"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "doubled/gUU-basic",
+    "buffer": [
+      "hello world"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "gUU",
+    "groups": [
+      "gUU"
+    ],
+    "encodedKeys": "gUU",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "HELLO WORLD"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "doubled/guu-basic",
+    "buffer": [
+      "HELLO World"
+    ],
+    "cursor": [
+      1,
+      5
+    ],
+    "keys": "guu",
+    "groups": [
+      "guu"
+    ],
+    "encodedKeys": "guu",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "hello world"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "doubled/g-tilde-tilde-basic",
+    "buffer": [
+      "Hello World"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "g~~",
+    "groups": [
+      "g~~"
+    ],
+    "encodedKeys": "g~~",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "hELLO wORLD"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "doubled/gUU-indented-cursor",
+    "buffer": [
+      "   mixed Case here"
+    ],
+    "cursor": [
+      1,
+      10
+    ],
+    "keys": "gUU",
+    "groups": [
+      "gUU"
+    ],
+    "note": "linewise case ops move the cursor to the start of the changed line",
+    "encodedKeys": "gUU",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "   MIXED CASE HERE"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "doubled/g-tilde-tilde-punct-digits",
+    "buffer": [
+      "abc-123-XYZ_def"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "g~~",
+    "groups": [
+      "g~~"
+    ],
+    "note": "digits and punctuation must pass through g~ untouched",
+    "encodedKeys": "g~~",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "ABC-123-xyz_DEF"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "doubled/gUU-empty-line",
+    "buffer": [
+      "",
+      "abc"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "gUU",
+    "groups": [
+      "gUU"
+    ],
+    "encodedKeys": "gUU",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "",
+        "abc"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "doubled/2gUU",
+    "buffer": [
+      "one",
+      "two",
+      "three"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "2gUU",
+    "groups": [
+      "2gUU"
+    ],
+    "encodedKeys": "2gUU",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "ONE",
+        "TWO",
+        "three"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "doubled/3g-tilde-tilde-overshoot",
+    "buffer": [
+      "One",
+      "Two"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "3g~~",
+    "groups": [
+      "3g~~"
+    ],
+    "encodedKeys": "3g~~",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "oNE",
+        "tWO"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "doubled/shift-right-basic",
+    "buffer": [
+      "alpha",
+      "beta"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": ">>",
+    "groups": [
+      ">>"
+    ],
+    "note": "shiftwidth is 4 with expandtab on; the cursor lands on first non-blank",
+    "encodedKeys": ">>",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "    alpha",
+        "beta"
+      ],
+      "cursor": [
+        1,
+        5
+      ],
+      "error": "",
+      "curswant": 5
+    }
+  },
+  {
+    "id": "doubled/shift-left-basic",
+    "buffer": [
+      "        deep"
+    ],
+    "cursor": [
+      1,
+      10
+    ],
+    "keys": "<<",
+    "groups": [
+      "<<"
+    ],
+    "encodedKeys": "<<",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "    deep"
+      ],
+      "cursor": [
+        1,
+        5
+      ],
+      "error": "",
+      "curswant": 5
+    }
+  },
+  {
+    "id": "doubled/shift-left-no-indent-noop",
+    "buffer": [
+      "alpha"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "<<",
+    "groups": [
+      "<<"
+    ],
+    "note": "nothing to remove, but the cursor still moves",
+    "encodedKeys": "<<",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "alpha"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "doubled/shift-left-partial-indent",
+    "buffer": [
+      "  two"
+    ],
+    "cursor": [
+      1,
+      4
+    ],
+    "keys": "<<",
+    "groups": [
+      "<<"
+    ],
+    "note": "two spaces with shiftwidth 4 — the whole indent goes, it does not fail",
+    "encodedKeys": "<<",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "two"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "doubled/shift-right-empty-line",
+    "buffer": [
+      "",
+      "x"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ">>",
+    "groups": [
+      ">>"
+    ],
+    "note": "an empty line is left empty rather than filled with indent",
+    "encodedKeys": ">>",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "",
+        "x"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "doubled/shift-right-blank-line-with-spaces",
+    "buffer": [
+      "   ",
+      "x"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": ">>",
+    "groups": [
+      ">>"
+    ],
+    "note": "a whitespace-only line — does the shift add to it or strip it bare?",
+    "encodedKeys": ">>",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "       ",
+        "x"
+      ],
+      "cursor": [
+        1,
+        7
+      ],
+      "error": "",
+      "curswant": 7
+    }
+  },
+  {
+    "id": "doubled/shift-right-noexpandtab",
+    "buffer": [
+      "    four"
+    ],
+    "cursor": [
+      1,
+      5
+    ],
+    "keys": ">>",
+    "groups": [
+      ">>"
+    ],
+    "options": [
+      "noexpandtab"
+    ],
+    "note": "sw=4 ts=8, so two shifts should reach a real tab",
+    "encodedKeys": ">>",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "\tfour"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 9
+    }
+  },
+  {
+    "id": "doubled/shift-right-shiftwidth-2",
+    "buffer": [
+      "alpha"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ">>",
+    "groups": [
+      ">>"
+    ],
+    "options": [
+      "shiftwidth=2"
+    ],
+    "encodedKeys": ">>",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "  alpha"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "doubled/3-shift-right",
+    "buffer": [
+      "a",
+      "b",
+      "c",
+      "d"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "3>>",
+    "groups": [
+      "3>>"
+    ],
+    "encodedKeys": "3>>",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "    a",
+        "    b",
+        "    c",
+        "d"
+      ],
+      "cursor": [
+        1,
+        5
+      ],
+      "error": "",
+      "curswant": 5
+    }
+  },
+  {
+    "id": "doubled/2-shift-left",
+    "buffer": [
+      "    a",
+      "    b"
+    ],
+    "cursor": [
+      1,
+      5
+    ],
+    "keys": "2<<",
+    "groups": [
+      "2<<"
+    ],
+    "encodedKeys": "2<<",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "a",
+        "b"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "doubled/shift-right-overshoot-from-last-line",
+    "buffer": [
+      "one",
+      "two"
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": "3>>",
+    "groups": [
+      "3>>"
+    ],
+    "encodedKeys": "3>>",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "one",
+        "two"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "doubled/shift-right-then-left",
+    "buffer": [
+      "alpha",
+      "beta"
+    ],
+    "cursor": [
+      1,
+      4
+    ],
+    "keys": ">><<",
+    "groups": [
+      ">>",
+      "<<"
+    ],
+    "note": "two discrete changes, so groups — a round trip must be identity",
+    "encodedKeys": ">><<",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "alpha",
+        "beta"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  }
+]

@@ -10,7 +10,17 @@ import { describe, expect, it } from 'vitest';
 
 import { describeDiffs, loadGoldens, runGolden } from './compare.ts';
 
-const FAMILIES = ['wave1'];
+const FAMILIES = [
+  'wave1',
+  'wave2-delete',
+  'wave2-change',
+  'wave2-yank',
+  'wave2-doubled',
+  'wave2-shortcuts',
+  'wave2-caseops',
+  'wave2-indent',
+  'wave2-insert',
+];
 
 for (const family of FAMILIES) {
   describe(`goldens: ${family}`, () => {

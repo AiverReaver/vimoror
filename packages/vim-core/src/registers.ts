@@ -35,15 +35,21 @@ function write(regs: Registers, name: string, value: RegisterValue): Registers {
   return { ...regs, [name]: value };
 }
 
-function append(regs: Registers, name: string, value: RegisterValue): Registers {
-  const existing = regs[name];
-  if (existing === undefined) return write(regs, name, value);
-  // Appending to a linewise register keeps it linewise and newline-separated.
-  const joiner = existing.type === 'linewise' && !existing.text.endsWith('\n') ? '\n' : '';
-  return write(regs, name, {
-    text: existing.text + joiner + value.text,
-    type: value.type === 'linewise' || existing.type === 'linewise' ? 'linewise' : existing.type,
-  });
+/**
+ * Merge for an uppercase-register append. If either side is linewise the
+ * result is linewise, and every seam gets its newline: charwise text appended
+ * to a linewise register becomes a full line of its own.
+ */
+function appended(existing: RegisterValue | undefined, value: RegisterValue): RegisterValue {
+  if (existing === undefined) return value;
+  if (existing.type === 'linewise' || value.type === 'linewise') {
+    let text = existing.text;
+    if (!text.endsWith('\n')) text += '\n';
+    text += value.text;
+    if (!text.endsWith('\n')) text += '\n';
+    return { text, type: 'linewise' };
+  }
+  return { text: existing.text + value.text, type: existing.type };
 }
 
 export type RecordOptions = {
@@ -54,6 +60,8 @@ export type RecordOptions = {
   readonly text: string;
   /** True when the deleted text spanned a line boundary or was linewise. */
   readonly multiline: boolean;
+  /** True for deletes over `%`-like motions, which always shift into `"1`. */
+  readonly forcesNumbered?: boolean;
 };
 
 export function recordWrite(regs: Registers, opts: RecordOptions): Registers {
@@ -65,7 +73,14 @@ export function recordWrite(regs: Registers, opts: RecordOptions): Registers {
   let next = regs;
 
   if (explicit !== undefined) {
-    next = /[A-Z]/.test(explicit) ? append(next, explicit.toLowerCase(), value) : write(next, explicit, value);
+    let mirrored = value;
+    if (/[A-Z]/.test(explicit)) {
+      const name = explicit.toLowerCase();
+      mirrored = appended(next[name], value);
+      next = write(next, name, mirrored);
+    } else {
+      next = write(next, explicit, value);
+    }
     // Verified against real Vim, and NOT what `:help quote_number` implies:
     // naming a register on a DELETE still shifts the numbered registers, even
     // for a small delete, and `"-` is left alone. `"a3x` sets "a, "1 and
@@ -74,9 +89,9 @@ export function recordWrite(regs: Registers, opts: RecordOptions): Registers {
       next = shiftNumbered(next);
       next = write(next, '1', value);
     }
-    // The unnamed register always mirrors the most recent write, even when an
-    // explicit register was named.
-    return write(next, UNNAMED, value);
+    // The unnamed register always mirrors the register written — after an
+    // append, that is the register's whole merged value.
+    return write(next, UNNAMED, mirrored);
   }
 
   if (isYank) {
@@ -89,6 +104,11 @@ export function recordWrite(regs: Registers, opts: RecordOptions): Registers {
     next = write(next, '1', value);
   } else {
     next = write(next, SMALL_DELETE, value);
+    // Small deletes over `%` and friends land in "1 as well as "-.
+    if (opts.forcesNumbered === true) {
+      next = shiftNumbered(next);
+      next = write(next, '1', value);
+    }
   }
 
   return write(next, UNNAMED, value);

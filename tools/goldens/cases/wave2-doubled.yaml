@@ -1,0 +1,282 @@
+# Wave 2 — doubled (linewise) operators.
+#
+# dd yy cc guu gUU g~~ >> <<, with and without counts. All of these are
+# LINEWISE, which makes the interesting behaviour live at the buffer edges:
+# a buffer that must never reach zero lines, the last line, empty and
+# whitespace-only lines, and counts that run off the end.
+#
+# Cursor landing is weighted heavily: linewise operators move to the first
+# non-blank of the surviving line, which is the detail that is easy to get
+# wrong and impossible to guess for blank-only lines.
+
+cases:
+  # --- dd: cursor landing ---------------------------------------------------
+  - id: doubled/dd-basic
+    buffer: ['one', 'two', 'three']
+    cursor: [2, 2]
+    keys: 'dd'
+  - id: doubled/dd-lands-first-nonblank
+    note: after dd the cursor sits on the first non-blank of the following line
+    buffer: ['one', 'two', '    three']
+    cursor: [2, 1]
+    keys: 'dd'
+  - id: doubled/dd-next-line-tab-indent
+    note: first non-blank is a byte column, so a tab counts as one column
+    buffer: ['alpha', "\tbeta", 'gamma']
+    cursor: [1, 1]
+    keys: 'dd'
+  - id: doubled/dd-next-line-all-blank
+    note: >-
+      the surviving line has no non-blank at all; where the cursor lands is
+      the same wart ^ has on an all-blank line
+    buffer: ['one', '    ', 'two']
+    cursor: [1, 2]
+    keys: 'dd'
+  # --- dd: degenerate buffers -----------------------------------------------
+  - id: doubled/dd-single-line-buffer
+    note: the buffer must not become zero lines — it becomes one empty line
+    buffer: 'only line'
+    cursor: [1, 3]
+    keys: 'dd'
+  - id: doubled/dd-single-empty-line-buffer
+    note: dd on the one empty line of an empty buffer changes nothing visible
+    buffer: ['']
+    cursor: [1, 1]
+    keys: 'dd'
+  - id: doubled/dd-on-empty-line
+    buffer: ['one', '', 'three']
+    cursor: [2, 1]
+    keys: 'dd'
+  - id: doubled/dd-all-empty-lines
+    buffer: ['', '', '']
+    cursor: [2, 1]
+    keys: 'dd'
+
+  # --- dd: last line --------------------------------------------------------
+  - id: doubled/dd-last-line
+    note: no following line, so the cursor moves UP
+    buffer: ['one', 'two', 'three']
+    cursor: [3, 3]
+    keys: 'dd'
+  - id: doubled/dd-last-line-prev-indented
+    buffer: ['one', '      two', 'three']
+    cursor: [3, 1]
+    keys: 'dd'
+
+  # --- dd: counts -----------------------------------------------------------
+  - id: doubled/2dd-basic
+    buffer: ['a', 'b', 'c', 'd']
+    cursor: [2, 1]
+    keys: '2dd'
+  - id: doubled/2dd-two-line-buffer
+    note: deleting every line of a 2-line buffer still leaves one empty line
+    buffer: ['first', 'second']
+    cursor: [1, 3]
+    keys: '2dd'
+  - id: doubled/2dd-reaches-eof
+    note: the count consumes exactly the rest of the buffer
+    buffer: ['one', 'two', 'three']
+    cursor: [2, 1]
+    keys: '2dd'
+  - id: doubled/3dd-overshoot
+    note: only two lines remain below the cursor — does the count clamp or fail?
+    buffer: ['one', 'two', 'three']
+    cursor: [2, 1]
+    keys: '3dd'
+  - id: doubled/2dd-from-last-line-overshoot
+    buffer: ['one', 'two']
+    cursor: [2, 1]
+    keys: '2dd'
+  - id: doubled/9dd-overshoot-whole-buffer
+    buffer: ['one', 'two', 'three']
+    cursor: [1, 1]
+    keys: '9dd'
+
+  # --- dd: undo -------------------------------------------------------------
+  - id: doubled/dd-then-undo
+    note: undo must restore the line AND the cursor
+    buffer: ['one', 'two', 'three']
+    cursor: [2, 2]
+    keys: ['dd', 'u']
+  - id: doubled/dd-dd-undo
+    note: groups, so each dd is its own undo block and one u restores one line
+    buffer: ['a', 'b', 'c', 'd']
+    cursor: [1, 1]
+    keys: ['dd', 'dd', 'u']
+
+  # --- yy -------------------------------------------------------------------
+  - id: doubled/yy-basic
+    note: a linewise yank leaves the cursor exactly where it was
+    buffer: ['one', 'two', 'three']
+    cursor: [2, 2]
+    keys: 'yy'
+  - id: doubled/yy-last-line
+    buffer: ['one', 'two']
+    cursor: [2, 3]
+    keys: 'yy'
+  - id: doubled/yy-on-empty-line
+    note: the yanked register holds one empty line, not nothing
+    buffer: ['one', '', 'three']
+    cursor: [2, 1]
+    keys: 'yy'
+  - id: doubled/yy-single-line-buffer
+    buffer: 'only'
+    cursor: [1, 2]
+    keys: 'yy'
+  - id: doubled/3yy-count
+    buffer: ['a', 'b', 'c', 'd']
+    cursor: [1, 1]
+    keys: '3yy'
+  - id: doubled/3yy-overshoot
+    note: two lines available, three requested
+    buffer: ['one', 'two', 'three']
+    cursor: [2, 1]
+    keys: '3yy'
+  - id: doubled/yy-then-undo-noop
+    note: a yank is not a change, so the u afterwards has nothing to undo
+    buffer: ['one', 'two']
+    cursor: [1, 1]
+    keys: ['yy', 'u']
+
+  # --- cc -------------------------------------------------------------------
+  - id: doubled/cc-basic
+    buffer: ['one', 'two', 'three']
+    cursor: [2, 2]
+    keys: 'ccNEW<Esc>'
+  - id: doubled/cc-clears-indent
+    note: with autoindent off, cc discards the original indentation
+    buffer: '    indented'
+    cursor: [1, 7]
+    keys: 'ccnew<Esc>'
+  - id: doubled/cc-autoindent-keeps-indent
+    note: the same case with autoindent on must keep the leading whitespace
+    buffer: '    indented'
+    cursor: [1, 7]
+    keys: 'ccnew<Esc>'
+    options: ['autoindent']
+  - id: doubled/cc-last-line
+    buffer: ['one', 'two']
+    cursor: [2, 1]
+    keys: 'ccZ<Esc>'
+  - id: doubled/cc-on-empty-line
+    buffer: ['one', '', 'three']
+    cursor: [2, 1]
+    keys: 'cctext<Esc>'
+  - id: doubled/cc-single-line-buffer
+    note: cc never removes the line, so a one-line buffer stays one line
+    buffer: 'only'
+    cursor: [1, 4]
+    keys: 'ccreplaced<Esc>'
+  - id: doubled/cc-empty-replacement
+    note: cc with no typed text leaves an empty line behind
+    buffer: ['one', 'two']
+    cursor: [1, 2]
+    keys: 'cc<Esc>'
+  - id: doubled/2cc
+    note: two lines collapse into the single line that gets typed
+    buffer: ['a', 'b', 'c', 'd']
+    cursor: [2, 1]
+    keys: '2ccmerged<Esc>'
+  - id: doubled/3cc-overshoot
+    buffer: ['one', 'two', 'three']
+    cursor: [2, 1]
+    keys: '3ccX<Esc>'
+  - id: doubled/cc-then-undo
+    buffer: ['one', 'two']
+    cursor: [1, 1]
+    keys: ['ccnew<Esc>', 'u']
+
+  # --- guu gUU g~~ ----------------------------------------------------------
+  - id: doubled/gUU-basic
+    buffer: 'hello world'
+    cursor: [1, 3]
+    keys: 'gUU'
+  - id: doubled/guu-basic
+    buffer: 'HELLO World'
+    cursor: [1, 5]
+    keys: 'guu'
+  - id: doubled/g-tilde-tilde-basic
+    buffer: 'Hello World'
+    cursor: [1, 1]
+    keys: 'g~~'
+  - id: doubled/gUU-indented-cursor
+    note: linewise case ops move the cursor to the start of the changed line
+    buffer: '   mixed Case here'
+    cursor: [1, 10]
+    keys: 'gUU'
+  - id: doubled/g-tilde-tilde-punct-digits
+    note: digits and punctuation must pass through g~ untouched
+    buffer: 'abc-123-XYZ_def'
+    cursor: [1, 1]
+    keys: 'g~~'
+  - id: doubled/gUU-empty-line
+    buffer: ['', 'abc']
+    cursor: [1, 1]
+    keys: 'gUU'
+  - id: doubled/2gUU
+    buffer: ['one', 'two', 'three']
+    cursor: [1, 1]
+    keys: '2gUU'
+  - id: doubled/3g-tilde-tilde-overshoot
+    buffer: ['One', 'Two']
+    cursor: [1, 1]
+    keys: '3g~~'
+
+  # --- >> << ----------------------------------------------------------------
+  - id: doubled/shift-right-basic
+    note: 'shiftwidth is 4 with expandtab on; the cursor lands on first non-blank'
+    buffer: ['alpha', 'beta']
+    cursor: [1, 3]
+    keys: '>>'
+  - id: doubled/shift-left-basic
+    buffer: '        deep'
+    cursor: [1, 10]
+    keys: '<<'
+  - id: doubled/shift-left-no-indent-noop
+    note: nothing to remove, but the cursor still moves
+    buffer: 'alpha'
+    cursor: [1, 3]
+    keys: '<<'
+  - id: doubled/shift-left-partial-indent
+    note: two spaces with shiftwidth 4 — the whole indent goes, it does not fail
+    buffer: '  two'
+    cursor: [1, 4]
+    keys: '<<'
+  - id: doubled/shift-right-empty-line
+    note: an empty line is left empty rather than filled with indent
+    buffer: ['', 'x']
+    cursor: [1, 1]
+    keys: '>>'
+  - id: doubled/shift-right-blank-line-with-spaces
+    note: a whitespace-only line — does the shift add to it or strip it bare?
+    buffer: ['   ', 'x']
+    cursor: [1, 2]
+    keys: '>>'
+  - id: doubled/shift-right-noexpandtab
+    note: 'sw=4 ts=8, so two shifts should reach a real tab'
+    buffer: '    four'
+    cursor: [1, 5]
+    keys: '>>'
+    options: ['noexpandtab']
+  - id: doubled/shift-right-shiftwidth-2
+    buffer: 'alpha'
+    cursor: [1, 1]
+    keys: '>>'
+    options: ['shiftwidth=2']
+  - id: doubled/3-shift-right
+    buffer: ['a', 'b', 'c', 'd']
+    cursor: [1, 1]
+    keys: '3>>'
+  - id: doubled/2-shift-left
+    buffer: ['    a', '    b']
+    cursor: [1, 5]
+    keys: '2<<'
+  - id: doubled/shift-right-overshoot-from-last-line
+    buffer: ['one', 'two']
+    cursor: [2, 1]
+    keys: '3>>'
+  - id: doubled/shift-right-then-left
+    note: two discrete changes, so groups — a round trip must be identity
+    buffer: ['alpha', 'beta']
+    cursor: [1, 4]
+    keys: ['>>', '<<']

@@ -37,6 +37,11 @@ export type MotionContext = {
   readonly lastFind?: { readonly cmd: 'f' | 'F' | 't' | 'T'; readonly ch: string };
 };
 
+/** Character class at a position, for callers that need to reason about words. */
+export function classAt(lines: Lines, p: Pos, big: boolean): number {
+  return charClass(charAt(lines, p), big);
+}
+
 function charwise(target: Pos, inclusive: boolean, extra: Partial<MotionResult> = {}): MotionResult {
   return { target, kind: 'charwise', inclusive, ...extra };
 }
@@ -48,9 +53,17 @@ function linewise(target: Pos): MotionResult {
 // --- horizontal -------------------------------------------------------------
 
 export function moveLeft(ctx: MotionContext): MotionResult | null {
-  const col = ctx.cursor.col - ctx.count;
-  if (ctx.cursor.col === 0) return null;
-  return charwise({ line: ctx.cursor.line, col: Math.max(0, col) }, false);
+  if (ctx.cursor.col === 0) {
+    // Vim's `nv_left` beeps only when no operator is pending; with one it just
+    // stops, and the operator runs over an EMPTY region. That is why `dh` at
+    // column one deletes nothing yet still mints an undo node, and why `>h`
+    // there really does indent the line. Same shape as `l` on an empty line.
+    if (ctx.operatorPending) return charwise(ctx.cursor, false);
+    return null;
+  }
+  // An overshooting count clamps rather than failing: `2dh` at column two
+  // deletes exactly one character.
+  return charwise({ line: ctx.cursor.line, col: Math.max(0, ctx.cursor.col - ctx.count) }, false);
 }
 
 export function moveRight(ctx: MotionContext): MotionResult | null {
@@ -58,7 +71,13 @@ export function moveRight(ctx: MotionContext): MotionResult | null {
   // `l` may sit one past the last character only while an operator is pending
   // (so `dl` deletes the final character); otherwise it stops on it.
   const max = ctx.operatorPending ? len : Math.max(0, len - 1);
-  if (ctx.cursor.col >= max) return null;
+  if (ctx.cursor.col >= max) {
+    // On an empty line the motion cannot move, but an operator still runs —
+    // over an EMPTY region. This is why `cl` (and therefore `s`) on an empty
+    // line deletes nothing yet still enters insert mode, while plain `l` beeps.
+    if (ctx.operatorPending && len === 0) return charwise(ctx.cursor, false);
+    return null;
+  }
   return charwise({ line: ctx.cursor.line, col: Math.min(max, ctx.cursor.col + ctx.count) }, false);
 }
 
@@ -70,11 +89,18 @@ export function moveFirstNonBlank(ctx: MotionContext): MotionResult {
   return charwise({ line: ctx.cursor.line, col: firstNonBlank(ctx.lines, ctx.cursor.line) }, false);
 }
 
-export function moveLineEnd(ctx: MotionContext): MotionResult {
-  const line = Math.min(lastLine(ctx.lines), ctx.cursor.line + ctx.count - 1);
+export function moveLineEnd(ctx: MotionContext): MotionResult | null {
+  // The count moves down count-1 lines with Vim's cursor_down() semantics:
+  // already on the last line it FAILS (`2D` there beeps), anywhere else an
+  // overshooting count clamps to the last line.
+  if (ctx.count > 1 && ctx.cursor.line >= lastLine(ctx.lines)) return null;
+  const line = Math.min(ctx.cursor.line + ctx.count - 1, lastLine(ctx.lines));
   const len = lineAt(ctx.lines, line).length;
-  // `$` is inclusive, but on an empty line there is no character to include.
-  return charwise({ line, col: Math.max(0, len - 1) }, len > 0);
+  // `$` is ALWAYS inclusive, even on an empty line where there is nothing to
+  // include — the resulting zero-character region is still a real region,
+  // which is why `C` on an empty line writes (empty) registers while a failed
+  // motion like `cl` there touches none.
+  return charwise({ line, col: Math.max(0, len - 1) }, true);
 }
 
 // --- vertical ---------------------------------------------------------------
@@ -130,83 +156,94 @@ export function moveLineFirstNonBlank(ctx: MotionContext): MotionResult {
 
 // --- words ------------------------------------------------------------------
 
-function endOfBuffer(lines: Lines): Pos {
-  const line = lastLine(lines);
-  return { line, col: Math.max(0, lineAt(lines, line).length - 1) };
+/**
+ * One step of Vim's internal cursor walk (`inc()`), over a position space that
+ * INCLUDES the end-of-line position (`col === length`, where real Vim's cursor
+ * sits on the NUL). Return codes mirror Vim's: 0 = moved within the line onto a
+ * real character, 2 = moved onto the end-of-line position, 1 = wrapped to the
+ * next line, -1 = end of buffer.
+ */
+function incPos(lines: Lines, p: Pos): { readonly pos: Pos; readonly ret: number } {
+  const len = lineAt(lines, p.line).length;
+  if (p.col < len) {
+    const col = p.col + 1;
+    return { pos: { line: p.line, col }, ret: col < len ? 0 : 2 };
+  }
+  if (p.line >= lastLine(lines)) return { pos: p, ret: -1 };
+  return { pos: { line: p.line + 1, col: 0 }, ret: 1 };
 }
 
-/** One `w`: forward to the start of the next word. */
-function wordForwardOnce(lines: Lines, from: Pos, big: boolean): Pos | null {
-  let { line, col } = from;
-  const startClass = charClass(charAt(lines, { line, col }), big);
+/**
+ * A faithful port of Vim's `fwd_word` (search.c). `stopAtEol` is its `eol`
+ * argument, true exactly when an operator is pending — it makes the walk stop
+ * the moment the LAST count crosses an end of line, which is the mechanism
+ * behind every `dw`-near-line-end wart. `failed` mirrors Vim's FAIL return:
+ * an operator proceeds with the region anyway; plain `w` clamps and beeps.
+ */
+function fwdWordWalk(
+  lines: Lines,
+  start: Pos,
+  big: boolean,
+  count: number,
+  stopAtEol: boolean,
+): { readonly pos: Pos; readonly failed: boolean } {
+  let cur = start;
 
-  const step = (): boolean => {
-    const len = lineAt(lines, line).length;
-    if (col + 1 < len) {
-      col += 1;
-      return true;
-    }
-    if (line >= lastLine(lines)) return false;
-    line += 1;
-    col = 0;
-    return true;
-  };
+  for (let n = count; n > 0; n -= 1) {
+    const last = n === 1;
+    const sclass = charClass(charAt(lines, cur), big);
+    const onLastLine = cur.line === lastLine(lines);
 
-  // Skip the rest of the current word, unless we start on whitespace.
-  if (startClass !== CHAR_BLANK) {
-    while (charClass(charAt(lines, { line, col }), big) === startClass) {
-      const atLineEnd = col >= lineAt(lines, line).length - 1;
-      if (!step()) return null;
-      if (atLineEnd) break;
+    const advance = (): number => {
+      const s = incPos(lines, cur);
+      cur = s.pos;
+      return s.ret;
+    };
+
+    // We always move at least one character, unless at the last char in file.
+    let i = advance();
+    if (i === -1 || (i >= 1 && onLastLine)) return { pos: cur, failed: true };
+    if (i >= 1 && stopAtEol && last) return { pos: cur, failed: false };
+
+    // Go one char past the end of the current word (if any).
+    if (sclass !== CHAR_BLANK) {
+      while (charClass(charAt(lines, cur), big) === sclass && cur.col < lineAt(lines, cur.line).length) {
+        i = advance();
+        if (i === -1 || (i >= 1 && onLastLine)) return { pos: cur, failed: true };
+        if (i >= 1 && stopAtEol && last) return { pos: cur, failed: false };
+      }
     }
-  } else if (!step()) {
-    return null;
+
+    // Skip whitespace to the next word. An empty line is itself a word.
+    while (charClass(charAt(lines, cur), big) === CHAR_BLANK || cur.col >= lineAt(lines, cur.line).length) {
+      if (cur.col === 0 && lineAt(lines, cur.line).length === 0) break;
+      i = advance();
+      if (i === -1 || (i >= 1 && onLastLine)) return { pos: cur, failed: true };
+      if (i >= 1 && stopAtEol && last) return { pos: cur, failed: false };
+    }
   }
 
-  // Skip whitespace. An empty line is itself a word, so stop on one.
-  for (;;) {
-    if (lineAt(lines, line).length === 0 && line !== from.line) return { line, col: 0 };
-    if (charClass(charAt(lines, { line, col }), big) !== CHAR_BLANK) return { line, col };
-    if (!step()) return null;
-  }
+  return { pos: cur, failed: false };
 }
 
 export function moveWordForward(ctx: MotionContext): MotionResult | null {
-  let cur = ctx.cursor;
-  let lastLineEndCandidate: Pos | null = null;
+  const big = ctx.arg === 'W';
+  const walk = fwdWordWalk(ctx.lines, ctx.cursor, big, ctx.count, ctx.operatorPending);
 
-  for (let i = 0; i < ctx.count; i += 1) {
-    const len = lineAt(ctx.lines, cur.line).length;
-    const restOfLineIsBlank =
-      charClass(charAt(ctx.lines, cur), false) !== CHAR_BLANK &&
-      lineAt(ctx.lines, cur.line)
-        .slice(cur.col)
-        .search(/\s/) === -1;
-    if (restOfLineIsBlank) lastLineEndCandidate = { line: cur.line, col: len };
+  let { line, col } = walk.pos;
+  let inclusive = false;
 
-    const next = wordForwardOnce(ctx.lines, cur, ctx.arg === 'W');
-    if (next === null) {
-      // At the end of the buffer `w` still moves to the last character, and
-      // with an operator pending it takes the rest of the line.
-      const end = endOfBuffer(ctx.lines);
-      if (ctx.operatorPending) {
-        const eol = { line: cur.line, col: lineAt(ctx.lines, cur.line).length };
-        return charwise(eol, false);
-      }
-      return charwise(end, false);
-    }
-    cur = next;
+  // Vim's adjust_cursor: a walk that ended on the end-of-line position is
+  // pulled back onto the last real character, and with an operator pending the
+  // motion becomes INCLUSIVE — that single rule is the `dw`-at-end-of-line
+  // wart: the word is taken, the newline is not.
+  const len = lineAt(ctx.lines, line).length;
+  if (col >= len && col > 0) {
+    col = len - 1;
+    if (ctx.operatorPending) inclusive = true;
   }
 
-  // The wart: with an operator pending, if `w` crossed onto a new line and the
-  // last word moved over ended at end of line, the operated text stops at that
-  // line end rather than swallowing the newline. `dw` on the last word of a
-  // line is the case everybody gets wrong from memory.
-  if (ctx.operatorPending && cur.line > ctx.cursor.line && lastLineEndCandidate !== null) {
-    return charwise(lastLineEndCandidate, false);
-  }
-
-  return charwise(cur, false);
+  return charwise({ line, col: Math.max(0, col) }, inclusive);
 }
 
 /** One `e`: forward to the end of a word. */
@@ -297,36 +334,53 @@ export function moveWordBackward(ctx: MotionContext): MotionResult | null {
   return charwise(cur, false);
 }
 
-/** `ge` — back to the end of the previous word. */
+/**
+ * One step of Vim's backward cursor walk (`dec()`). Stepping back from column
+ * zero lands on the PREVIOUS LINE'S end-of-line position (`col === length`) —
+ * a blank-class position that terminates word runs at line boundaries. Return
+ * codes mirror Vim's: 0 = moved within the line, 1 = crossed onto the previous
+ * line's end, -1 = start of buffer.
+ */
+function decPos(lines: Lines, p: Pos): { readonly pos: Pos; readonly ret: number } {
+  if (p.col > 0) return { pos: { line: p.line, col: p.col - 1 }, ret: 0 };
+  if (p.line > 0) return { pos: { line: p.line - 1, col: lineAt(lines, p.line - 1).length }, ret: 1 };
+  return { pos: p, ret: -1 };
+}
+
+/**
+ * `ge`/`gE` — a faithful port of Vim's `bckend_word` (search.c). The word
+ * class is taken at the ORIGINAL position before stepping (starting on a blank
+ * must not strip the word behind it), and the backward walk passes through the
+ * end-of-line position so a run never merges across a line boundary. Hitting
+ * the start of the buffer fails the whole motion, exactly as Vim beeps.
+ */
 export function moveWordEndBackward(ctx: MotionContext): MotionResult | null {
   const big = ctx.arg === 'gE';
   let cur = ctx.cursor;
 
-  for (let i = 0; i < ctx.count; i += 1) {
-    let { line, col } = cur;
-    const step = (): boolean => {
-      if (col > 0) {
-        col -= 1;
-        return true;
-      }
-      if (line === 0) return false;
-      line -= 1;
-      col = Math.max(0, lineAt(ctx.lines, line).length - 1);
-      return true;
-    };
+  for (let n = ctx.count; n > 0; n -= 1) {
+    const sclass = charClass(charAt(ctx.lines, cur), big);
 
-    if (!step()) return i === 0 ? null : charwise(cur, true);
-    const startCls = charClass(charAt(ctx.lines, { line, col }), big);
-    if (startCls !== CHAR_BLANK) {
-      // Walk off the current word first.
-      while (charClass(charAt(ctx.lines, { line, col }), big) === startCls) {
-        if (!step()) return i === 0 ? null : charwise(cur, true);
+    let s = decPos(ctx.lines, cur);
+    if (s.ret === -1) return null;
+    cur = s.pos;
+
+    // Move back to before the end of the current word (if we started in one).
+    if (sclass !== CHAR_BLANK) {
+      while (charClass(charAt(ctx.lines, cur), big) === sclass && cur.col < lineAt(ctx.lines, cur.line).length) {
+        s = decPos(ctx.lines, cur);
+        if (s.ret === -1) return null;
+        cur = s.pos;
       }
     }
-    while (charClass(charAt(ctx.lines, { line, col }), big) === CHAR_BLANK) {
-      if (!step()) return i === 0 ? null : charwise(cur, true);
+
+    // Move back to the end of the previous word. An empty line is a word.
+    while (charClass(charAt(ctx.lines, cur), big) === CHAR_BLANK || cur.col >= lineAt(ctx.lines, cur.line).length) {
+      if (cur.col === 0 && lineAt(ctx.lines, cur.line).length === 0) break;
+      s = decPos(ctx.lines, cur);
+      if (s.ret === -1) return null;
+      cur = s.pos;
     }
-    cur = { line, col };
   }
 
   return charwise(cur, true);
@@ -410,7 +464,9 @@ export function moveMatchingBracket(ctx: MotionContext): MotionResult | null {
     if (ch === open) depth += 1;
     else if (ch === pair.match) {
       depth -= 1;
-      if (depth === 0) return charwise({ line, col: c }, true);
+      // `%` is on Vim's short list of motions (with `( ) / ? n N { }`) whose
+      // deletes always shift into the numbered registers, even within a line.
+      if (depth === 0) return charwise({ line, col: c }, true, { forcesNumbered: true });
     }
 
     if (pair.forward) {

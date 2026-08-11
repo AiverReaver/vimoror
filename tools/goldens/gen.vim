@@ -64,9 +64,15 @@ let s:tmpfile = tempname()
 " Set up a case. The buffer is written to a temp file and :edit-ed rather
 " than poked in with setline(), so undo history starts genuinely empty —
 " `u` as the very first key must be a no-op, exactly as in a real session.
+"
+" The buffer is WIPED first, because re-:edit-ing the same file keeps the
+" old buffer's undo history — an over-eager `u` would then restore the
+" PREVIOUS case's text. This silently corrupted the first run of every
+" "u with nothing to undo" golden.
 function! s:Setup(case) abort
   silent! stopinsert
   call writefile(a:case.buffer, s:tmpfile)
+  silent! bwipeout!
   silent! execute 'edit! ' . fnameescape(s:tmpfile)
   silent! delmarks!
   " The last f/F/t/T target is global and survives :edit, so without this the

@@ -1,0 +1,315 @@
+# Wave 2 — indent operators.
+#
+# > and < composed with motions, >> << doubled, counts, and the cursor landing
+# rule (first non-blank of the first shifted line). Baseline is shiftwidth=4,
+# expandtab, tabstop=8, softtabstop=0, noautoindent — so >> inserts 4 spaces.
+#
+# Weighted toward the places indent goes strange: empty lines (Vim refuses to
+# indent them), whitespace-only lines (it does), indents smaller than
+# shiftwidth (must clamp at column 0, never go negative), tab/space mixing
+# under noexpandtab, and counts that run off the end of the buffer.
+
+cases:
+  # --- >> basics ------------------------------------------------------------
+  - id: indent/shift-right-basic
+    buffer: 'foo'
+    cursor: [1, 1]
+    keys: '>>'
+  - id: indent/shift-right-already-indented
+    note: shifting is relative — 4 existing spaces become 8, not reset to 4
+    buffer: '    foo'
+    cursor: [1, 5]
+    keys: '>>'
+  - id: indent/shift-right-odd-indent
+    note: 'noshiftround: 3 spaces + sw 4 = 7, not rounded up to 8'
+    buffer: '   foo'
+    cursor: [1, 4]
+    keys: '>>'
+  - id: indent/shift-right-empty-line
+    note: >-
+      The classic wart. Vim does NOT add indent to a zero-length line, so this
+      must leave the buffer text untouched.
+    buffer: ['', 'foo']
+    cursor: [1, 1]
+    keys: '>>'
+  - id: indent/shift-right-whitespace-only-line
+    note: a blank-but-nonempty line is not empty, so it does get shifted
+    buffer: ['   ', 'foo']
+    cursor: [1, 1]
+    keys: '>>'
+  - id: indent/shift-right-single-char-buffer
+    buffer: 'a'
+    cursor: [1, 1]
+    keys: '>>'
+  - id: indent/shift-right-cursor-lands-first-nonblank
+    note: cursor moves to the first non-blank of the shifted line, not column 1
+    buffer: 'foo bar'
+    cursor: [1, 7]
+    keys: '>>'
+  - id: indent/shift-right-last-line
+    buffer: ['one', 'two']
+    cursor: [2, 2]
+    keys: '>>'
+
+  # --- << basics and the clamp ----------------------------------------------
+  - id: indent/shift-left-basic
+    buffer: '        foo'
+    cursor: [1, 9]
+    keys: '<<'
+  - id: indent/shift-left-exact-shiftwidth
+    buffer: '    foo'
+    cursor: [1, 5]
+    keys: '<<'
+  - id: indent/shift-left-clamps-at-zero
+    note: 2 spaces minus sw 4 must clamp to column 0, never negative
+    buffer: '  foo'
+    cursor: [1, 3]
+    keys: '<<'
+  - id: indent/shift-left-no-indent-noop
+    buffer: 'foo'
+    cursor: [1, 2]
+    keys: '<<'
+  - id: indent/shift-left-empty-line
+    buffer: ['', 'foo']
+    cursor: [1, 1]
+    keys: '<<'
+  - id: indent/shift-left-whitespace-only-line
+    note: a whitespace-only line loses shiftwidth columns of blank
+    buffer: ['      ', 'x']
+    cursor: [1, 3]
+    keys: '<<'
+
+  # --- tabs vs spaces under the expandtab baseline ---------------------------
+  - id: indent/shift-left-tab-indent-expandtab
+    note: >-
+      A leading tab is 8 columns; << leaves 4 columns, re-rendered as spaces
+      because expandtab is on. The tab does not survive.
+    buffer: "\tfoo"
+    cursor: [1, 2]
+    keys: '<<'
+  - id: indent/shift-right-tab-indent-expandtab
+    buffer: "\tfoo"
+    cursor: [1, 2]
+    keys: '>>'
+  - id: indent/shift-right-mixed-tab-space
+    note: tab + 2 spaces measures 10 columns, not 3 characters
+    buffer: "\t  foo"
+    cursor: [1, 4]
+    keys: '>>'
+  - id: indent/shift-left-mixed-tab-space
+    buffer: "\t  foo"
+    cursor: [1, 4]
+    keys: '<<'
+  - id: indent/shift-right-interior-tab-untouched
+    note: only leading whitespace is rewritten; a tab inside the line stays
+    buffer: "foo\tbar"
+    cursor: [1, 1]
+    keys: '>>'
+
+  # --- counts on >> and << --------------------------------------------------
+  - id: indent/count-3-shift-right
+    buffer: ['one', 'two', 'three', 'four']
+    cursor: [1, 1]
+    keys: '3>>'
+  - id: indent/count-2-shift-left
+    buffer: ['        one', '  two', 'three']
+    cursor: [1, 1]
+    keys: '2<<'
+  - id: indent/count-shift-right-overshoot
+    note: a count past the last line makes the whole shift fail, not shift fewer
+    buffer: ['one', 'two']
+    cursor: [1, 1]
+    keys: '5>>'
+  - id: indent/count-exactly-to-last-line
+    buffer: ['one', 'two', 'three']
+    cursor: [2, 1]
+    keys: '2>>'
+  - id: indent/count-shift-right-cursor-lands-on-first-line
+    buffer: ['  one', 'two', 'three']
+    cursor: [1, 4]
+    keys: '3>>'
+
+  # --- > and < composed with motions ----------------------------------------
+  - id: indent/shift-right-j
+    buffer: ['one', 'two', 'three']
+    cursor: [1, 2]
+    keys: '>j'
+  - id: indent/shift-right-2j
+    buffer: ['one', 'two', 'three', 'four']
+    cursor: [1, 1]
+    keys: '>2j'
+  - id: indent/shift-right-count-before-operator
+    note: '2>j is 2 lines down, so three lines get shifted'
+    buffer: ['one', 'two', 'three', 'four']
+    cursor: [1, 1]
+    keys: '2>j'
+  - id: indent/shift-right-j-on-last-line-fails
+    note: the motion fails, so nothing is shifted at all
+    buffer: ['one', 'two']
+    cursor: [2, 1]
+    keys: '>j'
+  - id: indent/shift-right-k
+    buffer: ['one', 'two', 'three']
+    cursor: [3, 2]
+    keys: '>k'
+  - id: indent/shift-right-G
+    buffer: ['one', 'two', 'three', 'four']
+    cursor: [2, 2]
+    keys: '>G'
+  - id: indent/shift-right-G-single-line-buffer
+    buffer: 'only'
+    cursor: [1, 3]
+    keys: '>G'
+  - id: indent/shift-right-count-G
+    note: '>2G shifts backwards from line 4 up to line 2'
+    buffer: ['one', 'two', 'three', 'four']
+    cursor: [4, 1]
+    keys: '>2G'
+  - id: indent/shift-left-G
+    buffer: ['        one', '  two', '            three']
+    cursor: [1, 9]
+    keys: '<G'
+  - id: indent/shift-right-w-stays-on-line
+    note: '> forces a charwise motion linewise; w within the line shifts one line'
+    buffer: ['alpha beta', 'gamma']
+    cursor: [1, 1]
+    keys: '>w'
+  - id: indent/shift-right-w-crosses-line
+    note: w off the end of the line drags a second line into the range
+    buffer: ['alpha beta', 'gamma', 'delta']
+    cursor: [1, 7]
+    keys: '>w'
+  - id: indent/shift-right-underscore
+    buffer: ['one', 'two']
+    cursor: [1, 1]
+    keys: '>_'
+  - id: indent/shift-right-percent
+    note: '% across lines makes > a multi-line linewise shift'
+    buffer: ['fn(', '  arg', '  arg2', ')']
+    cursor: [1, 3]
+    keys: '>%'
+  - id: indent/shift-right-percent-unmatched-fails
+    buffer: ['fn(', '  arg']
+    cursor: [1, 3]
+    keys: '>%'
+
+  # --- ranges containing empty and ragged lines ------------------------------
+  - id: indent/shift-right-range-with-empty-line
+    note: the empty line inside the range stays empty while its neighbours move
+    buffer: ['one', '', 'three']
+    cursor: [1, 1]
+    keys: '>G'
+  - id: indent/shift-right-all-empty-buffer
+    buffer: ['', '', '']
+    cursor: [1, 1]
+    keys: '3>>'
+  - id: indent/shift-left-range-mixed-indents
+    note: each line clamps independently; only the deepest keeps any indent
+    buffer: ['        one', '  two', 'three', "\tfour"]
+    cursor: [1, 9]
+    keys: '4<<'
+
+  # --- undo / redo ----------------------------------------------------------
+  - id: indent/undo-shift-right
+    buffer: ['one', 'two']
+    cursor: [1, 1]
+    keys: ['>>', 'u']
+  - id: indent/undo-one-of-two-shifts
+    note: two separate shifts are two undo blocks, so one u removes only 4 spaces
+    buffer: 'foo'
+    cursor: [1, 1]
+    keys: ['>>', '>>', 'u']
+  - id: indent/shift-empty-line-still-mints-undo
+    note: >-
+      >> on an empty line changes nothing, yet it DOES create an undo block:
+      Vim's u_save runs before the shift, not after it. So the u burns on that
+      empty block and the x survives — it takes a second u to reach it.
+    buffer: ['ab', '']
+    cursor: [1, 1]
+    keys: ['x', 'j', '>>', 'u']
+  - id: indent/shift-empty-line-two-undos-reach-the-x
+    buffer: ['ab', '']
+    cursor: [1, 1]
+    keys: ['x', 'j', '>>', 'u', 'u']
+  - id: indent/shift-left-no-indent-still-mints-undo
+    note: same rule for <<, which had no indent to remove
+    buffer: ['ab', 'cd']
+    cursor: [1, 1]
+    keys: ['x', 'j', '<<', 'u']
+  - id: indent/shift-h-at-col-one-indents-line
+    note: >-
+      h at column one does not beep with an operator pending — it leaves an
+      empty region, and > over an empty region still shifts the whole line.
+    buffer: ['ab', 'cd']
+    cursor: [1, 1]
+    keys: ['x', 'j', '>h']
+  - id: indent/shift-right-then-left-roundtrip
+    buffer: '  foo'
+    cursor: [1, 3]
+    keys: ['>>', '<<']
+  - id: indent/redo-shift-right
+    buffer: ['one', 'two']
+    cursor: [1, 1]
+    keys: ['>>', 'u', '<C-r>']
+
+  # --- shiftwidth overrides --------------------------------------------------
+  - id: indent/sw2-shift-right
+    buffer: 'foo'
+    cursor: [1, 1]
+    options: ['shiftwidth=2']
+    keys: '>>'
+  - id: indent/sw2-shift-left-clamp
+    note: 1 space minus sw 2 still clamps at 0
+    buffer: [' foo', '   bar']
+    cursor: [1, 2]
+    options: ['shiftwidth=2']
+    keys: '2<<'
+  - id: indent/sw0-follows-tabstop
+    note: 'shiftwidth=0 means "use tabstop", so this shifts by 8'
+    buffer: 'foo'
+    cursor: [1, 1]
+    options: ['shiftwidth=0']
+    keys: '>>'
+
+  # --- noexpandtab: real tabs in the indent ---------------------------------
+  - id: indent/noexpandtab-sw8-shift-right
+    note: 8 columns of indent with noexpandtab is a single tab character
+    buffer: 'foo'
+    cursor: [1, 1]
+    options: ['noexpandtab', 'shiftwidth=8']
+    keys: '>>'
+  - id: indent/noexpandtab-sw8-shift-left-tab
+    buffer: "\tfoo"
+    cursor: [1, 2]
+    options: ['noexpandtab', 'shiftwidth=8']
+    keys: '<<'
+  - id: indent/noexpandtab-sw8-spaces-become-tab
+    note: 4 spaces + 8 = 12 columns, rendered as one tab plus 4 spaces
+    buffer: '    foo'
+    cursor: [1, 5]
+    options: ['noexpandtab', 'shiftwidth=8']
+    keys: '>>'
+  - id: indent/noexpandtab-sw4-twice-reaches-tab
+    note: >-
+      The first shift is 4 columns and stays spaces; the second crosses the
+      8-column tabstop and collapses into a tab.
+    buffer: 'foo'
+    cursor: [1, 1]
+    options: ['noexpandtab', 'shiftwidth=4']
+    keys: ['>>', '>>']
+  - id: indent/noexpandtab-sw8-multiline
+    buffer: ['one', '    two', "\tthree"]
+    cursor: [1, 1]
+    options: ['noexpandtab', 'shiftwidth=8']
+    keys: '3>>'
+  - id: indent/noexpandtab-sw8-empty-line-skipped
+    buffer: ['', 'foo']
+    cursor: [1, 1]
+    options: ['noexpandtab', 'shiftwidth=8']
+    keys: '>>'
+  - id: indent/noexpandtab-mixed-indent-shift-left
+    note: tab + 4 spaces is 12 columns; << leaves 4, which fits in spaces alone
+    buffer: "\t    foo"
+    cursor: [1, 6]
+    options: ['noexpandtab', 'shiftwidth=8']
+    keys: '<<'

@@ -1,0 +1,289 @@
+# Wave 2 — the y operator.
+#
+# y with every motion, yy/Y, counts, and register plumbing ("a "A "_ "0).
+# Yank changes no text, so these cases are judged on REGISTER contents and the
+# resulting CURSOR position. Two warts get heavy weight: yank leaves the cursor
+# at the START of the yanked region (visible only for backward motions), and
+# yank does NOT shift the numbered registers the way delete does.
+
+cases:
+  # --- yw vs ye vs y$ -------------------------------------------------------
+  - id: yank/yw-basic
+    note: yw takes the trailing whitespace, ye does not — same cursor, different register
+    buffer: 'alpha beta gamma'
+    cursor: [1, 1]
+    keys: 'yw'
+  - id: yank/ye-basic
+    buffer: 'alpha beta gamma'
+    cursor: [1, 1]
+    keys: 'ye'
+  - id: yank/yw-last-word-on-line
+    note: yw on the last word stops at end of line, it does not eat the newline
+    buffer: ['one two', 'three']
+    cursor: [1, 5]
+    keys: 'yw'
+  - id: yank/yw-across-lines
+    note: y2w spanning a line break is charwise, so the register holds an embedded newline
+    buffer: ['one two', 'three four']
+    cursor: [1, 5]
+    keys: 'y2w'
+  - id: yank/yw-on-empty-line
+    buffer: ['', 'two']
+    cursor: [1, 1]
+    keys: 'yw'
+  - id: yank/yw-punctuation-run
+    buffer: 'foo.,;bar baz'
+    cursor: [1, 4]
+    keys: 'yw'
+  - id: yank/yw-count-overshoot
+    buffer: ['one two', 'three']
+    cursor: [1, 1]
+    keys: 'y9w'
+  - id: yank/yW-skips-punctuation
+    buffer: 'foo.bar baz'
+    cursor: [1, 1]
+    keys: 'yW'
+  - id: yank/y-dollar
+    buffer: 'alpha beta'
+    cursor: [1, 7]
+    keys: 'y$'
+  - id: yank/y-dollar-on-empty-line
+    note: y$ with nothing to yank — does it fail, or yank an empty string?
+    buffer: ['', 'x']
+    cursor: [1, 1]
+    keys: 'y$'
+
+  # --- cursor lands at the START of the region (backward motions) ------------
+  - id: yank/yb-cursor-moves-to-start
+    note: the whole point — yb moves the cursor back to where the region begins
+    buffer: 'alpha beta gamma'
+    cursor: [1, 12]
+    keys: 'yb'
+  - id: yank/y0
+    buffer: '   indented text'
+    cursor: [1, 9]
+    keys: 'y0'
+  - id: yank/y-caret
+    note: '^ is exclusive and backward — the cursor ends on the first non-blank'
+    buffer: '   indented text'
+    cursor: [1, 9]
+    keys: 'y^'
+  - id: yank/yge
+    buffer: 'alpha beta gamma'
+    cursor: [1, 12]
+    keys: 'yge'
+  - id: yank/yh-at-col1-fails
+    note: a failed motion must leave every register untouched
+    buffer: 'abc'
+    cursor: [1, 1]
+    keys: 'yh'
+  - id: yank/yl-count-overshoot
+    note: for an operator, l past end of line clamps instead of failing
+    buffer: 'abc'
+    cursor: [1, 2]
+    keys: 'y9l'
+
+  # --- f F t T % ------------------------------------------------------------
+  - id: yank/yf-inclusive
+    buffer: 'a,b,c,d'
+    cursor: [1, 1]
+    keys: 'yf,'
+  - id: yank/yt-exclusive
+    buffer: 'a,b,c,d'
+    cursor: [1, 1]
+    keys: 'yt,'
+  - id: yank/yF-backward
+    buffer: 'a,b,c,d'
+    cursor: [1, 7]
+    keys: 'yF,'
+  - id: yank/yf-not-found-fails
+    note: the earlier yank must survive the failed one intact
+    buffer: 'alpha beta'
+    cursor: [1, 1]
+    keys: 'ywyfz'
+  - id: yank/y-percent
+    buffer: 'fn(a, b) end'
+    cursor: [1, 3]
+    keys: 'y%'
+  - id: yank/y-percent-backward
+    note: '% backward is inclusive, so the closing bracket is in the region too'
+    buffer: 'fn(a, b) end'
+    cursor: [1, 8]
+    keys: 'y%'
+  - id: yank/y-percent-unmatched-fails
+    buffer: 'a(b'
+    cursor: [1, 2]
+    keys: 'y%'
+
+  # --- linewise motions: j k G gg _ -----------------------------------------
+  - id: yank/yj-is-linewise
+    note: yj yanks two whole lines, not the characters between the two cursors
+    buffer: ['alpha', 'beta', 'gamma']
+    cursor: [1, 3]
+    keys: 'yj'
+  - id: yank/yk-is-linewise-and-moves-up
+    buffer: ['alpha', 'beta', 'gamma']
+    cursor: [3, 3]
+    keys: 'yk'
+  - id: yank/yj-on-last-line-fails
+    buffer: ['alpha', 'beta']
+    cursor: [2, 2]
+    keys: 'yj'
+  - id: yank/yG-to-end
+    buffer: ['one', '  two', 'three']
+    cursor: [2, 4]
+    keys: 'yG'
+  - id: yank/ygg-to-top
+    note: backward linewise — the cursor should end up on line 1
+    buffer: ['one', '  two', 'three']
+    cursor: [3, 4]
+    keys: 'ygg'
+  - id: yank/y-underscore
+    note: '_ is the current line linewise — nothing to do with the "_ register'
+    buffer: ['   one', 'two']
+    cursor: [1, 5]
+    keys: 'y_'
+
+  # --- yy and Y -------------------------------------------------------------
+  - id: yank/yy-basic
+    note: yy leaves the cursor column alone — it does not jump to the first non-blank
+    buffer: ['    alpha', 'beta']
+    cursor: [1, 7]
+    keys: 'yy'
+  - id: yank/yy-last-line
+    buffer: ['one', 'two']
+    cursor: [2, 2]
+    keys: 'yy'
+  - id: yank/yy-empty-line
+    buffer: ['one', '', 'three']
+    cursor: [2, 1]
+    keys: 'yy'
+  - id: yank/yy-empty-buffer
+    buffer: ['']
+    cursor: [1, 1]
+    keys: 'yy'
+  - id: yank/2yy
+    buffer: ['one', 'two', 'three']
+    cursor: [1, 2]
+    keys: '2yy'
+  - id: yank/yy-count-overshoot-fails
+    note: a count reaching past the last line makes yy fail outright — no partial yank
+    buffer: ['one', 'two', 'three']
+    cursor: [2, 1]
+    keys: '9yy'
+  - id: yank/Y-is-linewise
+    note: under -u NONE there is no defaults.vim remap, so Y is yy and not y$
+    buffer: ['alpha beta', 'gamma']
+    cursor: [1, 7]
+    keys: 'Y'
+  - id: yank/3Y-overshoot-from-last-line
+    buffer: ['a', 'b', 'c']
+    cursor: [3, 1]
+    keys: '3Y'
+  - id: yank/yy-tab-indented-line
+    note: tabs must survive the round trip through the register byte for byte
+    buffer: ["\tfoo\tbar", 'baz']
+    cursor: [1, 2]
+    keys: 'yy'
+  - id: yank/yy-all-blank-line
+    buffer: ['   ', 'x']
+    cursor: [1, 2]
+    keys: 'yy'
+
+  # --- named registers, append, black hole ----------------------------------
+  - id: yank/named-register
+    note: a yank into a named register must NOT also fill "0
+    buffer: 'alpha beta'
+    cursor: [1, 1]
+    keys: '"ayw'
+  - id: yank/named-register-count-before-prefix
+    note: the count may sit on either side of the register prefix
+    buffer: ['one', 'two', 'three']
+    cursor: [1, 1]
+    keys: '2"ayy'
+  - id: yank/lowercase-register-overwrites
+    buffer: 'alpha beta'
+    cursor: [1, 1]
+    keys: '"ayww"ayw'
+  - id: yank/uppercase-appends-charwise
+    buffer: 'alpha beta'
+    cursor: [1, 1]
+    keys: '"ayww"Ayw'
+  - id: yank/uppercase-appends-linewise
+    buffer: ['one', 'two', 'three']
+    cursor: [1, 1]
+    keys: '"ayyj"Ayy'
+  - id: yank/uppercase-append-to-empty-register
+    note: appending to a register that was never set should read as a plain yank
+    buffer: 'alpha beta'
+    cursor: [1, 1]
+    keys: '"Ayw'
+  - id: yank/append-charwise-onto-linewise
+    note: does the register stay linewise, and does the charwise text land on its own line?
+    buffer: ['one', 'two three']
+    cursor: [1, 1]
+    keys: '"ayyj"Ayw'
+  - id: yank/append-linewise-onto-charwise
+    note: the mirror image — a linewise append should promote the register to linewise
+    buffer: ['one two', 'three']
+    cursor: [1, 1]
+    keys: '"aywj"Ayy'
+  - id: yank/blackhole-charwise
+    note: '"_ must leave the unnamed register and "0 exactly as they were'
+    buffer: 'alpha beta gamma'
+    cursor: [1, 1]
+    keys: 'yww"_yw'
+  - id: yank/second-yank-replaces-0
+    note: '"0 holds only the most recent yank — there is no yank history'
+    buffer: 'alpha beta gamma'
+    cursor: [1, 1]
+    keys: 'ywwyw'
+  - id: yank/does-not-shift-numbered
+    note: >-
+      dd fills "1; the yy that follows must leave "1 alone. Delete shifts the
+      numbered registers, yank does not — this is the case that proves it.
+    buffer: ['one', 'two', 'three']
+    cursor: [1, 1]
+    keys: ['dd', 'yy']
+  - id: yank/does-not-shift-numbered-twice
+    note: two deletes then a yank — "1 and "2 must both survive untouched
+    buffer: ['one', 'two', 'three', 'four']
+    cursor: [1, 1]
+    keys: ['dd', 'dd', 'yy']
+  - id: yank/delete-preserves-0
+    note: delete overwrites the unnamed register but must not touch "0
+    buffer: ['one', 'two', 'three']
+    cursor: [1, 1]
+    keys: ['yy', 'dd']
+  - id: yank/small-delete-register-untouched
+    note: dw fills the small-delete register "-; a later yank must not disturb it
+    buffer: 'foo bar baz'
+    cursor: [1, 1]
+    keys: ['dw', 'yw']
+  - id: yank/undo-after-yank-is-noop
+    note: yank records nothing, so u here has an empty history to walk back
+    buffer: 'alpha beta'
+    cursor: [1, 3]
+    keys: 'ywu'
+  - id: yank/yh-at-col1-clears-unnamed
+    note: >-
+      h at column one leaves an empty region instead of failing, and a yank over
+      an empty region still WRITES its registers — so the earlier delete's text
+      is cleared out of "" rather than surviving. An engine that failed the
+      motion here would keep "" and betray itself only through this register.
+    buffer: ['ab', 'cd']
+    cursor: [1, 1]
+    keys: ['x', 'j', 'yh']
+  - id: yank/yl-empty-line-clears-unnamed
+    buffer: ['ab', '']
+    cursor: [1, 1]
+    keys: ['x', 'j', 'yl']
+  - id: yank/y0-at-col1-clears-unnamed
+    buffer: ['ab', 'cd']
+    cursor: [1, 1]
+    keys: ['x', 'j', 'y0']
+  - id: yank/undo-after-delete-keeps-registers
+    note: undo restores the text but must not roll the registers back with it
+    buffer: ['one', 'two']
+    cursor: [1, 1]
+    keys: ['yy', 'dd', 'u']

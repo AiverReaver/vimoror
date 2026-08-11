@@ -1,0 +1,2935 @@
+[
+  {
+    "id": "delete/boundary-dw",
+    "buffer": [
+      "foo bar baz"
+    ],
+    "cursor": [
+      1,
+      5
+    ],
+    "keys": "dw",
+    "groups": [
+      "dw"
+    ],
+    "encodedKeys": "dw",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "bar "
+        },
+        "-": {
+          "type": "v",
+          "text": "bar "
+        }
+      },
+      "buffer": [
+        "foo baz"
+      ],
+      "cursor": [
+        1,
+        5
+      ],
+      "error": "",
+      "curswant": 5
+    }
+  },
+  {
+    "id": "delete/boundary-de",
+    "buffer": [
+      "foo bar baz"
+    ],
+    "cursor": [
+      1,
+      5
+    ],
+    "keys": "de",
+    "groups": [
+      "de"
+    ],
+    "encodedKeys": "de",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "bar"
+        },
+        "-": {
+          "type": "v",
+          "text": "bar"
+        }
+      },
+      "buffer": [
+        "foo  baz"
+      ],
+      "cursor": [
+        1,
+        5
+      ],
+      "error": "",
+      "curswant": 5
+    }
+  },
+  {
+    "id": "delete/boundary-d-dollar",
+    "buffer": [
+      "foo bar baz"
+    ],
+    "cursor": [
+      1,
+      5
+    ],
+    "keys": "d$",
+    "groups": [
+      "d$"
+    ],
+    "encodedKeys": "d$",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "bar baz"
+        },
+        "-": {
+          "type": "v",
+          "text": "bar baz"
+        }
+      },
+      "buffer": [
+        "foo "
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "delete/boundary-dw-at-eol",
+    "buffer": [
+      "foo bar",
+      "baz qux"
+    ],
+    "cursor": [
+      1,
+      5
+    ],
+    "keys": "dw",
+    "groups": [
+      "dw"
+    ],
+    "note": "THE wart. Plain w would move to line 2, but dw on the last word of a line stops at end of line: no newline eaten, no join.",
+    "encodedKeys": "dw",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "bar"
+        },
+        "-": {
+          "type": "v",
+          "text": "bar"
+        }
+      },
+      "buffer": [
+        "foo ",
+        "baz qux"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "delete/boundary-de-at-eol",
+    "buffer": [
+      "foo bar",
+      "baz qux"
+    ],
+    "cursor": [
+      1,
+      5
+    ],
+    "keys": "de",
+    "groups": [
+      "de"
+    ],
+    "encodedKeys": "de",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "bar"
+        },
+        "-": {
+          "type": "v",
+          "text": "bar"
+        }
+      },
+      "buffer": [
+        "foo ",
+        "baz qux"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "delete/boundary-d-dollar-at-eol",
+    "buffer": [
+      "foo bar",
+      "baz qux"
+    ],
+    "cursor": [
+      1,
+      5
+    ],
+    "keys": "d$",
+    "groups": [
+      "d$"
+    ],
+    "encodedKeys": "d$",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "bar"
+        },
+        "-": {
+          "type": "v",
+          "text": "bar"
+        }
+      },
+      "buffer": [
+        "foo ",
+        "baz qux"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "delete/dw-last-word-of-last-line",
+    "buffer": [
+      "foo bar",
+      "baz qux"
+    ],
+    "cursor": [
+      2,
+      5
+    ],
+    "keys": "dw",
+    "groups": [
+      "dw"
+    ],
+    "note": "the same wart with no line below to join to",
+    "encodedKeys": "dw",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "qux"
+        },
+        "-": {
+          "type": "v",
+          "text": "qux"
+        }
+      },
+      "buffer": [
+        "foo bar",
+        "baz "
+      ],
+      "cursor": [
+        2,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "delete/dw-trailing-whitespace",
+    "buffer": [
+      "foo   ",
+      "bar"
+    ],
+    "cursor": [
+      1,
+      4
+    ],
+    "keys": "dw",
+    "groups": [
+      "dw"
+    ],
+    "note": "dw sitting on trailing blanks eats them but must not join lines",
+    "encodedKeys": "dw",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "   "
+        },
+        "-": {
+          "type": "v",
+          "text": "   "
+        }
+      },
+      "buffer": [
+        "foo",
+        "bar"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "delete/dw-mid-word",
+    "buffer": [
+      "alpha beta"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "dw",
+    "groups": [
+      "dw"
+    ],
+    "note": "from mid-word, dw takes only the tail plus the following space",
+    "encodedKeys": "dw",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "pha "
+        },
+        "-": {
+          "type": "v",
+          "text": "pha "
+        }
+      },
+      "buffer": [
+        "albeta"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "delete/dw-on-whitespace-run",
+    "buffer": [
+      "foo   bar"
+    ],
+    "cursor": [
+      1,
+      4
+    ],
+    "keys": "dw",
+    "groups": [
+      "dw"
+    ],
+    "encodedKeys": "dw",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "   "
+        },
+        "-": {
+          "type": "v",
+          "text": "   "
+        }
+      },
+      "buffer": [
+        "foobar"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "delete/dw-on-empty-line",
+    "buffer": [
+      "",
+      "next",
+      "last"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "dw",
+    "groups": [
+      "dw"
+    ],
+    "note": "Exclusive motion ending in column 1, started at/before the first non-blank, is promoted to LINEWISE — so dw on an empty line deletes the whole line instead of joining lines 1 and 2.",
+    "encodedKeys": "dw",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "\n"
+        }
+      },
+      "buffer": [
+        "next",
+        "last"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "delete/dw-single-char-buffer",
+    "buffer": [
+      "a"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "dw",
+    "groups": [
+      "dw"
+    ],
+    "encodedKeys": "dw",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a"
+        },
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        ""
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "delete/dw-tab-indent",
+    "buffer": [
+      "\tfoo bar"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "dw",
+    "groups": [
+      "dw"
+    ],
+    "encodedKeys": "dw",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "\t"
+        },
+        "-": {
+          "type": "v",
+          "text": "\t"
+        }
+      },
+      "buffer": [
+        "foo bar"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "delete/dW-punctuation",
+    "buffer": [
+      "foo.bar baz"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "dW",
+    "groups": [
+      "dW"
+    ],
+    "note": "dW takes the whole blank-delimited chunk where dw stops at the dot",
+    "encodedKeys": "dW",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "foo.bar "
+        },
+        "-": {
+          "type": "v",
+          "text": "foo.bar "
+        }
+      },
+      "buffer": [
+        "baz"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "delete/dE-punctuation",
+    "buffer": [
+      "foo.bar baz"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "dE",
+    "groups": [
+      "dE"
+    ],
+    "encodedKeys": "dE",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "foo.bar"
+        },
+        "-": {
+          "type": "v",
+          "text": "foo.bar"
+        }
+      },
+      "buffer": [
+        " baz"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "delete/de-at-word-end",
+    "buffer": [
+      "alpha beta"
+    ],
+    "cursor": [
+      1,
+      5
+    ],
+    "keys": "de",
+    "groups": [
+      "de"
+    ],
+    "note": "e already at a word end advances to the NEXT end before deleting",
+    "encodedKeys": "de",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a beta"
+        },
+        "-": {
+          "type": "v",
+          "text": "a beta"
+        }
+      },
+      "buffer": [
+        "alph"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "delete/d2w-spans-line-boundary",
+    "buffer": [
+      "one two",
+      "three four"
+    ],
+    "cursor": [
+      1,
+      5
+    ],
+    "keys": "d2w",
+    "groups": [
+      "d2w"
+    ],
+    "note": "The second w does cross the newline, so unlike dw this joins the lines. Charwise but multi-line, so it also lands in \"1, not only \"-.",
+    "encodedKeys": "d2w",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "v",
+          "text": "two\nthree "
+        },
+        "\"": {
+          "type": "v",
+          "text": "two\nthree "
+        }
+      },
+      "buffer": [
+        "one four"
+      ],
+      "cursor": [
+        1,
+        5
+      ],
+      "error": "",
+      "curswant": 5
+    }
+  },
+  {
+    "id": "delete/d9w-overshoot",
+    "buffer": [
+      "one two",
+      "three"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "d9w",
+    "groups": [
+      "d9w"
+    ],
+    "note": "w overshooting the end of the buffer clamps rather than failing",
+    "encodedKeys": "d9w",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "one two\nthree\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "one two\nthree\n"
+        }
+      },
+      "buffer": [
+        ""
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "delete/2dw-count-before-operator",
+    "buffer": [
+      "alpha beta gamma delta"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "2dw",
+    "groups": [
+      "2dw"
+    ],
+    "encodedKeys": "2dw",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "alpha beta "
+        },
+        "-": {
+          "type": "v",
+          "text": "alpha beta "
+        }
+      },
+      "buffer": [
+        "gamma delta"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "delete/2d3w-counts-multiply",
+    "buffer": [
+      "a b c d e f g h i"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "2d3w",
+    "groups": [
+      "2d3w"
+    ],
+    "encodedKeys": "2d3w",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a b c d e f "
+        },
+        "-": {
+          "type": "v",
+          "text": "a b c d e f "
+        }
+      },
+      "buffer": [
+        "g h i"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "delete/db-basic",
+    "buffer": [
+      "alpha beta"
+    ],
+    "cursor": [
+      1,
+      7
+    ],
+    "keys": "db",
+    "groups": [
+      "db"
+    ],
+    "encodedKeys": "db",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "alpha "
+        },
+        "-": {
+          "type": "v",
+          "text": "alpha "
+        }
+      },
+      "buffer": [
+        "beta"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "delete/db-at-line-start-joins",
+    "buffer": [
+      "one two",
+      "three"
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": "db",
+    "groups": [
+      "db"
+    ],
+    "note": "b crosses the newline backwards, so this one does join",
+    "encodedKeys": "db",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "two"
+        },
+        "-": {
+          "type": "v",
+          "text": "two"
+        }
+      },
+      "buffer": [
+        "one ",
+        "three"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "delete/db-at-buffer-start-noop",
+    "buffer": [
+      "alpha beta"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "db",
+    "groups": [
+      "db"
+    ],
+    "encodedKeys": "db",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "alpha beta"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "delete/dB-punctuation",
+    "buffer": [
+      "foo.bar baz"
+    ],
+    "cursor": [
+      1,
+      9
+    ],
+    "keys": "dB",
+    "groups": [
+      "dB"
+    ],
+    "encodedKeys": "dB",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "foo.bar "
+        },
+        "-": {
+          "type": "v",
+          "text": "foo.bar "
+        }
+      },
+      "buffer": [
+        "baz"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "delete/dge-inclusive-backward",
+    "buffer": [
+      "alpha beta gamma"
+    ],
+    "cursor": [
+      1,
+      12
+    ],
+    "keys": "dge",
+    "groups": [
+      "dge"
+    ],
+    "note": "ge is inclusive backwards — the word end it lands on goes too",
+    "encodedKeys": "dge",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a g"
+        },
+        "-": {
+          "type": "v",
+          "text": "a g"
+        }
+      },
+      "buffer": [
+        "alpha betamma"
+      ],
+      "cursor": [
+        1,
+        10
+      ],
+      "error": "",
+      "curswant": 10
+    }
+  },
+  {
+    "id": "delete/dge-punct-boundary",
+    "buffer": [
+      "ab-cd"
+    ],
+    "cursor": [
+      1,
+      4
+    ],
+    "keys": "dge",
+    "groups": [
+      "dge"
+    ],
+    "note": "ge from 'c' lands on the '-', so dge removes only '-c'",
+    "encodedKeys": "dge",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "-c"
+        },
+        "-": {
+          "type": "v",
+          "text": "-c"
+        }
+      },
+      "buffer": [
+        "abd"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "delete/dge-across-line-boundary",
+    "buffer": [
+      "foo",
+      "bar"
+    ],
+    "cursor": [
+      2,
+      2
+    ],
+    "keys": "dge",
+    "groups": [
+      "dge"
+    ],
+    "note": "ge stops at the end of the previous line's word; the delete spans the newline, so it joins and the text lands in \"1.",
+    "encodedKeys": "dge",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "v",
+          "text": "o\nba"
+        },
+        "\"": {
+          "type": "v",
+          "text": "o\nba"
+        }
+      },
+      "buffer": [
+        "for"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "delete/d0-basic",
+    "buffer": [
+      "   hello world"
+    ],
+    "cursor": [
+      1,
+      10
+    ],
+    "keys": "d0",
+    "groups": [
+      "d0"
+    ],
+    "encodedKeys": "d0",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "   hello "
+        },
+        "-": {
+          "type": "v",
+          "text": "   hello "
+        }
+      },
+      "buffer": [
+        "world"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "delete/d-caret-basic",
+    "buffer": [
+      "   hello world"
+    ],
+    "cursor": [
+      1,
+      10
+    ],
+    "keys": "d^",
+    "groups": [
+      "d^"
+    ],
+    "note": "d^ leaves the indent, d0 does not",
+    "encodedKeys": "d^",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "hello "
+        },
+        "-": {
+          "type": "v",
+          "text": "hello "
+        }
+      },
+      "buffer": [
+        "   world"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "delete/d-caret-at-first-nonblank-noop",
+    "buffer": [
+      "   hello"
+    ],
+    "cursor": [
+      1,
+      4
+    ],
+    "keys": "d^",
+    "groups": [
+      "d^"
+    ],
+    "note": "a motion that cannot move must abort the whole operator",
+    "encodedKeys": "d^",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "   hello"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "delete/d-dollar-on-empty-line",
+    "buffer": [
+      "",
+      "x"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "d$",
+    "groups": [
+      "d$"
+    ],
+    "encodedKeys": "d$",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "",
+        "x"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "delete/d2-dollar-spans-lines",
+    "buffer": [
+      "one",
+      "three",
+      "four"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "d2$",
+    "groups": [
+      "d2$"
+    ],
+    "note": "2$ ends on the next line, making this a charwise multi-line delete",
+    "encodedKeys": "d2$",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "v",
+          "text": "ne\nthree"
+        },
+        "\"": {
+          "type": "v",
+          "text": "ne\nthree"
+        }
+      },
+      "buffer": [
+        "o",
+        "four"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "delete/d9l-overshoot",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "d9l",
+    "groups": [
+      "d9l"
+    ],
+    "note": "does dl clamp to end of line like x, or fail like most motions?",
+    "encodedKeys": "d9l",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "bc"
+        },
+        "-": {
+          "type": "v",
+          "text": "bc"
+        }
+      },
+      "buffer": [
+        "a"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "delete/dh-at-col1-noop",
+    "buffer": [
+      "abc",
+      "def"
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": "dh",
+    "groups": [
+      "dh"
+    ],
+    "note": "h at column one beeps on its own, but with an operator pending it merely stops — leaving an empty region the delete runs over harmlessly.",
+    "encodedKeys": "dh",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "abc",
+        "def"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "delete/d9h-overshoot",
+    "buffer": [
+      "abcdef"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "d9h",
+    "groups": [
+      "d9h"
+    ],
+    "encodedKeys": "d9h",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "ab"
+        },
+        "-": {
+          "type": "v",
+          "text": "ab"
+        }
+      },
+      "buffer": [
+        "cdef"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "delete/dj-is-linewise",
+    "buffer": [
+      "one",
+      "two",
+      "three"
+    ],
+    "cursor": [
+      2,
+      2
+    ],
+    "keys": "dj",
+    "groups": [
+      "dj"
+    ],
+    "note": "dj deletes both whole lines, not the charwise span between cursors",
+    "encodedKeys": "dj",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "two\nthree\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "two\nthree\n"
+        }
+      },
+      "buffer": [
+        "one"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "delete/dj-at-last-line-noop",
+    "buffer": [
+      "one",
+      "two"
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": "dj",
+    "groups": [
+      "dj"
+    ],
+    "note": "no line below, so the operator fails and deletes nothing at all",
+    "encodedKeys": "dj",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "one",
+        "two"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "delete/dk-is-linewise",
+    "buffer": [
+      "one",
+      "two",
+      "three"
+    ],
+    "cursor": [
+      2,
+      2
+    ],
+    "keys": "dk",
+    "groups": [
+      "dk"
+    ],
+    "encodedKeys": "dk",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "one\ntwo\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "one\ntwo\n"
+        }
+      },
+      "buffer": [
+        "three"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "delete/d2j-cursor-to-first-nonblank",
+    "buffer": [
+      "a",
+      "b",
+      "c",
+      "    d",
+      "e"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "d2j",
+    "groups": [
+      "d2j"
+    ],
+    "encodedKeys": "d2j",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "a\nb\nc\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "a\nb\nc\n"
+        }
+      },
+      "buffer": [
+        "    d",
+        "e"
+      ],
+      "cursor": [
+        1,
+        5
+      ],
+      "error": "",
+      "curswant": 5
+    }
+  },
+  {
+    "id": "delete/dG-from-middle",
+    "buffer": [
+      "one",
+      "two",
+      "three",
+      "four"
+    ],
+    "cursor": [
+      2,
+      2
+    ],
+    "keys": "dG",
+    "groups": [
+      "dG"
+    ],
+    "encodedKeys": "dG",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "two\nthree\nfour\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "two\nthree\nfour\n"
+        }
+      },
+      "buffer": [
+        "one"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "delete/dG-whole-buffer",
+    "buffer": [
+      "one",
+      "two"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "dG",
+    "groups": [
+      "dG"
+    ],
+    "note": "deleting every line still leaves one empty line behind",
+    "encodedKeys": "dG",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "one\ntwo\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "one\ntwo\n"
+        }
+      },
+      "buffer": [
+        ""
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "delete/dgg-from-middle",
+    "buffer": [
+      "one",
+      "two",
+      "three",
+      "four"
+    ],
+    "cursor": [
+      3,
+      2
+    ],
+    "keys": "dgg",
+    "groups": [
+      "dgg"
+    ],
+    "encodedKeys": "dgg",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "one\ntwo\nthree\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "one\ntwo\nthree\n"
+        }
+      },
+      "buffer": [
+        "four"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "delete/d2G-to-line-two",
+    "buffer": [
+      "one",
+      "two",
+      "three",
+      "four"
+    ],
+    "cursor": [
+      4,
+      1
+    ],
+    "keys": "d2G",
+    "groups": [
+      "d2G"
+    ],
+    "note": "{n}G is linewise and works backwards from line 4 to line 2",
+    "encodedKeys": "d2G",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "two\nthree\nfour\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "two\nthree\nfour\n"
+        }
+      },
+      "buffer": [
+        "one"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "delete/df-inclusive",
+    "buffer": [
+      "a,b,c,d"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "df,",
+    "groups": [
+      "df,"
+    ],
+    "encodedKeys": "df,",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a,"
+        },
+        "-": {
+          "type": "v",
+          "text": "a,"
+        }
+      },
+      "buffer": [
+        "b,c,d"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "delete/d2f-count",
+    "buffer": [
+      "a,b,c,d"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "d2f,",
+    "groups": [
+      "d2f,"
+    ],
+    "encodedKeys": "d2f,",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a,b,"
+        },
+        "-": {
+          "type": "v",
+          "text": "a,b,"
+        }
+      },
+      "buffer": [
+        "c,d"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "delete/df-not-found-noop",
+    "buffer": [
+      "abc",
+      "xzy"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "dfz",
+    "groups": [
+      "dfz"
+    ],
+    "note": "f never crosses lines, so this fails and the operator aborts",
+    "encodedKeys": "dfz",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "abc",
+        "xzy"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "delete/dt-basic",
+    "buffer": [
+      "a,b,c,d"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "dt,",
+    "groups": [
+      "dt,"
+    ],
+    "encodedKeys": "dt,",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a"
+        },
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        ",b,c,d"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "delete/dt-target-adjacent-noop",
+    "buffer": [
+      "ab,c"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "dt,",
+    "groups": [
+      "dt,"
+    ],
+    "note": "t cannot move when the target is the very next character",
+    "encodedKeys": "dt,",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "b"
+        },
+        "-": {
+          "type": "v",
+          "text": "b"
+        }
+      },
+      "buffer": [
+        "a,c"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "delete/dF-backward-exclusive",
+    "buffer": [
+      "a,b,c,d"
+    ],
+    "cursor": [
+      1,
+      7
+    ],
+    "keys": "dF,",
+    "groups": [
+      "dF,"
+    ],
+    "note": "backward f/F is exclusive — the character under the cursor survives",
+    "encodedKeys": "dF,",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": ","
+        },
+        "-": {
+          "type": "v",
+          "text": ","
+        }
+      },
+      "buffer": [
+        "a,b,cd"
+      ],
+      "cursor": [
+        1,
+        6
+      ],
+      "error": "",
+      "curswant": 6
+    }
+  },
+  {
+    "id": "delete/dT-backward",
+    "buffer": [
+      "a,b,c,d"
+    ],
+    "cursor": [
+      1,
+      7
+    ],
+    "keys": "dT,",
+    "groups": [
+      "dT,"
+    ],
+    "encodedKeys": "dT,",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "a,b,c,d"
+      ],
+      "cursor": [
+        1,
+        7
+      ],
+      "error": "",
+      "curswant": 7
+    }
+  },
+  {
+    "id": "delete/d-semicolon-repeat",
+    "buffer": [
+      "a,b,c,d"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "f,d;",
+    "groups": [
+      "f,d;"
+    ],
+    "encodedKeys": "f,d;",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": ",b,"
+        },
+        "-": {
+          "type": "v",
+          "text": ",b,"
+        }
+      },
+      "buffer": [
+        "ac,d"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "delete/d-comma-reverse",
+    "buffer": [
+      "a,b,c,d"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "f,f,d,",
+    "groups": [
+      "f,f,d,"
+    ],
+    "encodedKeys": "f,f,d,",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": ",b"
+        },
+        "-": {
+          "type": "v",
+          "text": ",b"
+        }
+      },
+      "buffer": [
+        "a,c,d"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "delete/d-percent-forward",
+    "buffer": [
+      "fn(a, b) end"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "d%",
+    "groups": [
+      "d%"
+    ],
+    "note": "% is inclusive, so both brackets go",
+    "encodedKeys": "d%",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "v",
+          "text": "(a, b)"
+        },
+        "\"": {
+          "type": "v",
+          "text": "(a, b)"
+        },
+        "-": {
+          "type": "v",
+          "text": "(a, b)"
+        }
+      },
+      "buffer": [
+        "fn end"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "delete/d-percent-nested-backward",
+    "buffer": [
+      "a(b(c)d)e"
+    ],
+    "cursor": [
+      1,
+      6
+    ],
+    "keys": "d%",
+    "groups": [
+      "d%"
+    ],
+    "encodedKeys": "d%",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "v",
+          "text": "(c)"
+        },
+        "\"": {
+          "type": "v",
+          "text": "(c)"
+        },
+        "-": {
+          "type": "v",
+          "text": "(c)"
+        }
+      },
+      "buffer": [
+        "a(bd)e"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "delete/d-percent-unmatched-noop",
+    "buffer": [
+      "a(b"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "d%",
+    "groups": [
+      "d%"
+    ],
+    "encodedKeys": "d%",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "a(b"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "delete/d-percent-across-lines",
+    "buffer": [
+      "fn(",
+      "  arg",
+      ") end"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "d%",
+    "groups": [
+      "d%"
+    ],
+    "note": "charwise, inclusive, spanning three lines",
+    "encodedKeys": "d%",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "v",
+          "text": "(\n  arg\n)"
+        },
+        "\"": {
+          "type": "v",
+          "text": "(\n  arg\n)"
+        }
+      },
+      "buffer": [
+        "fn end"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "delete/d-plus-linewise",
+    "buffer": [
+      "one",
+      "two",
+      "three"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "d+",
+    "groups": [
+      "d+"
+    ],
+    "encodedKeys": "d+",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "one\ntwo\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "one\ntwo\n"
+        }
+      },
+      "buffer": [
+        "three"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "delete/d-plus-at-last-line-noop",
+    "buffer": [
+      "one",
+      "two"
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": "d+",
+    "groups": [
+      "d+"
+    ],
+    "encodedKeys": "d+",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "one",
+        "two"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "delete/d-minus-linewise",
+    "buffer": [
+      "one",
+      "two",
+      "three"
+    ],
+    "cursor": [
+      3,
+      3
+    ],
+    "keys": "d-",
+    "groups": [
+      "d-"
+    ],
+    "encodedKeys": "d-",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "two\nthree\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "two\nthree\n"
+        }
+      },
+      "buffer": [
+        "one"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "delete/d2-underscore",
+    "buffer": [
+      "one",
+      "two",
+      "three"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "d2_",
+    "groups": [
+      "d2_"
+    ],
+    "note": "d_ is dd, so d2_ is 2dd",
+    "encodedKeys": "d2_",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "one\ntwo\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "one\ntwo\n"
+        }
+      },
+      "buffer": [
+        "three"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "delete/dd-last-line",
+    "buffer": [
+      "one",
+      "two"
+    ],
+    "cursor": [
+      2,
+      3
+    ],
+    "keys": "dd",
+    "groups": [
+      "dd"
+    ],
+    "note": "the cursor must move UP onto the new last line",
+    "encodedKeys": "dd",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "two\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "two\n"
+        }
+      },
+      "buffer": [
+        "one"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "delete/dd-only-line",
+    "buffer": [
+      "only"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "dd",
+    "groups": [
+      "dd"
+    ],
+    "note": "leaves one empty line — a buffer can never have zero lines",
+    "encodedKeys": "dd",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "only\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "only\n"
+        }
+      },
+      "buffer": [
+        ""
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "delete/dd-empty-line",
+    "buffer": [
+      "a",
+      "",
+      "b"
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": "dd",
+    "groups": [
+      "dd"
+    ],
+    "encodedKeys": "dd",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "\n"
+        }
+      },
+      "buffer": [
+        "a",
+        "b"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "delete/dd-cursor-to-first-nonblank",
+    "buffer": [
+      "one",
+      "    two"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "dd",
+    "groups": [
+      "dd"
+    ],
+    "encodedKeys": "dd",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "one\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "one\n"
+        }
+      },
+      "buffer": [
+        "    two"
+      ],
+      "cursor": [
+        1,
+        5
+      ],
+      "error": "",
+      "curswant": 5
+    }
+  },
+  {
+    "id": "delete/d3d-count-after-operator",
+    "buffer": [
+      "a",
+      "b",
+      "c",
+      "d"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "d3d",
+    "groups": [
+      "d3d"
+    ],
+    "encodedKeys": "d3d",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "a\nb\nc\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "a\nb\nc\n"
+        }
+      },
+      "buffer": [
+        "d"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "delete/dd-count-overshoot",
+    "buffer": [
+      "a",
+      "b"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "9dd",
+    "groups": [
+      "9dd"
+    ],
+    "note": "too few lines left — does 9dd clamp, or fail outright?",
+    "encodedKeys": "9dd",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "a\nb\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "a\nb\n"
+        }
+      },
+      "buffer": [
+        ""
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "delete/D-on-empty-line",
+    "buffer": [
+      "",
+      "x"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "D",
+    "groups": [
+      "D"
+    ],
+    "encodedKeys": "D",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "",
+        "x"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "delete/D-count-spans-lines",
+    "buffer": [
+      "one two",
+      "three",
+      "four"
+    ],
+    "cursor": [
+      1,
+      5
+    ],
+    "keys": "2D",
+    "groups": [
+      "2D"
+    ],
+    "note": "2D takes the rest of this line plus all of the next",
+    "encodedKeys": "2D",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "v",
+          "text": "two\nthree"
+        },
+        "\"": {
+          "type": "v",
+          "text": "two\nthree"
+        }
+      },
+      "buffer": [
+        "one ",
+        "four"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "delete/register-linewise-into-1",
+    "buffer": [
+      "one",
+      "two",
+      "three"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "dd",
+    "groups": [
+      "dd"
+    ],
+    "note": "any linewise delete fills \"1 as well as \"\", and leaves \"- alone",
+    "encodedKeys": "dd",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "one\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "one\n"
+        }
+      },
+      "buffer": [
+        "two",
+        "three"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "delete/register-numbered-shift",
+    "buffer": [
+      "aaa",
+      "bbb",
+      "ccc",
+      "ddd"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "dddddd",
+    "groups": [
+      "dd",
+      "dd",
+      "dd"
+    ],
+    "note": "Each linewise delete pushes \"1 down to \"2 and so on. Grouped so every dd is its own change — fed as one string, feedkeys would fuse them into a single undo block and the shift would be recorded wrong.",
+    "encodedKeys": "dddddd",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "ccc\n"
+        },
+        "2": {
+          "type": "V",
+          "text": "bbb\n"
+        },
+        "3": {
+          "type": "V",
+          "text": "aaa\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "ccc\n"
+        }
+      },
+      "buffer": [
+        "ddd"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "delete/register-shift-mixed-small-and-line",
+    "buffer": [
+      "aaa bbb",
+      "ccc",
+      "ddd"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "dddwdd",
+    "groups": [
+      "dd",
+      "dw",
+      "dd"
+    ],
+    "note": "the small delete in the middle updates \"- and \"\" but must not shift \"1",
+    "encodedKeys": "dddwdd",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "\n"
+        },
+        "2": {
+          "type": "V",
+          "text": "aaa bbb\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "\n"
+        },
+        "-": {
+          "type": "v",
+          "text": "ccc"
+        }
+      },
+      "buffer": [
+        "ddd"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "delete/register-blackhole-preserves-unnamed",
+    "buffer": [
+      "keep me",
+      "zap me"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "dw\"_dd",
+    "groups": [
+      "dw",
+      "\"_dd"
+    ],
+    "note": "\"_ must leave \"\", \"- and \"1 completely untouched",
+    "encodedKeys": "dw\"_dd",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "keep "
+        },
+        "-": {
+          "type": "v",
+          "text": "keep "
+        }
+      },
+      "buffer": [
+        "zap me"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "delete/dl-empty-line-mints-undo",
+    "buffer": [
+      "ab",
+      ""
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "xjdlu",
+    "groups": [
+      "x",
+      "j",
+      "dl",
+      "u"
+    ],
+    "note": "degenerate region — the u burns on it, so the x survives",
+    "encodedKeys": "xjdlu",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a"
+        },
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "b",
+        ""
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "delete/dh-at-col1-mints-undo",
+    "buffer": [
+      "ab",
+      "cd"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "xjdhu",
+    "groups": [
+      "x",
+      "j",
+      "dh",
+      "u"
+    ],
+    "encodedKeys": "xjdhu",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a"
+        },
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "b",
+        "cd"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "delete/d0-at-col1-mints-undo",
+    "buffer": [
+      "ab",
+      "cd"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "xjd0u",
+    "groups": [
+      "x",
+      "j",
+      "d0",
+      "u"
+    ],
+    "encodedKeys": "xjd0u",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a"
+        },
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "b",
+        "cd"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "delete/D-empty-line-mints-no-undo",
+    "buffer": [
+      "ab",
+      ""
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "xjDu",
+    "groups": [
+      "x",
+      "j",
+      "D",
+      "u"
+    ],
+    "note": "the mirror case: $ is inclusive, so this is NOT an empty region, the delete simply removes nothing, and the u reaches back to the x.",
+    "encodedKeys": "xjDu",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a"
+        },
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "ab",
+        ""
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "delete/d-dollar-empty-line-mints-no-undo",
+    "buffer": [
+      "ab",
+      ""
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "xjd$u",
+    "groups": [
+      "x",
+      "j",
+      "d$",
+      "u"
+    ],
+    "encodedKeys": "xjd$u",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a"
+        },
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "ab",
+        ""
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "delete/two-deletes-one-undo",
+    "buffer": [
+      "alpha beta gamma"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "dwdwu",
+    "groups": [
+      "dw",
+      "dw",
+      "u"
+    ],
+    "note": "grouped, so a single u restores only the second delete",
+    "encodedKeys": "dwdwu",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "beta "
+        },
+        "-": {
+          "type": "v",
+          "text": "beta "
+        }
+      },
+      "buffer": [
+        "beta gamma"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "delete/dd-undo-redo",
+    "buffer": [
+      "one",
+      "two",
+      "three"
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": "ddu<C-r>",
+    "groups": [
+      "ddu<C-r>"
+    ],
+    "encodedKeys": "ddu\u0012",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "two\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "two\n"
+        }
+      },
+      "buffer": [
+        "one",
+        "three"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  }
+]

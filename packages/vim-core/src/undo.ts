@@ -18,8 +18,14 @@ export type UndoNode = {
   readonly id: number;
   readonly parent: number | null;
   readonly lines: Lines;
-  /** Where the cursor goes when you land on this state. */
+  /** The cursor after the change that created this state. */
   readonly cursor: Pos;
+  /**
+   * Where the change that created this state BEGAN — Vim's `uh_cursor`. Both
+   * `u` and `<C-r>` put the cursor here: undoing a change returns you to where
+   * it started, and redoing it does too.
+   */
+  readonly changeStart: Pos;
   /** Children in creation order; the last is the one redo follows. */
   readonly children: readonly number[];
 };
@@ -31,18 +37,18 @@ export type UndoState = {
 };
 
 export function initUndo(lines: Lines, cursor: Pos): UndoState {
-  const root: UndoNode = { id: 0, parent: null, lines, cursor, children: [] };
+  const root: UndoNode = { id: 0, parent: null, lines, cursor, changeStart: cursor, children: [] };
   return { nodes: new Map([[0, root]]), current: 0, nextId: 1 };
 }
 
 /** Record a new state as a child of the current one. */
-export function pushUndo(state: UndoState, lines: Lines, cursor: Pos): UndoState {
+export function pushUndo(state: UndoState, lines: Lines, cursor: Pos, changeStart: Pos): UndoState {
   const nodes = new Map(state.nodes);
   const parent = nodes.get(state.current);
   if (parent === undefined) return state;
 
   const id = state.nextId;
-  nodes.set(id, { id, parent: state.current, lines, cursor, children: [] });
+  nodes.set(id, { id, parent: state.current, lines, cursor, changeStart, children: [] });
   nodes.set(state.current, { ...parent, children: [...parent.children, id] });
   return { nodes, current: id, nextId: id + 1 };
 }
@@ -58,9 +64,8 @@ export function undo(state: UndoState): UndoStep | null {
   if (node === undefined || node.parent === null) return null;
   const parent = state.nodes.get(node.parent);
   if (parent === undefined) return null;
-  // Vim puts the cursor on the first line changed by the undone edit; using
-  // the snapshot's own cursor is close enough until goldens say otherwise.
-  return { undo: { ...state, current: parent.id }, lines: parent.lines, cursor: node.cursor };
+  // The cursor returns to where the undone change began (Vim's uh_cursor).
+  return { undo: { ...state, current: parent.id }, lines: parent.lines, cursor: node.changeStart };
 }
 
 export function redo(state: UndoState): UndoStep | null {
@@ -69,7 +74,8 @@ export function redo(state: UndoState): UndoStep | null {
   const childId = node.children[node.children.length - 1]!;
   const child = state.nodes.get(childId);
   if (child === undefined) return null;
-  return { undo: { ...state, current: child.id }, lines: child.lines, cursor: child.cursor };
+  // Redo also lands where the re-applied change began, not where it ended.
+  return { undo: { ...state, current: child.id }, lines: child.lines, cursor: child.changeStart };
 }
 
 export function canUndo(state: UndoState): boolean {

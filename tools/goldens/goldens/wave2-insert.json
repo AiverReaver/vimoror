@@ -1,0 +1,2088 @@
+[
+  {
+    "id": "insert/i-at-line-start",
+    "buffer": [
+      "alpha"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "iX<Esc>",
+    "groups": [
+      "iX<Esc>"
+    ],
+    "encodedKeys": "iX\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "Xalpha"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "insert/i-mid-line-esc-lands-on-last-inserted-char",
+    "buffer": [
+      "alpha beta"
+    ],
+    "cursor": [
+      1,
+      7
+    ],
+    "keys": "ixyz<Esc>",
+    "groups": [
+      "ixyz<Esc>"
+    ],
+    "note": "<Esc> moves the cursor one column left, so it ends on the final inserted character rather than after it. Classic off-by-one.",
+    "encodedKeys": "ixyz\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "alpha xyzbeta"
+      ],
+      "cursor": [
+        1,
+        9
+      ],
+      "error": "",
+      "curswant": 9
+    }
+  },
+  {
+    "id": "insert/i-before-last-char",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "iZ<Esc>",
+    "groups": [
+      "iZ<Esc>"
+    ],
+    "note": "i inserts BEFORE the character under the cursor, never after it",
+    "encodedKeys": "iZ\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "abZc"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "insert/i-on-empty-line",
+    "buffer": [
+      "",
+      "tail"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "ifoo<Esc>",
+    "groups": [
+      "ifoo<Esc>"
+    ],
+    "encodedKeys": "ifoo\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "foo",
+        "tail"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "insert/i-esc-at-col1-cannot-move-left",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "i<Esc>",
+    "groups": [
+      "i<Esc>"
+    ],
+    "note": "nothing typed, and the cursor is already at column 1 — it must stay",
+    "encodedKeys": "i\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "abc"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "insert/a-mid-line",
+    "buffer": [
+      "alpha"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "aX<Esc>",
+    "groups": [
+      "aX<Esc>"
+    ],
+    "encodedKeys": "aX\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "alXpha"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "insert/a-at-eol-appends-after-last-char",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "aZ<Esc>",
+    "groups": [
+      "aZ<Esc>"
+    ],
+    "note": "the one place the cursor legally sits past the last character",
+    "encodedKeys": "aZ\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "abcZ"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "insert/a-on-empty-line",
+    "buffer": [
+      "",
+      "x"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "aQ<Esc>",
+    "groups": [
+      "aQ<Esc>"
+    ],
+    "encodedKeys": "aQ\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "Q",
+        "x"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "insert/a-on-single-char-buffer",
+    "buffer": [
+      "a"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "abc<Esc>",
+    "groups": [
+      "abc<Esc>"
+    ],
+    "encodedKeys": "abc\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "abc"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "insert/I-indented-line",
+    "buffer": [
+      "    indented"
+    ],
+    "cursor": [
+      1,
+      9
+    ],
+    "keys": "IX<Esc>",
+    "groups": [
+      "IX<Esc>"
+    ],
+    "note": "I goes to the first non-blank, not to column 0",
+    "encodedKeys": "IX\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "    Xindented"
+      ],
+      "cursor": [
+        1,
+        5
+      ],
+      "error": "",
+      "curswant": 5
+    }
+  },
+  {
+    "id": "insert/I-on-all-blank-line",
+    "buffer": [
+      "     "
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "IX<Esc>",
+    "groups": [
+      "IX<Esc>"
+    ],
+    "note": "no non-blank exists, so I lands wherever ^ would on an all-blank line",
+    "encodedKeys": "IX\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "     X"
+      ],
+      "cursor": [
+        1,
+        6
+      ],
+      "error": "",
+      "curswant": 6
+    }
+  },
+  {
+    "id": "insert/I-tab-indent",
+    "buffer": [
+      "\tfoo"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "IX<Esc>",
+    "groups": [
+      "IX<Esc>"
+    ],
+    "note": "a real tab as indent — I must land after it, not inside it",
+    "encodedKeys": "IX\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "\tXfoo"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 9
+    }
+  },
+  {
+    "id": "insert/A-basic",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "AZ<Esc>",
+    "groups": [
+      "AZ<Esc>"
+    ],
+    "encodedKeys": "AZ\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "abcZ"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "insert/A-on-empty-line",
+    "buffer": [
+      "",
+      "x"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "Afoo<Esc>",
+    "groups": [
+      "Afoo<Esc>"
+    ],
+    "encodedKeys": "Afoo\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "foo",
+        "x"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "insert/A-trailing-whitespace",
+    "buffer": [
+      "abc   "
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "AZ<Esc>",
+    "groups": [
+      "AZ<Esc>"
+    ],
+    "note": "A appends after the trailing blanks, it does not trim them",
+    "encodedKeys": "AZ\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "abc   Z"
+      ],
+      "cursor": [
+        1,
+        7
+      ],
+      "error": "",
+      "curswant": 7
+    }
+  },
+  {
+    "id": "insert/A-esc-cursor-with-no-text",
+    "buffer": [
+      "abcdef"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "A<Esc>",
+    "groups": [
+      "A<Esc>"
+    ],
+    "note": "A moves past the last char, then <Esc> pulls back one — net no-op",
+    "encodedKeys": "A\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "abcdef"
+      ],
+      "cursor": [
+        1,
+        6
+      ],
+      "error": "",
+      "curswant": 6
+    }
+  },
+  {
+    "id": "insert/o-basic",
+    "buffer": [
+      "one",
+      "two"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "onew<Esc>",
+    "groups": [
+      "onew<Esc>"
+    ],
+    "encodedKeys": "onew\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "one",
+        "new",
+        "two"
+      ],
+      "cursor": [
+        2,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "insert/o-on-last-line",
+    "buffer": [
+      "one",
+      "two"
+    ],
+    "cursor": [
+      2,
+      2
+    ],
+    "keys": "onew<Esc>",
+    "groups": [
+      "onew<Esc>"
+    ],
+    "encodedKeys": "onew\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "one",
+        "two",
+        "new"
+      ],
+      "cursor": [
+        3,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "insert/o-on-empty-buffer",
+    "buffer": [
+      ""
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "oX<Esc>",
+    "groups": [
+      "oX<Esc>"
+    ],
+    "encodedKeys": "oX\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "",
+        "X"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "insert/o-no-autoindent",
+    "buffer": [
+      "    indented",
+      "tail"
+    ],
+    "cursor": [
+      1,
+      6
+    ],
+    "keys": "ox<Esc>",
+    "groups": [
+      "ox<Esc>"
+    ],
+    "note": "autoindent is off in the baseline, so the opened line starts at column 1",
+    "encodedKeys": "ox\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "    indented",
+        "x",
+        "tail"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "insert/o-empty-text",
+    "buffer": [
+      "one",
+      "two"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "o<Esc>",
+    "groups": [
+      "o<Esc>"
+    ],
+    "note": "o<Esc> leaves a genuinely empty line behind",
+    "encodedKeys": "o\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "one",
+        "",
+        "two"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "insert/O-on-last-line",
+    "buffer": [
+      "one",
+      "two"
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": "Onew<Esc>",
+    "groups": [
+      "Onew<Esc>"
+    ],
+    "encodedKeys": "Onew\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "one",
+        "new",
+        "two"
+      ],
+      "cursor": [
+        2,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "insert/i-count-3",
+    "buffer": [
+      "ab"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "3ix<Esc>",
+    "groups": [
+      "3ix<Esc>"
+    ],
+    "note": "3ix<Esc> inserts xxx, not x",
+    "encodedKeys": "3ix\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "axxxb"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "insert/a-count-3-multichar",
+    "buffer": [
+      "ab"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "3axy<Esc>",
+    "groups": [
+      "3axy<Esc>"
+    ],
+    "note": "the whole typed run repeats, so xy becomes xyxyxy",
+    "encodedKeys": "3axy\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "axyxyxyb"
+      ],
+      "cursor": [
+        1,
+        7
+      ],
+      "error": "",
+      "curswant": 7
+    }
+  },
+  {
+    "id": "insert/o-count-2",
+    "buffer": [
+      "one",
+      "two"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "2oX<Esc>",
+    "groups": [
+      "2oX<Esc>"
+    ],
+    "note": "2o opens TWO lines, each with the typed text",
+    "encodedKeys": "2oX\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "one",
+        "X",
+        "X",
+        "two"
+      ],
+      "cursor": [
+        3,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "insert/O-count-3",
+    "buffer": [
+      "one"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "3OY<Esc>",
+    "groups": [
+      "3OY<Esc>"
+    ],
+    "encodedKeys": "3OY\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "Y",
+        "Y",
+        "Y",
+        "one"
+      ],
+      "cursor": [
+        3,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "insert/i-count-with-newline",
+    "buffer": [
+      "ab"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "3ix<CR><Esc>",
+    "groups": [
+      "3ix<CR><Esc>"
+    ],
+    "note": "A counted insert whose text contains a line break — the repetition rule for multi-line inserted text is exactly the kind of wart goldens settle.",
+    "encodedKeys": "3ix\r\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "ax",
+        "x",
+        "x",
+        "b"
+      ],
+      "cursor": [
+        4,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "insert/i-count-with-bs",
+    "buffer": [
+      "ab"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "3iqz<BS><Esc>",
+    "groups": [
+      "3iqz<BS><Esc>"
+    ],
+    "note": "<BS> during a counted insert — the repeat replays the net inserted text, not the raw keystrokes.",
+    "encodedKeys": "3iqz\b\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "aqqqb"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "insert/R-overwrite",
+    "buffer": [
+      "abcdef"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "RXY<Esc>",
+    "groups": [
+      "RXY<Esc>"
+    ],
+    "encodedKeys": "RXY\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "aXYdef"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "insert/R-past-eol-extends",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "RXYZW<Esc>",
+    "groups": [
+      "RXYZW<Esc>"
+    ],
+    "note": "R overwrites while characters remain, then starts appending",
+    "encodedKeys": "RXYZW\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "aXYZW"
+      ],
+      "cursor": [
+        1,
+        5
+      ],
+      "error": "",
+      "curswant": 5
+    }
+  },
+  {
+    "id": "insert/R-on-empty-line",
+    "buffer": [
+      "",
+      "x"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "Rfoo<Esc>",
+    "groups": [
+      "Rfoo<Esc>"
+    ],
+    "note": "nothing to overwrite, so R behaves as a plain insert here",
+    "encodedKeys": "Rfoo\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "foo",
+        "x"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "insert/R-bs-restores-original",
+    "buffer": [
+      "abcdef"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "RXY<BS><BS><Esc>",
+    "groups": [
+      "RXY<BS><BS><Esc>"
+    ],
+    "note": "In replace mode <BS> puts the ORIGINAL characters back rather than deleting — the buffer should end up unchanged.",
+    "encodedKeys": "RXY\b\b\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "abcdef"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "insert/R-count",
+    "buffer": [
+      "abcdefgh"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "3Rxy<Esc>",
+    "groups": [
+      "3Rxy<Esc>"
+    ],
+    "encodedKeys": "3Rxy\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "xyxyxygh"
+      ],
+      "cursor": [
+        1,
+        6
+      ],
+      "error": "",
+      "curswant": 6
+    }
+  },
+  {
+    "id": "insert/R-cr-bs-rejoins",
+    "buffer": [
+      "abcdef"
+    ],
+    "cursor": [
+      1,
+      4
+    ],
+    "keys": "RX<CR><BS><Esc>",
+    "groups": [
+      "RX<CR><BS><Esc>"
+    ],
+    "note": "Replace-mode <BS> over an inserted line break must REJOIN the lines — the break was inserted, so backspace takes it back out.",
+    "encodedKeys": "RX\r\b\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "abcXef"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "insert/R-cr-bs-bs-restores-all",
+    "buffer": [
+      "abcdef"
+    ],
+    "cursor": [
+      1,
+      4
+    ],
+    "keys": "RX<CR><BS><BS><Esc>",
+    "groups": [
+      "RX<CR><BS><BS><Esc>"
+    ],
+    "note": "the second <BS> then restores the overwritten character as usual",
+    "encodedKeys": "RX\r\b\b\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "abcdef"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "insert/R-cr-bs-immediately",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "R<CR><BS><Esc>",
+    "groups": [
+      "R<CR><BS><Esc>"
+    ],
+    "encodedKeys": "R\r\b\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "abc"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "insert/R-tab-consumes-one-char",
+    "buffer": [
+      "abcdefghij"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "R<Tab>X<Esc>",
+    "groups": [
+      "R<Tab>X<Esc>"
+    ],
+    "note": "A <Tab> expanding to eight spaces still overwrites exactly ONE character — the rest of the expansion is inserted, as ins_tab does.",
+    "encodedKeys": "R\tX\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "        Xcdefghij"
+      ],
+      "cursor": [
+        1,
+        9
+      ],
+      "error": "",
+      "curswant": 9
+    }
+  },
+  {
+    "id": "insert/R-tab-then-bs",
+    "buffer": [
+      "abcdefghij"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "R<Tab><BS><Esc>",
+    "groups": [
+      "R<Tab><BS><Esc>"
+    ],
+    "note": "<BS> after the tab removes one appended space; the eaten char stays gone",
+    "encodedKeys": "R\t\b\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "       bcdefghij"
+      ],
+      "cursor": [
+        1,
+        7
+      ],
+      "error": "",
+      "curswant": 7
+    }
+  },
+  {
+    "id": "insert/R-count-with-cr",
+    "buffer": [
+      "wxyzqrst"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "2Ra<CR>b<Esc>",
+    "groups": [
+      "2Ra<CR>b<Esc>"
+    ],
+    "note": "a counted R containing <CR> replays the raw keys, breaking lines again",
+    "encodedKeys": "2Ra\rb\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "wa",
+        "ba",
+        "brst"
+      ],
+      "cursor": [
+        3,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "insert/R-esc-immediately",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "R<Esc>",
+    "groups": [
+      "R<Esc>"
+    ],
+    "encodedKeys": "R\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "abc"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "insert/R-with-cr",
+    "buffer": [
+      "abcdef",
+      "ghi"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "RX<CR>Y<Esc>",
+    "groups": [
+      "RX<CR>Y<Esc>"
+    ],
+    "note": "<CR> in replace mode opens a new line instead of overwriting one",
+    "encodedKeys": "RX\rY\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "aX",
+        "Ydef",
+        "ghi"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "insert/R-on-last-line-past-eol",
+    "buffer": [
+      "one",
+      "xy"
+    ],
+    "cursor": [
+      2,
+      2
+    ],
+    "keys": "Rpqr<Esc>",
+    "groups": [
+      "Rpqr<Esc>"
+    ],
+    "encodedKeys": "Rpqr\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "one",
+        "xpqr"
+      ],
+      "cursor": [
+        2,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "insert/s-basic",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "sXY<Esc>",
+    "groups": [
+      "sXY<Esc>"
+    ],
+    "encodedKeys": "sXY\u001b",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "b"
+        },
+        "-": {
+          "type": "v",
+          "text": "b"
+        }
+      },
+      "buffer": [
+        "aXYc"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "insert/s-count",
+    "buffer": [
+      "abcdef"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "3sZ<Esc>",
+    "groups": [
+      "3sZ<Esc>"
+    ],
+    "encodedKeys": "3sZ\u001b",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "bcd"
+        },
+        "-": {
+          "type": "v",
+          "text": "bcd"
+        }
+      },
+      "buffer": [
+        "aZef"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "insert/s-count-overshoot",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "9sZ<Esc>",
+    "groups": [
+      "9sZ<Esc>"
+    ],
+    "note": "Count runs past the end of the line. Whether s clamps like x or fails is the oracle's call; the trailing keys are harmless either way.",
+    "encodedKeys": "9sZ\u001b",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "bc"
+        },
+        "-": {
+          "type": "v",
+          "text": "bc"
+        }
+      },
+      "buffer": [
+        "aZ"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "insert/s-on-empty-line",
+    "buffer": [
+      "",
+      "x"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "sQ<Esc>",
+    "groups": [
+      "sQ<Esc>"
+    ],
+    "note": "nothing under the cursor to substitute",
+    "encodedKeys": "sQ\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "Q",
+        "x"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "insert/S-on-indented-line",
+    "buffer": [
+      "    indented",
+      "tail"
+    ],
+    "cursor": [
+      1,
+      7
+    ],
+    "keys": "Snew<Esc>",
+    "groups": [
+      "Snew<Esc>"
+    ],
+    "note": "with autoindent off, S must not preserve the leading whitespace",
+    "encodedKeys": "Snew\u001b",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "    indented\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "    indented\n"
+        }
+      },
+      "buffer": [
+        "new",
+        "tail"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "insert/S-count-2",
+    "buffer": [
+      "one",
+      "two",
+      "three"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "2Snew<Esc>",
+    "groups": [
+      "2Snew<Esc>"
+    ],
+    "encodedKeys": "2Snew\u001b",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "one\ntwo\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "one\ntwo\n"
+        }
+      },
+      "buffer": [
+        "new",
+        "three"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "insert/S-on-last-line",
+    "buffer": [
+      "one",
+      "two"
+    ],
+    "cursor": [
+      2,
+      2
+    ],
+    "keys": "Sx<Esc>",
+    "groups": [
+      "Sx<Esc>"
+    ],
+    "encodedKeys": "Sx\u001b",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "two\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "two\n"
+        }
+      },
+      "buffer": [
+        "one",
+        "x"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "insert/S-count-overshoot-on-last-line",
+    "buffer": [
+      "one",
+      "two"
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": "2SX<Esc>",
+    "groups": [
+      "2SX<Esc>"
+    ],
+    "note": "Only one line remains for a count of two. Cursor is at column 1 so that if the change fails the leftover X is itself a no-op.",
+    "encodedKeys": "2SX\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "one",
+        "two"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "insert/S-on-empty-line",
+    "buffer": [
+      "",
+      "x"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "SX<Esc>",
+    "groups": [
+      "SX<Esc>"
+    ],
+    "encodedKeys": "SX\u001b",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "\n"
+        }
+      },
+      "buffer": [
+        "X",
+        "x"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "insert/bs-past-insert-start",
+    "buffer": [
+      "abcdef"
+    ],
+    "cursor": [
+      1,
+      4
+    ],
+    "keys": "iZ<BS><BS><Esc>",
+    "groups": [
+      "iZ<BS><BS><Esc>"
+    ],
+    "note": "backspace=start lets <BS> chew back past where insert began",
+    "encodedKeys": "iZ\b\b\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "abdef"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "insert/bs-joins-lines-over-eol",
+    "buffer": [
+      "ab",
+      "cd"
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": "i<BS><Esc>",
+    "groups": [
+      "i<BS><Esc>"
+    ],
+    "note": "backspace=eol — <BS> at column 1 pulls the line up onto the previous one",
+    "encodedKeys": "i\b\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "abcd"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "insert/A-bs-empties-line",
+    "buffer": [
+      "ab"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "A<BS><BS><Esc>",
+    "groups": [
+      "A<BS><BS><Esc>"
+    ],
+    "encodedKeys": "A\b\b\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        ""
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "insert/tab-expandtab-at-col1",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "i<Tab><Esc>",
+    "groups": [
+      "i<Tab><Esc>"
+    ],
+    "encodedKeys": "i\t\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "        abc"
+      ],
+      "cursor": [
+        1,
+        8
+      ],
+      "error": "",
+      "curswant": 8
+    }
+  },
+  {
+    "id": "insert/tab-expandtab-mid-line",
+    "buffer": [
+      "abcde"
+    ],
+    "cursor": [
+      1,
+      4
+    ],
+    "keys": "i<Tab><Esc>",
+    "groups": [
+      "i<Tab><Esc>"
+    ],
+    "note": "the pad width depends on the virtual column, not on a fixed count",
+    "encodedKeys": "i\t\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "abc     de"
+      ],
+      "cursor": [
+        1,
+        8
+      ],
+      "error": "",
+      "curswant": 8
+    }
+  },
+  {
+    "id": "insert/tab-noexpandtab",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "i<Tab><Esc>",
+    "groups": [
+      "i<Tab><Esc>"
+    ],
+    "options": [
+      "noexpandtab"
+    ],
+    "encodedKeys": "i\t\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "\tabc"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 8
+    }
+  },
+  {
+    "id": "insert/undo-after-i",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "iXY<Esc>u",
+    "groups": [
+      "iXY<Esc>",
+      "u"
+    ],
+    "encodedKeys": "iXY\u001bu",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "abc"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "insert/undo-after-o",
+    "buffer": [
+      "one",
+      "two"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "onew<Esc>u",
+    "groups": [
+      "onew<Esc>",
+      "u"
+    ],
+    "note": "undoing an opened line must remove the line, not just its text",
+    "encodedKeys": "onew\u001bu",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "one",
+        "two"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "insert/redo-after-undo-A",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "AZ<Esc>u<C-r>",
+    "groups": [
+      "AZ<Esc>",
+      "u",
+      "<C-r>"
+    ],
+    "encodedKeys": "AZ\u001bu\u0012",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "abcZ"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "insert/count-insert-bs-past-session-start",
+    "buffer": [
+      "xyz"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "2iA<BS><BS><Esc>",
+    "groups": [
+      "2iA<BS><BS><Esc>"
+    ],
+    "note": "The repeat replays RAW keystrokes, so a <BS> that ate pre-session text eats another character on every repetition — net-text replay gets this wrong.",
+    "encodedKeys": "2iA\b\b\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "z"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "insert/count-append-bs-past-session-start",
+    "buffer": [
+      "ab"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "2a1<BS><BS><Esc>",
+    "groups": [
+      "2a1<BS><BS><Esc>"
+    ],
+    "encodedKeys": "2a1\b\b\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        ""
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "insert/count-insert-bs-joins-lines",
+    "buffer": [
+      "ab",
+      "cd"
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": "2i<BS>X<Esc>",
+    "groups": [
+      "2i<BS>X<Esc>"
+    ],
+    "note": "the replayed <BS> joins lines again on the second iteration",
+    "encodedKeys": "2i\bX\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "abXcd"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "insert/empty-session-mints-no-undo",
+    "buffer": [
+      "ab"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "xi<Esc>u",
+    "groups": [
+      "x",
+      "i<Esc>",
+      "u"
+    ],
+    "note": "i<Esc> changes nothing, so it must NOT create an undo block — the u here has to undo the x, not the empty insert session.",
+    "encodedKeys": "xi\u001bu",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a"
+        },
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "ab"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "insert/empty-replace-session-mints-no-undo",
+    "buffer": [
+      "ab"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "xR<Esc>u",
+    "groups": [
+      "x",
+      "R<Esc>",
+      "u"
+    ],
+    "encodedKeys": "xR\u001bu",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a"
+        },
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "ab"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "insert/empty-change-session-still-mints-undo",
+    "buffer": [
+      "ab",
+      ""
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "xjcl<Esc>u",
+    "groups": [
+      "x",
+      "j",
+      "cl<Esc>",
+      "u"
+    ],
+    "note": "The other side of the rule: cl on an empty line deletes nothing and types nothing, but op_change prepared an undo entry before insert mode began, so this DOES mint a block and the u burns on it. An empty i-session does not.",
+    "encodedKeys": "xjcl\u001bu",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a"
+        },
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "b",
+        ""
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "insert/empty-s-session-still-mints-undo",
+    "buffer": [
+      "ab",
+      ""
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "xjs<Esc>u",
+    "groups": [
+      "x",
+      "j",
+      "s<Esc>",
+      "u"
+    ],
+    "encodedKeys": "xjs\u001bu",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a"
+        },
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "b",
+        ""
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "insert/empty-C-session-still-mints-undo",
+    "buffer": [
+      "ab",
+      ""
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "xjC<Esc>u",
+    "groups": [
+      "x",
+      "j",
+      "C<Esc>",
+      "u"
+    ],
+    "encodedKeys": "xjC\u001bu",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "b",
+        ""
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "insert/undo-two-separate-inserts",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "iX<Esc>aY<Esc>u",
+    "groups": [
+      "iX<Esc>",
+      "aY<Esc>",
+      "u"
+    ],
+    "note": "Grouped so each insert is its own undo block — one u must peel back only the second one.",
+    "encodedKeys": "iX\u001baY\u001bu",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "Xabc"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  }
+]

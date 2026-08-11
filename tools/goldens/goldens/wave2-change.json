@@ -1,0 +1,2016 @@
+[
+  {
+    "id": "change/cw-on-word-start",
+    "buffer": [
+      "alpha beta gamma"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "cwNEW<Esc>",
+    "groups": [
+      "cwNEW<Esc>"
+    ],
+    "note": "cw from the start of a word acts like ce — the space after alpha must survive, unlike dw which eats it.",
+    "encodedKeys": "cwNEW\u001b",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "alpha"
+        },
+        "-": {
+          "type": "v",
+          "text": "alpha"
+        }
+      },
+      "buffer": [
+        "NEW beta gamma"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "change/cw-mid-word",
+    "buffer": [
+      "alpha beta"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "cwNEW<Esc>",
+    "groups": [
+      "cwNEW<Esc>"
+    ],
+    "note": "from mid-word cw changes only the tail of the word",
+    "encodedKeys": "cwNEW\u001b",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "pha"
+        },
+        "-": {
+          "type": "v",
+          "text": "pha"
+        }
+      },
+      "buffer": [
+        "alNEW beta"
+      ],
+      "cursor": [
+        1,
+        5
+      ],
+      "error": "",
+      "curswant": 5
+    }
+  },
+  {
+    "id": "change/cw-on-last-char-of-word",
+    "buffer": [
+      "alpha beta"
+    ],
+    "cursor": [
+      1,
+      5
+    ],
+    "keys": "cwNEW<Esc>",
+    "groups": [
+      "cwNEW<Esc>"
+    ],
+    "note": "On the final character of a word cw changes just that one character. ce from the same spot jumps to the end of the NEXT word — see the companion case.",
+    "encodedKeys": "cwNEW\u001b",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a"
+        },
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "alphNEW beta"
+      ],
+      "cursor": [
+        1,
+        7
+      ],
+      "error": "",
+      "curswant": 7
+    }
+  },
+  {
+    "id": "change/ce-on-last-char-of-word",
+    "buffer": [
+      "alpha beta"
+    ],
+    "cursor": [
+      1,
+      5
+    ],
+    "keys": "ceNEW<Esc>",
+    "groups": [
+      "ceNEW<Esc>"
+    ],
+    "note": "the ce contrast to cw-on-last-char-of-word",
+    "encodedKeys": "ceNEW\u001b",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a beta"
+        },
+        "-": {
+          "type": "v",
+          "text": "a beta"
+        }
+      },
+      "buffer": [
+        "alphNEW"
+      ],
+      "cursor": [
+        1,
+        7
+      ],
+      "error": "",
+      "curswant": 7
+    }
+  },
+  {
+    "id": "change/cw-last-word-of-line",
+    "buffer": [
+      "alpha beta",
+      "gamma"
+    ],
+    "cursor": [
+      1,
+      7
+    ],
+    "keys": "cwNEW<Esc>",
+    "groups": [
+      "cwNEW<Esc>"
+    ],
+    "note": "cw on the last word of a line must not reach across the newline",
+    "encodedKeys": "cwNEW\u001b",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "beta"
+        },
+        "-": {
+          "type": "v",
+          "text": "beta"
+        }
+      },
+      "buffer": [
+        "alpha NEW",
+        "gamma"
+      ],
+      "cursor": [
+        1,
+        9
+      ],
+      "error": "",
+      "curswant": 9
+    }
+  },
+  {
+    "id": "change/cw-last-word-of-last-line",
+    "buffer": [
+      "one",
+      "two three"
+    ],
+    "cursor": [
+      2,
+      5
+    ],
+    "keys": "cwNEW<Esc>",
+    "groups": [
+      "cwNEW<Esc>"
+    ],
+    "encodedKeys": "cwNEW\u001b",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "three"
+        },
+        "-": {
+          "type": "v",
+          "text": "three"
+        }
+      },
+      "buffer": [
+        "one",
+        "two NEW"
+      ],
+      "cursor": [
+        2,
+        7
+      ],
+      "error": "",
+      "curswant": 7
+    }
+  },
+  {
+    "id": "change/cw-single-char-word",
+    "buffer": [
+      "a bc de"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "cwY<Esc>",
+    "groups": [
+      "cwY<Esc>"
+    ],
+    "encodedKeys": "cwY\u001b",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a"
+        },
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "Y bc de"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "change/cw-on-last-char-of-line",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "cwY<Esc>",
+    "groups": [
+      "cwY<Esc>"
+    ],
+    "note": "single-character line, cursor at end of line",
+    "encodedKeys": "cwY\u001b",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "c"
+        },
+        "-": {
+          "type": "v",
+          "text": "c"
+        }
+      },
+      "buffer": [
+        "abY"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "change/cw-to-empty",
+    "buffer": [
+      "alpha beta"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "cw<Esc>",
+    "groups": [
+      "cw<Esc>"
+    ],
+    "note": "changing to nothing still deletes the word and leaves the space",
+    "encodedKeys": "cw\u001b",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "alpha"
+        },
+        "-": {
+          "type": "v",
+          "text": "alpha"
+        }
+      },
+      "buffer": [
+        " beta"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "change/cw-on-space-run",
+    "buffer": [
+      "alpha   beta"
+    ],
+    "cursor": [
+      1,
+      6
+    ],
+    "keys": "cwNEW<Esc>",
+    "groups": [
+      "cwNEW<Esc>"
+    ],
+    "note": "On whitespace cw keeps w's ordinary meaning, so it changes the run of spaces rather than behaving like ce.",
+    "encodedKeys": "cwNEW\u001b",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "   "
+        },
+        "-": {
+          "type": "v",
+          "text": "   "
+        }
+      },
+      "buffer": [
+        "alphaNEWbeta"
+      ],
+      "cursor": [
+        1,
+        8
+      ],
+      "error": "",
+      "curswant": 8
+    }
+  },
+  {
+    "id": "change/cw-on-single-space",
+    "buffer": [
+      "a b c"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "cwY<Esc>",
+    "groups": [
+      "cwY<Esc>"
+    ],
+    "encodedKeys": "cwY\u001b",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": " "
+        },
+        "-": {
+          "type": "v",
+          "text": " "
+        }
+      },
+      "buffer": [
+        "aYb c"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "change/cw-on-trailing-whitespace",
+    "buffer": [
+      "foo   ",
+      "bar"
+    ],
+    "cursor": [
+      1,
+      5
+    ],
+    "keys": "cwY<Esc>",
+    "groups": [
+      "cwY<Esc>"
+    ],
+    "note": "whitespace at end of line — plain w would cross onto the next line",
+    "encodedKeys": "cwY\u001b",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "  "
+        },
+        "-": {
+          "type": "v",
+          "text": "  "
+        }
+      },
+      "buffer": [
+        "foo Y",
+        "bar"
+      ],
+      "cursor": [
+        1,
+        5
+      ],
+      "error": "",
+      "curswant": 5
+    }
+  },
+  {
+    "id": "change/cw-on-empty-line",
+    "buffer": [
+      "",
+      "next"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "cwY<Esc>",
+    "groups": [
+      "cwY<Esc>"
+    ],
+    "encodedKeys": "cwY\u001b",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "\n"
+        }
+      },
+      "buffer": [
+        "Y",
+        "next"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "change/cw-on-all-blank-line",
+    "buffer": [
+      "   ",
+      "next"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "cwY<Esc>",
+    "groups": [
+      "cwY<Esc>"
+    ],
+    "encodedKeys": "cwY\u001b",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "  "
+        },
+        "-": {
+          "type": "v",
+          "text": "  "
+        }
+      },
+      "buffer": [
+        " Y",
+        "next"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "change/c2w",
+    "buffer": [
+      "alpha beta gamma"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "c2wNEW<Esc>",
+    "groups": [
+      "c2wNEW<Esc>"
+    ],
+    "encodedKeys": "c2wNEW\u001b",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "alpha beta"
+        },
+        "-": {
+          "type": "v",
+          "text": "alpha beta"
+        }
+      },
+      "buffer": [
+        "NEW gamma"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "change/count-before-operator-2cw",
+    "buffer": [
+      "alpha beta gamma"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "2cwNEW<Esc>",
+    "groups": [
+      "2cwNEW<Esc>"
+    ],
+    "note": "the count may precede the operator and must multiply identically",
+    "encodedKeys": "2cwNEW\u001b",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "alpha beta"
+        },
+        "-": {
+          "type": "v",
+          "text": "alpha beta"
+        }
+      },
+      "buffer": [
+        "NEW gamma"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "change/c9w-overshoot",
+    "buffer": [
+      "one two",
+      "three"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "c9w<Esc>",
+    "groups": [
+      "c9w<Esc>"
+    ],
+    "note": "More words requested than the buffer has. No text is typed so that an aborted operator cannot replay letters as normal-mode commands.",
+    "encodedKeys": "c9w\u001b",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "v",
+          "text": "one two\nthree"
+        },
+        "\"": {
+          "type": "v",
+          "text": "one two\nthree"
+        }
+      },
+      "buffer": [
+        ""
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "change/cw-punctuation-word",
+    "buffer": [
+      "foo.bar baz"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "cwNEW<Esc>",
+    "groups": [
+      "cwNEW<Esc>"
+    ],
+    "note": "a run of punctuation is its own word for w, so cw stops at the dot",
+    "encodedKeys": "cwNEW\u001b",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "foo"
+        },
+        "-": {
+          "type": "v",
+          "text": "foo"
+        }
+      },
+      "buffer": [
+        "NEW.bar baz"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "change/cw-on-punctuation-run",
+    "buffer": [
+      "foo...bar"
+    ],
+    "cursor": [
+      1,
+      4
+    ],
+    "keys": "cwY<Esc>",
+    "groups": [
+      "cwY<Esc>"
+    ],
+    "encodedKeys": "cwY\u001b",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "..."
+        },
+        "-": {
+          "type": "v",
+          "text": "..."
+        }
+      },
+      "buffer": [
+        "fooYbar"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "change/cW-punctuated-word",
+    "buffer": [
+      "foo.bar baz"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "cWNEW<Esc>",
+    "groups": [
+      "cWNEW<Esc>"
+    ],
+    "note": "cW takes the whole space-delimited blob",
+    "encodedKeys": "cWNEW\u001b",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "foo.bar"
+        },
+        "-": {
+          "type": "v",
+          "text": "foo.bar"
+        }
+      },
+      "buffer": [
+        "NEW baz"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "change/c2W",
+    "buffer": [
+      "a.b c.d e.f"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "c2WNEW<Esc>",
+    "groups": [
+      "c2WNEW<Esc>"
+    ],
+    "encodedKeys": "c2WNEW\u001b",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a.b c.d"
+        },
+        "-": {
+          "type": "v",
+          "text": "a.b c.d"
+        }
+      },
+      "buffer": [
+        "NEW e.f"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "change/cc-basic",
+    "buffer": [
+      "one",
+      "two",
+      "three"
+    ],
+    "cursor": [
+      2,
+      2
+    ],
+    "keys": "ccNEW<Esc>",
+    "groups": [
+      "ccNEW<Esc>"
+    ],
+    "encodedKeys": "ccNEW\u001b",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "two\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "two\n"
+        }
+      },
+      "buffer": [
+        "one",
+        "NEW",
+        "three"
+      ],
+      "cursor": [
+        2,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "change/cc-drops-indent",
+    "buffer": [
+      "    indented",
+      "next"
+    ],
+    "cursor": [
+      1,
+      7
+    ],
+    "keys": "ccNEW<Esc>",
+    "groups": [
+      "ccNEW<Esc>"
+    ],
+    "note": "with the baseline noautoindent, cc discards the leading whitespace",
+    "encodedKeys": "ccNEW\u001b",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "    indented\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "    indented\n"
+        }
+      },
+      "buffer": [
+        "NEW",
+        "next"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "change/cc-autoindent-keeps-indent",
+    "buffer": [
+      "    indented",
+      "next"
+    ],
+    "cursor": [
+      1,
+      7
+    ],
+    "keys": "ccNEW<Esc>",
+    "groups": [
+      "ccNEW<Esc>"
+    ],
+    "options": [
+      "autoindent"
+    ],
+    "note": "the same case with autoindent on — the indent is re-inserted",
+    "encodedKeys": "ccNEW\u001b",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "    indented\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "    indented\n"
+        }
+      },
+      "buffer": [
+        "    NEW",
+        "next"
+      ],
+      "cursor": [
+        1,
+        7
+      ],
+      "error": "",
+      "curswant": 7
+    }
+  },
+  {
+    "id": "change/cc-on-empty-line",
+    "buffer": [
+      "",
+      "next"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "ccY<Esc>",
+    "groups": [
+      "ccY<Esc>"
+    ],
+    "encodedKeys": "ccY\u001b",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "\n"
+        }
+      },
+      "buffer": [
+        "Y",
+        "next"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "change/cc-to-empty",
+    "buffer": [
+      "one",
+      "two"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "cc<Esc>",
+    "groups": [
+      "cc<Esc>"
+    ],
+    "note": "cc then Esc must leave an empty line, not remove the line",
+    "encodedKeys": "cc\u001b",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "one\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "one\n"
+        }
+      },
+      "buffer": [
+        "",
+        "two"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "change/cc-only-line-in-buffer",
+    "buffer": [
+      "only"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "ccNEW<Esc>",
+    "groups": [
+      "ccNEW<Esc>"
+    ],
+    "encodedKeys": "ccNEW\u001b",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "only\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "only\n"
+        }
+      },
+      "buffer": [
+        "NEW"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "change/cc-on-last-line",
+    "buffer": [
+      "one",
+      "two"
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": "ccNEW<Esc>",
+    "groups": [
+      "ccNEW<Esc>"
+    ],
+    "encodedKeys": "ccNEW\u001b",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "two\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "two\n"
+        }
+      },
+      "buffer": [
+        "one",
+        "NEW"
+      ],
+      "cursor": [
+        2,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "change/cc-count-two",
+    "buffer": [
+      "one",
+      "two",
+      "three",
+      "four"
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": "2ccNEW<Esc>",
+    "groups": [
+      "2ccNEW<Esc>"
+    ],
+    "encodedKeys": "2ccNEW\u001b",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "two\nthree\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "two\nthree\n"
+        }
+      },
+      "buffer": [
+        "one",
+        "NEW",
+        "four"
+      ],
+      "cursor": [
+        2,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "change/cc-count-overshoot",
+    "buffer": [
+      "one",
+      "two"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "9cc<Esc>",
+    "groups": [
+      "9cc<Esc>"
+    ],
+    "note": "more lines requested than remain below the cursor",
+    "encodedKeys": "9cc\u001b",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "one\ntwo\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "one\ntwo\n"
+        }
+      },
+      "buffer": [
+        ""
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "change/C-mid-line",
+    "buffer": [
+      "alpha beta gamma"
+    ],
+    "cursor": [
+      1,
+      7
+    ],
+    "keys": "CNEW<Esc>",
+    "groups": [
+      "CNEW<Esc>"
+    ],
+    "encodedKeys": "CNEW\u001b",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "beta gamma"
+        },
+        "-": {
+          "type": "v",
+          "text": "beta gamma"
+        }
+      },
+      "buffer": [
+        "alpha NEW"
+      ],
+      "cursor": [
+        1,
+        9
+      ],
+      "error": "",
+      "curswant": 9
+    }
+  },
+  {
+    "id": "change/C-on-last-char",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "CY<Esc>",
+    "groups": [
+      "CY<Esc>"
+    ],
+    "encodedKeys": "CY\u001b",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "c"
+        },
+        "-": {
+          "type": "v",
+          "text": "c"
+        }
+      },
+      "buffer": [
+        "abY"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "change/C-on-empty-line",
+    "buffer": [
+      "",
+      "next"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "CY<Esc>",
+    "groups": [
+      "CY<Esc>"
+    ],
+    "encodedKeys": "CY\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "Y",
+        "next"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "change/C-count-two",
+    "buffer": [
+      "one two",
+      "three four",
+      "five"
+    ],
+    "cursor": [
+      1,
+      5
+    ],
+    "keys": "2CNEW<Esc>",
+    "groups": [
+      "2CNEW<Esc>"
+    ],
+    "note": "C with a count also swallows the following line",
+    "encodedKeys": "2CNEW\u001b",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "v",
+          "text": "two\nthree four"
+        },
+        "\"": {
+          "type": "v",
+          "text": "two\nthree four"
+        }
+      },
+      "buffer": [
+        "one NEW",
+        "five"
+      ],
+      "cursor": [
+        1,
+        7
+      ],
+      "error": "",
+      "curswant": 7
+    }
+  },
+  {
+    "id": "change/c-dollar",
+    "buffer": [
+      "alpha beta"
+    ],
+    "cursor": [
+      1,
+      7
+    ],
+    "keys": "c$NEW<Esc>",
+    "groups": [
+      "c$NEW<Esc>"
+    ],
+    "encodedKeys": "c$NEW\u001b",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "beta"
+        },
+        "-": {
+          "type": "v",
+          "text": "beta"
+        }
+      },
+      "buffer": [
+        "alpha NEW"
+      ],
+      "cursor": [
+        1,
+        9
+      ],
+      "error": "",
+      "curswant": 9
+    }
+  },
+  {
+    "id": "change/c-zero",
+    "buffer": [
+      "alpha beta"
+    ],
+    "cursor": [
+      1,
+      7
+    ],
+    "keys": "c0NEW<Esc>",
+    "groups": [
+      "c0NEW<Esc>"
+    ],
+    "encodedKeys": "c0NEW\u001b",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "alpha "
+        },
+        "-": {
+          "type": "v",
+          "text": "alpha "
+        }
+      },
+      "buffer": [
+        "NEWbeta"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "change/c-zero-at-col1",
+    "buffer": [
+      "alpha"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "c0<Esc>",
+    "groups": [
+      "c0<Esc>"
+    ],
+    "note": "an empty region at column 1 — nothing should be removed",
+    "encodedKeys": "c0\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "alpha"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "change/c-caret",
+    "buffer": [
+      "    alpha beta"
+    ],
+    "cursor": [
+      1,
+      11
+    ],
+    "keys": "c^NEW<Esc>",
+    "groups": [
+      "c^NEW<Esc>"
+    ],
+    "encodedKeys": "c^NEW\u001b",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "alpha "
+        },
+        "-": {
+          "type": "v",
+          "text": "alpha "
+        }
+      },
+      "buffer": [
+        "    NEWbeta"
+      ],
+      "cursor": [
+        1,
+        7
+      ],
+      "error": "",
+      "curswant": 7
+    }
+  },
+  {
+    "id": "change/c-caret-inside-indent",
+    "buffer": [
+      "    alpha"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "c^Y<Esc>",
+    "groups": [
+      "c^Y<Esc>"
+    ],
+    "note": "From inside the leading whitespace, caret moves FORWARD to the first non-blank, so c^ changes the rest of the indent.",
+    "encodedKeys": "c^Y\u001b",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "   "
+        },
+        "-": {
+          "type": "v",
+          "text": "   "
+        }
+      },
+      "buffer": [
+        " Yalpha"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "change/cj-linewise",
+    "buffer": [
+      "one",
+      "two",
+      "three"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "cjNEW<Esc>",
+    "groups": [
+      "cjNEW<Esc>"
+    ],
+    "note": "cj is linewise and takes both lines whole",
+    "encodedKeys": "cjNEW\u001b",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "one\ntwo\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "one\ntwo\n"
+        }
+      },
+      "buffer": [
+        "NEW",
+        "three"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "change/ck-linewise",
+    "buffer": [
+      "one",
+      "two",
+      "three"
+    ],
+    "cursor": [
+      3,
+      2
+    ],
+    "keys": "ckNEW<Esc>",
+    "groups": [
+      "ckNEW<Esc>"
+    ],
+    "encodedKeys": "ckNEW\u001b",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "two\nthree\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "two\nthree\n"
+        }
+      },
+      "buffer": [
+        "one",
+        "NEW"
+      ],
+      "cursor": [
+        2,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "change/cj-on-last-line-fails",
+    "buffer": [
+      "one",
+      "two"
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": "cj<Esc>",
+    "groups": [
+      "cj<Esc>"
+    ],
+    "encodedKeys": "cj\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "one",
+        "two"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "change/cG-to-end-of-buffer",
+    "buffer": [
+      "one",
+      "two",
+      "three"
+    ],
+    "cursor": [
+      2,
+      2
+    ],
+    "keys": "cGNEW<Esc>",
+    "groups": [
+      "cGNEW<Esc>"
+    ],
+    "encodedKeys": "cGNEW\u001b",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "two\nthree\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "two\nthree\n"
+        }
+      },
+      "buffer": [
+        "one",
+        "NEW"
+      ],
+      "cursor": [
+        2,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "change/cgg-to-start-of-buffer",
+    "buffer": [
+      "one",
+      "two",
+      "three"
+    ],
+    "cursor": [
+      3,
+      2
+    ],
+    "keys": "cggNEW<Esc>",
+    "groups": [
+      "cggNEW<Esc>"
+    ],
+    "encodedKeys": "cggNEW\u001b",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "one\ntwo\nthree\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "one\ntwo\nthree\n"
+        }
+      },
+      "buffer": [
+        "NEW"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "change/cf-inclusive",
+    "buffer": [
+      "a,b,c,d"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "cf,Y<Esc>",
+    "groups": [
+      "cf,Y<Esc>"
+    ],
+    "encodedKeys": "cf,Y\u001b",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a,"
+        },
+        "-": {
+          "type": "v",
+          "text": "a,"
+        }
+      },
+      "buffer": [
+        "Yb,c,d"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "change/ct-exclusive",
+    "buffer": [
+      "foo(bar)"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "ct(NEW<Esc>",
+    "groups": [
+      "ct(NEW<Esc>"
+    ],
+    "encodedKeys": "ct(NEW\u001b",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "foo"
+        },
+        "-": {
+          "type": "v",
+          "text": "foo"
+        }
+      },
+      "buffer": [
+        "NEW(bar)"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "change/cf-not-found-fails",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "cfz<Esc>",
+    "groups": [
+      "cfz<Esc>"
+    ],
+    "note": "the operator must abort, leaving the buffer untouched",
+    "encodedKeys": "cfz\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "abc"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "change/cT-backward",
+    "buffer": [
+      "x,abc"
+    ],
+    "cursor": [
+      1,
+      5
+    ],
+    "keys": "cT,Y<Esc>",
+    "groups": [
+      "cT,Y<Esc>"
+    ],
+    "note": "T is exclusive backward, so the character it lands on survives",
+    "encodedKeys": "cT,Y\u001b",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "ab"
+        },
+        "-": {
+          "type": "v",
+          "text": "ab"
+        }
+      },
+      "buffer": [
+        "x,Yc"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "change/c-percent",
+    "buffer": [
+      "fn(a, b) end"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "c%NEW<Esc>",
+    "groups": [
+      "c%NEW<Esc>"
+    ],
+    "encodedKeys": "c%NEW\u001b",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "v",
+          "text": "(a, b)"
+        },
+        "\"": {
+          "type": "v",
+          "text": "(a, b)"
+        },
+        "-": {
+          "type": "v",
+          "text": "(a, b)"
+        }
+      },
+      "buffer": [
+        "fnNEW end"
+      ],
+      "cursor": [
+        1,
+        5
+      ],
+      "error": "",
+      "curswant": 5
+    }
+  },
+  {
+    "id": "change/c-percent-unmatched-fails",
+    "buffer": [
+      "a(b"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "c%<Esc>",
+    "groups": [
+      "c%<Esc>"
+    ],
+    "encodedKeys": "c%\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "a(b"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "change/cb-at-col1-fails",
+    "buffer": [
+      "alpha"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "cb<Esc>",
+    "groups": [
+      "cb<Esc>"
+    ],
+    "encodedKeys": "cb\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "alpha"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "change/cw-insert-newline",
+    "buffer": [
+      "alpha beta"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "cwone<CR>two<Esc>",
+    "groups": [
+      "cwone<CR>two<Esc>"
+    ],
+    "note": "a single change may still produce two lines",
+    "encodedKeys": "cwone\rtwo\u001b",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "alpha"
+        },
+        "-": {
+          "type": "v",
+          "text": "alpha"
+        }
+      },
+      "buffer": [
+        "one",
+        "two beta"
+      ],
+      "cursor": [
+        2,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "change/cw-undo",
+    "buffer": [
+      "alpha beta gamma"
+    ],
+    "cursor": [
+      1,
+      7
+    ],
+    "keys": "cwNEW<Esc>u",
+    "groups": [
+      "cwNEW<Esc>",
+      "u"
+    ],
+    "note": "groups so the change and the undo are separate undo blocks",
+    "encodedKeys": "cwNEW\u001bu",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "beta"
+        },
+        "-": {
+          "type": "v",
+          "text": "beta"
+        }
+      },
+      "buffer": [
+        "alpha beta gamma"
+      ],
+      "cursor": [
+        1,
+        7
+      ],
+      "error": "",
+      "curswant": 7
+    }
+  },
+  {
+    "id": "change/cw-undo-redo",
+    "buffer": [
+      "alpha beta gamma"
+    ],
+    "cursor": [
+      1,
+      7
+    ],
+    "keys": "cwNEW<Esc>u<C-r>",
+    "groups": [
+      "cwNEW<Esc>",
+      "u",
+      "<C-r>"
+    ],
+    "encodedKeys": "cwNEW\u001bu\u0012",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "beta"
+        },
+        "-": {
+          "type": "v",
+          "text": "beta"
+        }
+      },
+      "buffer": [
+        "alpha NEW gamma"
+      ],
+      "cursor": [
+        1,
+        7
+      ],
+      "error": "",
+      "curswant": 7
+    }
+  },
+  {
+    "id": "change/two-changes-one-undo",
+    "buffer": [
+      "alpha beta gamma"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "cwONE<Esc>wcwTWO<Esc>u",
+    "groups": [
+      "cwONE<Esc>",
+      "wcwTWO<Esc>",
+      "u"
+    ],
+    "note": "Two discrete changes fed as two groups. One u must restore only the second — fed as one string feedkeys would collapse both.",
+    "encodedKeys": "cwONE\u001bwcwTWO\u001bu",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "beta"
+        },
+        "-": {
+          "type": "v",
+          "text": "beta"
+        }
+      },
+      "buffer": [
+        "ONE beta gamma"
+      ],
+      "cursor": [
+        1,
+        5
+      ],
+      "error": "",
+      "curswant": 5
+    }
+  }
+]

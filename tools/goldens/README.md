@@ -17,11 +17,12 @@ pnpm test                        # diff engine vs committed goldens
 everywhere else. Nobody writes that from memory. The oracle reproduces Vim's
 warts whether or not we know they exist — which is the entire argument.
 
-## Seven details that are load-bearing
+## Nine details that are load-bearing
 
 The first five were earned during the original prototype. The sixth and seventh
-were found while rebuilding the harness, and both produce goldens that look
-entirely plausible while being wrong.
+were found while rebuilding the harness, the eighth and ninth while authoring
+Wave 2 — and all of them produce goldens that look entirely plausible while
+being wrong.
 
 1. **`-i NONE`** — without it Vim reads viminfo and registers leak between
    cases. This silently corrupted the first prototype run.
@@ -59,6 +60,19 @@ entirely plausible while being wrong.
    list and the oracle feeds each group whole, breaking the undo block between
    groups. Any case making more than one discrete change must use groups.
 
+8. **`:edit!` keeps the previous buffer's undo history.** Re-editing the same
+   temp file reuses the buffer, and the reload itself is undoable — so a `u`
+   with "nothing" to undo restored the *previous case's* text. Every
+   "u is a no-op here" golden was silently corrupted this way. `s:Setup()`
+   therefore `bwipeout!`s the buffer before each case; only a wiped buffer
+   truly starts with empty undo history.
+9. **A failed command aborts the rest of a `feedkeys` batch** — macro
+   semantics — while interactive Vim just beeps and carries on with the next
+   key. A case that deliberately fails a command (`9S` on a two-line buffer)
+   and then presses more keys must put the follow-up keys in a **separate
+   group**, or the golden bakes in the abort and no interactive-semantics
+   engine can ever match it.
+
 Detail 5's other half still stands: `mode()` reports `n` even inside insert
 mode under `feedkeys`, so mode goldens remain out of reach for this oracle.
 
@@ -66,9 +80,10 @@ mode under `feedkeys`, so mode goldens remain out of reach for this oracle.
 
 Each case gets a genuinely fresh start:
 
-- The buffer is written to a temp file and `:edit`-ed rather than poked in with
-  `setline()`, so **undo history starts empty** — `u` as the very first key is a
-  no-op, exactly as in a real session.
+- The buffer is `bwipeout!`-ed, then the case text is written to a temp file
+  and `:edit`-ed rather than poked in with `setline()`, so **undo history
+  starts empty** — `u` as the very first key is a no-op, exactly as in a real
+  session. The wipe is not optional (detail 8).
 - All registers are cleared, `delmarks!` runs, and the baseline options are
   reapplied.
 - `set nomodeline` is mandatory: case buffers are untrusted input, and a
@@ -123,6 +138,15 @@ command groups so each gets its own undo block (detail 7):
 ```
 
 Keep multi-key commands inside a single group — `['d2w']`, never `['d','2','w']`.
+
+**A case's `note` is a hypothesis, not an assertion.** Authoring a case whose
+note says what Vim "must" do proves nothing until `goldens:generate` has run:
+three Wave 2 cases were written asserting that a no-op `>>` mints no undo block,
+and real Vim refuted all three on first generation. When a freshly generated
+golden contradicts its own note, the golden is right — fix the note and the
+engine, not the golden. The only exception is a case that trips detail 7 or 9
+(undo groups, abort-on-error), where the fix is to restructure `keys:` into
+groups and regenerate.
 
 Unknown `<...>` notation throws rather than passing through as text — silently
 typing `<Foo>` into a test buffer is the failure mode detail 3 exists to prevent.

@@ -1,0 +1,1860 @@
+[
+  {
+    "id": "caseops/tilde-basic",
+    "buffer": [
+      "aBc"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "~",
+    "groups": [
+      "~"
+    ],
+    "note": "~ toggles the character under the cursor and advances one column",
+    "encodedKeys": "~",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "ABc"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "caseops/tilde-count",
+    "buffer": [
+      "abcdef"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "3~",
+    "groups": [
+      "3~"
+    ],
+    "encodedKeys": "3~",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "aBCDef"
+      ],
+      "cursor": [
+        1,
+        5
+      ],
+      "error": "",
+      "curswant": 5
+    }
+  },
+  {
+    "id": "caseops/tilde-count-overshoot",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "9~",
+    "groups": [
+      "9~"
+    ],
+    "note": "a count past end of line does as much as it can rather than failing",
+    "encodedKeys": "9~",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "aBC"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "caseops/tilde-at-eol",
+    "buffer": [
+      "abC"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "~",
+    "groups": [
+      "~"
+    ],
+    "note": "on the last character of the line there is nowhere left to advance to",
+    "encodedKeys": "~",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "abc"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "caseops/tilde-does-not-cross-lines",
+    "buffer": [
+      "ab",
+      "cd"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "9~",
+    "groups": [
+      "9~"
+    ],
+    "encodedKeys": "9~",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "AB",
+        "cd"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "caseops/tilde-on-empty-line",
+    "buffer": [
+      "",
+      "x"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "~",
+    "groups": [
+      "~"
+    ],
+    "encodedKeys": "~",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "",
+        "x"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "caseops/tilde-on-digits-and-punctuation",
+    "buffer": [
+      "a1!B2?"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "6~",
+    "groups": [
+      "6~"
+    ],
+    "note": "digits and punctuation have no case; only the cursor should move",
+    "encodedKeys": "6~",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "A1!b2?"
+      ],
+      "cursor": [
+        1,
+        6
+      ],
+      "error": "",
+      "curswant": 6
+    }
+  },
+  {
+    "id": "caseops/tilde-separate-undo-blocks",
+    "buffer": [
+      "abcd"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "~~u",
+    "groups": [
+      "~",
+      "~",
+      "u"
+    ],
+    "note": "each ~ is its own change, so u must peel off exactly one of them",
+    "encodedKeys": "~~u",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "Abcd"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "caseops/tilde-empty-line-fails",
+    "buffer": [
+      "ab",
+      ""
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "xj~u",
+    "groups": [
+      "x",
+      "j",
+      "~",
+      "u"
+    ],
+    "note": "~ on an empty line beeps, changes nothing, and creates no undo block — the u must undo the x. Grouped so the beep cannot abort the u.",
+    "encodedKeys": "xj~u",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a"
+        },
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "ab",
+        ""
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "caseops/guu-blank-line-still-mints-undo",
+    "buffer": [
+      "ab",
+      "   "
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "xjguuu",
+    "groups": [
+      "x",
+      "j",
+      "guu",
+      "u"
+    ],
+    "note": "guu over a whitespace-only line changes nothing, yet still creates an undo block — a case operator that RUNS always does, so the u burns on it and the x survives. Contrast caseops/tilde-empty-line-fails, where the command genuinely fails and mints nothing.",
+    "encodedKeys": "xjguuu",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a"
+        },
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "b",
+        "   "
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "caseops/gu-dollar-empty-line-still-mints-undo",
+    "buffer": [
+      "ab",
+      ""
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "xjgu$u",
+    "groups": [
+      "x",
+      "j",
+      "gu$",
+      "u"
+    ],
+    "encodedKeys": "xjgu$u",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a"
+        },
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "b",
+        ""
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "caseops/gUU-already-uppercase-still-mints-undo",
+    "buffer": [
+      "ab",
+      "CD"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "xjgUUu",
+    "groups": [
+      "x",
+      "j",
+      "gUU",
+      "u"
+    ],
+    "encodedKeys": "xjgUUu",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a"
+        },
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "b",
+        "CD"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "caseops/tilde-on-digit-still-mints-undo",
+    "buffer": [
+      "ab",
+      "12"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "xj~u",
+    "groups": [
+      "x",
+      "j",
+      "~",
+      "u"
+    ],
+    "note": "~ on a digit toggles nothing but is not a failure, so it mints a block — unlike ~ on an EMPTY line, which beeps and mints none.",
+    "encodedKeys": "xj~u",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a"
+        },
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "b",
+        "12"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "caseops/gu-h-at-col-one-mints-undo",
+    "buffer": [
+      "ab",
+      "CD"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "xjguhu",
+    "groups": [
+      "x",
+      "j",
+      "guh",
+      "u"
+    ],
+    "note": "h at column one leaves an empty region rather than failing the operator",
+    "encodedKeys": "xjguhu",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a"
+        },
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "b",
+        "CD"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "caseops/gU-w",
+    "buffer": [
+      "alpha beta"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "gUw",
+    "groups": [
+      "gUw"
+    ],
+    "encodedKeys": "gUw",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "ALPHA beta"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "caseops/gU-w-last-word-on-line",
+    "buffer": [
+      "alpha beta",
+      "gamma"
+    ],
+    "cursor": [
+      1,
+      7
+    ],
+    "keys": "gUw",
+    "groups": [
+      "gUw"
+    ],
+    "note": "with an operator, w on the last word of a line stops at the end of that word instead of running on into the next line",
+    "encodedKeys": "gUw",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "alpha BETA",
+        "gamma"
+      ],
+      "cursor": [
+        1,
+        7
+      ],
+      "error": "",
+      "curswant": 7
+    }
+  },
+  {
+    "id": "caseops/gU-e",
+    "buffer": [
+      "alpha beta"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "gUe",
+    "groups": [
+      "gUe"
+    ],
+    "encodedKeys": "gUe",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "ALPHA beta"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "caseops/gU-dollar",
+    "buffer": [
+      "alpha beta gamma"
+    ],
+    "cursor": [
+      1,
+      7
+    ],
+    "keys": "gU$",
+    "groups": [
+      "gU$"
+    ],
+    "encodedKeys": "gU$",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "alpha BETA GAMMA"
+      ],
+      "cursor": [
+        1,
+        7
+      ],
+      "error": "",
+      "curswant": 7
+    }
+  },
+  {
+    "id": "caseops/gU-zero",
+    "buffer": [
+      "alpha beta"
+    ],
+    "cursor": [
+      1,
+      7
+    ],
+    "keys": "gU0",
+    "groups": [
+      "gU0"
+    ],
+    "note": "0 is exclusive, so the character under the cursor is left alone",
+    "encodedKeys": "gU0",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "ALPHA beta"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "caseops/gU-W",
+    "buffer": [
+      "foo.bar baz"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "gUW",
+    "groups": [
+      "gUW"
+    ],
+    "encodedKeys": "gUW",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "FOO.BAR baz"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "caseops/gU-count-2w",
+    "buffer": [
+      "alpha beta gamma"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "gU2w",
+    "groups": [
+      "gU2w"
+    ],
+    "encodedKeys": "gU2w",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "ALPHA BETA gamma"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "caseops/gU-count-before-operator",
+    "buffer": [
+      "alpha beta gamma"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "2gUw",
+    "groups": [
+      "2gUw"
+    ],
+    "note": "2gUw and gU2w must agree",
+    "encodedKeys": "2gUw",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "ALPHA BETA gamma"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "caseops/gU-l-count-overshoot",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "gU9l",
+    "groups": [
+      "gU9l"
+    ],
+    "encodedKeys": "gU9l",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "ABC"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "caseops/gU-f",
+    "buffer": [
+      "abc,def"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "gUf,",
+    "groups": [
+      "gUf,"
+    ],
+    "note": "f is inclusive, so the target comma is inside the operated range",
+    "encodedKeys": "gUf,",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "ABC,def"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "caseops/gU-t",
+    "buffer": [
+      "abc,def"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "gUt,",
+    "groups": [
+      "gUt,"
+    ],
+    "note": "t is inclusive too, but stops one short of the target",
+    "encodedKeys": "gUt,",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "ABC,def"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "caseops/gU-f-not-found-fails",
+    "buffer": [
+      "abc def"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "gUfz",
+    "groups": [
+      "gUfz"
+    ],
+    "note": "a failed motion must abort the operator entirely",
+    "encodedKeys": "gUfz",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "abc def"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "caseops/gU-underscore-is-a-keyword-char",
+    "buffer": [
+      "foo_bar baz"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "gUw",
+    "groups": [
+      "gUw"
+    ],
+    "encodedKeys": "gUw",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "FOO_BAR baz"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "caseops/gU-j",
+    "buffer": [
+      "one",
+      "two",
+      "three"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "gUj",
+    "groups": [
+      "gUj"
+    ],
+    "encodedKeys": "gUj",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "ONE",
+        "TWO",
+        "three"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "caseops/gU-j-on-last-line-fails",
+    "buffer": [
+      "one",
+      "two"
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": "gUj",
+    "groups": [
+      "gUj"
+    ],
+    "encodedKeys": "gUj",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "one",
+        "two"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "caseops/gU-G",
+    "buffer": [
+      "one",
+      "two",
+      "three"
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": "gUG",
+    "groups": [
+      "gUG"
+    ],
+    "encodedKeys": "gUG",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "one",
+        "TWO",
+        "THREE"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "caseops/gu-w",
+    "buffer": [
+      "ALPHA BETA"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "guw",
+    "groups": [
+      "guw"
+    ],
+    "encodedKeys": "guw",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "alpha BETA"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "caseops/gu-W",
+    "buffer": [
+      "FOO.BAR BAZ"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "guW",
+    "groups": [
+      "guW"
+    ],
+    "encodedKeys": "guW",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "foo.bar BAZ"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "caseops/gu-dollar",
+    "buffer": [
+      "ALPHA BETA GAMMA"
+    ],
+    "cursor": [
+      1,
+      7
+    ],
+    "keys": "gu$",
+    "groups": [
+      "gu$"
+    ],
+    "encodedKeys": "gu$",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "ALPHA beta gamma"
+      ],
+      "cursor": [
+        1,
+        7
+      ],
+      "error": "",
+      "curswant": 7
+    }
+  },
+  {
+    "id": "caseops/gu-k",
+    "buffer": [
+      "ONE",
+      "TWO",
+      "THREE"
+    ],
+    "cursor": [
+      2,
+      2
+    ],
+    "keys": "guk",
+    "groups": [
+      "guk"
+    ],
+    "encodedKeys": "guk",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "one",
+        "two",
+        "THREE"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "caseops/gu-k-on-first-line-fails",
+    "buffer": [
+      "ONE",
+      "TWO"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "guk",
+    "groups": [
+      "guk"
+    ],
+    "encodedKeys": "guk",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "ONE",
+        "TWO"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "caseops/gu-count-overshoot-w",
+    "buffer": [
+      "ONE TWO",
+      "THREE"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "gu9w",
+    "groups": [
+      "gu9w"
+    ],
+    "encodedKeys": "gu9w",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "one two",
+        "three"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "caseops/gtilde-w",
+    "buffer": [
+      "aLpHa beta"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "g~w",
+    "groups": [
+      "g~w"
+    ],
+    "encodedKeys": "g~w",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "AlPhA beta"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "caseops/gtilde-e",
+    "buffer": [
+      "mIxEd case"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "g~e",
+    "groups": [
+      "g~e"
+    ],
+    "encodedKeys": "g~e",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "MiXeD case"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "caseops/gtilde-dollar",
+    "buffer": [
+      "MiXeD cAsE"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "g~$",
+    "groups": [
+      "g~$"
+    ],
+    "encodedKeys": "g~$",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "mIxEd CaSe"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "caseops/gtilde-dollar-mixed-with-digits",
+    "buffer": [
+      "aB3d!Ef_9G"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "g~$",
+    "groups": [
+      "g~$"
+    ],
+    "note": "only the letters may flip; digits, punctuation and _ stay put",
+    "encodedKeys": "g~$",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "Ab3D!eF_9g"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "caseops/gtilde-j-count",
+    "buffer": [
+      "aA",
+      "bB",
+      "cC",
+      "dD"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "g~2j",
+    "groups": [
+      "g~2j"
+    ],
+    "encodedKeys": "g~2j",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "Aa",
+        "Bb",
+        "Cc",
+        "dD"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "caseops/gUU-line",
+    "buffer": [
+      "hello world",
+      "next"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "gUU",
+    "groups": [
+      "gUU"
+    ],
+    "encodedKeys": "gUU",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "HELLO WORLD",
+        "next"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "caseops/gUgU-line",
+    "buffer": [
+      "hello world",
+      "next"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "gUgU",
+    "groups": [
+      "gUgU"
+    ],
+    "note": "gUgU is the long spelling of gUU and must behave identically",
+    "encodedKeys": "gUgU",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "HELLO WORLD",
+        "next"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "caseops/guu-line",
+    "buffer": [
+      "HELLO WORLD",
+      "NEXT"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "guu",
+    "groups": [
+      "guu"
+    ],
+    "encodedKeys": "guu",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "hello world",
+        "NEXT"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "caseops/gtilde-tilde-line",
+    "buffer": [
+      "Hello World",
+      "x"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "g~~",
+    "groups": [
+      "g~~"
+    ],
+    "encodedKeys": "g~~",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "hELLO wORLD",
+        "x"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "caseops/gUU-count",
+    "buffer": [
+      "one",
+      "two",
+      "three",
+      "four"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "3gUU",
+    "groups": [
+      "3gUU"
+    ],
+    "encodedKeys": "3gUU",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "ONE",
+        "TWO",
+        "THREE",
+        "four"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "caseops/gtilde-tilde-count",
+    "buffer": [
+      "aB",
+      "cD",
+      "eF",
+      "gH"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "3g~~",
+    "groups": [
+      "3g~~"
+    ],
+    "encodedKeys": "3g~~",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "Ab",
+        "Cd",
+        "Ef",
+        "gH"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "caseops/guu-count-overshoot",
+    "buffer": [
+      "AA",
+      "BB"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "9guu",
+    "groups": [
+      "9guu"
+    ],
+    "note": "a linewise count past the end of the buffer — does it clamp or fail?",
+    "encodedKeys": "9guu",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "aa",
+        "bb"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "caseops/gUU-on-last-line",
+    "buffer": [
+      "one",
+      "last"
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": "gUU",
+    "groups": [
+      "gUU"
+    ],
+    "encodedKeys": "gUU",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "one",
+        "LAST"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "caseops/gUU-indented-cursor-lands-on-nonblank",
+    "buffer": [
+      "   hello world",
+      "x"
+    ],
+    "cursor": [
+      1,
+      9
+    ],
+    "keys": "gUU",
+    "groups": [
+      "gUU"
+    ],
+    "encodedKeys": "gUU",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "   HELLO WORLD",
+        "x"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "caseops/gUU-on-empty-line",
+    "buffer": [
+      "",
+      "abc"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "gUU",
+    "groups": [
+      "gUU"
+    ],
+    "encodedKeys": "gUU",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "",
+        "abc"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "caseops/gU-dollar-on-empty-line",
+    "buffer": [
+      "",
+      "x"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "gU$",
+    "groups": [
+      "gU$"
+    ],
+    "encodedKeys": "gU$",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "",
+        "x"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "caseops/gU-dollar-on-empty-last-line",
+    "buffer": [
+      "abc",
+      ""
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": "gU$",
+    "groups": [
+      "gU$"
+    ],
+    "encodedKeys": "gU$",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "abc",
+        ""
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "caseops/gtilde-dollar-all-blank-line",
+    "buffer": [
+      "   ",
+      "abc"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "g~$",
+    "groups": [
+      "g~$"
+    ],
+    "encodedKeys": "g~$",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "   ",
+        "abc"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "caseops/gU-all-punctuation-line",
+    "buffer": [
+      "!@#$%^&*()"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "gU$",
+    "groups": [
+      "gU$"
+    ],
+    "note": "nothing here has case, so the buffer must come back unchanged",
+    "encodedKeys": "gU$",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "!@#$%^&*()"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "caseops/guu-digits-only-line",
+    "buffer": [
+      "12345",
+      "x"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "guu",
+    "groups": [
+      "guu"
+    ],
+    "encodedKeys": "guu",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "12345",
+        "x"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "caseops/gU-single-char-buffer",
+    "buffer": [
+      "a"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "gU$",
+    "groups": [
+      "gU$"
+    ],
+    "encodedKeys": "gU$",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "A"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "caseops/gU-tab-indented-line",
+    "buffer": [
+      "\tfoo bar"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "gU$",
+    "groups": [
+      "gU$"
+    ],
+    "note": "a real tab, so byte columns and screen columns disagree",
+    "encodedKeys": "gU$",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "\tFOO BAR"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 9
+    }
+  },
+  {
+    "id": "caseops/gtilde-undo-redo",
+    "buffer": [
+      "abc def"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "g~$u<C-r>",
+    "groups": [
+      "g~$u<C-r>"
+    ],
+    "encodedKeys": "g~$u\u0012",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "ABC DEF"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "caseops/two-gU-then-two-undos",
+    "buffer": [
+      "alpha beta gamma"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "gUwwgUwuu",
+    "groups": [
+      "gUw",
+      "wgUw",
+      "u",
+      "u"
+    ],
+    "note": "two discrete changes, so they are listed as groups — fed as one string feedkeys would fuse them into a single undo block",
+    "encodedKeys": "gUwwgUwuu",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "alpha beta gamma"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "caseops/guu-on-two-lines-then-undo",
+    "buffer": [
+      "ONE",
+      "TWO",
+      "THREE"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "guujguuu",
+    "groups": [
+      "guu",
+      "jguu",
+      "u"
+    ],
+    "encodedKeys": "guujguuu",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "one",
+        "TWO",
+        "THREE"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "caseops/gU-then-gu-same-word",
+    "buffer": [
+      "aLpHa beta"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "gUwguw",
+    "groups": [
+      "gUw",
+      "guw"
+    ],
+    "note": "gu must fully reverse a preceding gU on already-mixed-case text",
+    "encodedKeys": "gUwguw",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "alpha beta"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  }
+]

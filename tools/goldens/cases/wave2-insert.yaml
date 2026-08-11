@@ -1,0 +1,372 @@
+# Wave 2 — insert-mode entry: i a I A o O R s S.
+#
+# Every case enters insert, types literal text, and leaves with <Esc>. The
+# interesting parts are all at the seams: where the entry command puts the
+# cursor before typing, whether the line gets extended or opened, what a count
+# repeats, and the off-by-one when <Esc> moves the cursor one column LEFT.
+#
+# Only <BS> and <Tab> are used as insert-mode control keys (plus <CR>), so the
+# baseline's backspace=indent,eol,start and expandtab are both exercised.
+
+cases:
+  # --- i ---------------------------------------------------------------------
+  - id: insert/i-at-line-start
+    buffer: 'alpha'
+    cursor: [1, 1]
+    keys: 'iX<Esc>'
+  - id: insert/i-mid-line-esc-lands-on-last-inserted-char
+    note: >-
+      <Esc> moves the cursor one column left, so it ends on the final inserted
+      character rather than after it. Classic off-by-one.
+    buffer: 'alpha beta'
+    cursor: [1, 7]
+    keys: 'ixyz<Esc>'
+  - id: insert/i-before-last-char
+    note: i inserts BEFORE the character under the cursor, never after it
+    buffer: 'abc'
+    cursor: [1, 3]
+    keys: 'iZ<Esc>'
+  - id: insert/i-on-empty-line
+    buffer: ['', 'tail']
+    cursor: [1, 1]
+    keys: 'ifoo<Esc>'
+  - id: insert/i-esc-at-col1-cannot-move-left
+    note: nothing typed, and the cursor is already at column 1 — it must stay
+    buffer: 'abc'
+    cursor: [1, 1]
+    keys: 'i<Esc>'
+
+  # --- a ---------------------------------------------------------------------
+  - id: insert/a-mid-line
+    buffer: 'alpha'
+    cursor: [1, 2]
+    keys: 'aX<Esc>'
+  - id: insert/a-at-eol-appends-after-last-char
+    note: the one place the cursor legally sits past the last character
+    buffer: 'abc'
+    cursor: [1, 3]
+    keys: 'aZ<Esc>'
+  - id: insert/a-on-empty-line
+    buffer: ['', 'x']
+    cursor: [1, 1]
+    keys: 'aQ<Esc>'
+  - id: insert/a-on-single-char-buffer
+    buffer: 'a'
+    cursor: [1, 1]
+    keys: 'abc<Esc>'
+
+  # --- I ---------------------------------------------------------------------
+  - id: insert/I-indented-line
+    note: I goes to the first non-blank, not to column 0
+    buffer: '    indented'
+    cursor: [1, 9]
+    keys: 'IX<Esc>'
+  - id: insert/I-on-all-blank-line
+    note: no non-blank exists, so I lands wherever ^ would on an all-blank line
+    buffer: '     '
+    cursor: [1, 2]
+    keys: 'IX<Esc>'
+  - id: insert/I-tab-indent
+    note: a real tab as indent — I must land after it, not inside it
+    buffer: "\tfoo"
+    cursor: [1, 3]
+    keys: 'IX<Esc>'
+
+  # --- A ---------------------------------------------------------------------
+  - id: insert/A-basic
+    buffer: 'abc'
+    cursor: [1, 1]
+    keys: 'AZ<Esc>'
+  - id: insert/A-on-empty-line
+    buffer: ['', 'x']
+    cursor: [1, 1]
+    keys: 'Afoo<Esc>'
+  - id: insert/A-trailing-whitespace
+    note: A appends after the trailing blanks, it does not trim them
+    buffer: 'abc   '
+    cursor: [1, 1]
+    keys: 'AZ<Esc>'
+  - id: insert/A-esc-cursor-with-no-text
+    note: A moves past the last char, then <Esc> pulls back one — net no-op
+    buffer: 'abcdef'
+    cursor: [1, 1]
+    keys: 'A<Esc>'
+
+  # --- o O -------------------------------------------------------------------
+  - id: insert/o-basic
+    buffer: ['one', 'two']
+    cursor: [1, 1]
+    keys: 'onew<Esc>'
+  - id: insert/o-on-last-line
+    buffer: ['one', 'two']
+    cursor: [2, 2]
+    keys: 'onew<Esc>'
+  - id: insert/o-on-empty-buffer
+    buffer: ['']
+    cursor: [1, 1]
+    keys: 'oX<Esc>'
+  - id: insert/o-no-autoindent
+    note: autoindent is off in the baseline, so the opened line starts at column 1
+    buffer: ['    indented', 'tail']
+    cursor: [1, 6]
+    keys: 'ox<Esc>'
+  - id: insert/o-empty-text
+    note: o<Esc> leaves a genuinely empty line behind
+    buffer: ['one', 'two']
+    cursor: [1, 1]
+    keys: 'o<Esc>'
+  - id: insert/O-on-last-line
+    buffer: ['one', 'two']
+    cursor: [2, 1]
+    keys: 'Onew<Esc>'
+
+  # --- counts on insert entry ------------------------------------------------
+  - id: insert/i-count-3
+    note: 3ix<Esc> inserts xxx, not x
+    buffer: 'ab'
+    cursor: [1, 2]
+    keys: '3ix<Esc>'
+  - id: insert/a-count-3-multichar
+    note: the whole typed run repeats, so xy becomes xyxyxy
+    buffer: 'ab'
+    cursor: [1, 1]
+    keys: '3axy<Esc>'
+  - id: insert/o-count-2
+    note: 2o opens TWO lines, each with the typed text
+    buffer: ['one', 'two']
+    cursor: [1, 1]
+    keys: '2oX<Esc>'
+  - id: insert/O-count-3
+    buffer: ['one']
+    cursor: [1, 1]
+    keys: '3OY<Esc>'
+  - id: insert/i-count-with-newline
+    note: >-
+      A counted insert whose text contains a line break — the repetition rule
+      for multi-line inserted text is exactly the kind of wart goldens settle.
+    buffer: 'ab'
+    cursor: [1, 2]
+    keys: '3ix<CR><Esc>'
+  - id: insert/i-count-with-bs
+    note: >-
+      <BS> during a counted insert — the repeat replays the net inserted text,
+      not the raw keystrokes.
+    buffer: 'ab'
+    cursor: [1, 2]
+    keys: '3iqz<BS><Esc>'
+
+  # --- R (replace mode) ------------------------------------------------------
+  - id: insert/R-overwrite
+    buffer: 'abcdef'
+    cursor: [1, 2]
+    keys: 'RXY<Esc>'
+  - id: insert/R-past-eol-extends
+    note: R overwrites while characters remain, then starts appending
+    buffer: 'abc'
+    cursor: [1, 2]
+    keys: 'RXYZW<Esc>'
+  - id: insert/R-on-empty-line
+    note: nothing to overwrite, so R behaves as a plain insert here
+    buffer: ['', 'x']
+    cursor: [1, 1]
+    keys: 'Rfoo<Esc>'
+  - id: insert/R-bs-restores-original
+    note: >-
+      In replace mode <BS> puts the ORIGINAL characters back rather than
+      deleting — the buffer should end up unchanged.
+    buffer: 'abcdef'
+    cursor: [1, 2]
+    keys: 'RXY<BS><BS><Esc>'
+  - id: insert/R-count
+    buffer: 'abcdefgh'
+    cursor: [1, 1]
+    keys: '3Rxy<Esc>'
+  - id: insert/R-cr-bs-rejoins
+    note: >-
+      Replace-mode <BS> over an inserted line break must REJOIN the lines —
+      the break was inserted, so backspace takes it back out.
+    buffer: 'abcdef'
+    cursor: [1, 4]
+    keys: 'RX<CR><BS><Esc>'
+  - id: insert/R-cr-bs-bs-restores-all
+    note: the second <BS> then restores the overwritten character as usual
+    buffer: 'abcdef'
+    cursor: [1, 4]
+    keys: 'RX<CR><BS><BS><Esc>'
+  - id: insert/R-cr-bs-immediately
+    buffer: 'abc'
+    cursor: [1, 2]
+    keys: 'R<CR><BS><Esc>'
+  - id: insert/R-tab-consumes-one-char
+    note: >-
+      A <Tab> expanding to eight spaces still overwrites exactly ONE character
+      — the rest of the expansion is inserted, as ins_tab does.
+    buffer: 'abcdefghij'
+    cursor: [1, 1]
+    keys: 'R<Tab>X<Esc>'
+  - id: insert/R-tab-then-bs
+    note: <BS> after the tab removes one appended space; the eaten char stays gone
+    buffer: 'abcdefghij'
+    cursor: [1, 1]
+    keys: 'R<Tab><BS><Esc>'
+  - id: insert/R-count-with-cr
+    note: a counted R containing <CR> replays the raw keys, breaking lines again
+    buffer: 'wxyzqrst'
+    cursor: [1, 2]
+    keys: '2Ra<CR>b<Esc>'
+  - id: insert/R-esc-immediately
+    buffer: 'abc'
+    cursor: [1, 2]
+    keys: 'R<Esc>'
+  - id: insert/R-with-cr
+    note: <CR> in replace mode opens a new line instead of overwriting one
+    buffer: ['abcdef', 'ghi']
+    cursor: [1, 2]
+    keys: 'RX<CR>Y<Esc>'
+  - id: insert/R-on-last-line-past-eol
+    buffer: ['one', 'xy']
+    cursor: [2, 2]
+    keys: 'Rpqr<Esc>'
+
+  # --- s S -------------------------------------------------------------------
+  - id: insert/s-basic
+    buffer: 'abc'
+    cursor: [1, 2]
+    keys: 'sXY<Esc>'
+  - id: insert/s-count
+    buffer: 'abcdef'
+    cursor: [1, 2]
+    keys: '3sZ<Esc>'
+  - id: insert/s-count-overshoot
+    note: >-
+      Count runs past the end of the line. Whether s clamps like x or fails is
+      the oracle's call; the trailing keys are harmless either way.
+    buffer: 'abc'
+    cursor: [1, 2]
+    keys: '9sZ<Esc>'
+  - id: insert/s-on-empty-line
+    note: nothing under the cursor to substitute
+    buffer: ['', 'x']
+    cursor: [1, 1]
+    keys: 'sQ<Esc>'
+  - id: insert/S-on-indented-line
+    note: with autoindent off, S must not preserve the leading whitespace
+    buffer: ['    indented', 'tail']
+    cursor: [1, 7]
+    keys: 'Snew<Esc>'
+  - id: insert/S-count-2
+    buffer: ['one', 'two', 'three']
+    cursor: [1, 1]
+    keys: '2Snew<Esc>'
+  - id: insert/S-on-last-line
+    buffer: ['one', 'two']
+    cursor: [2, 2]
+    keys: 'Sx<Esc>'
+  - id: insert/S-count-overshoot-on-last-line
+    note: >-
+      Only one line remains for a count of two. Cursor is at column 1 so that
+      if the change fails the leftover X is itself a no-op.
+    buffer: ['one', 'two']
+    cursor: [2, 1]
+    keys: '2SX<Esc>'
+  - id: insert/S-on-empty-line
+    buffer: ['', 'x']
+    cursor: [1, 1]
+    keys: 'SX<Esc>'
+
+  # --- <BS> inside insert (backspace=indent,eol,start) ------------------------
+  - id: insert/bs-past-insert-start
+    note: backspace=start lets <BS> chew back past where insert began
+    buffer: 'abcdef'
+    cursor: [1, 4]
+    keys: 'iZ<BS><BS><Esc>'
+  - id: insert/bs-joins-lines-over-eol
+    note: backspace=eol — <BS> at column 1 pulls the line up onto the previous one
+    buffer: ['ab', 'cd']
+    cursor: [2, 1]
+    keys: 'i<BS><Esc>'
+  - id: insert/A-bs-empties-line
+    buffer: 'ab'
+    cursor: [1, 1]
+    keys: 'A<BS><BS><Esc>'
+
+  # --- <Tab> (expandtab on, tabstop=8, softtabstop=0) -------------------------
+  - id: insert/tab-expandtab-at-col1
+    buffer: 'abc'
+    cursor: [1, 1]
+    keys: 'i<Tab><Esc>'
+  - id: insert/tab-expandtab-mid-line
+    note: the pad width depends on the virtual column, not on a fixed count
+    buffer: 'abcde'
+    cursor: [1, 4]
+    keys: 'i<Tab><Esc>'
+  - id: insert/tab-noexpandtab
+    buffer: 'abc'
+    cursor: [1, 1]
+    keys: 'i<Tab><Esc>'
+    options: ['noexpandtab']
+  # --- undo / redo across an insert -------------------------------------------
+  - id: insert/undo-after-i
+    buffer: 'abc'
+    cursor: [1, 2]
+    keys: ['iXY<Esc>', 'u']
+  - id: insert/undo-after-o
+    note: undoing an opened line must remove the line, not just its text
+    buffer: ['one', 'two']
+    cursor: [1, 1]
+    keys: ['onew<Esc>', 'u']
+  - id: insert/redo-after-undo-A
+    buffer: 'abc'
+    cursor: [1, 1]
+    keys: ['AZ<Esc>', 'u', '<C-r>']
+  - id: insert/count-insert-bs-past-session-start
+    note: >-
+      The repeat replays RAW keystrokes, so a <BS> that ate pre-session text
+      eats another character on every repetition — net-text replay gets this
+      wrong.
+    buffer: 'xyz'
+    cursor: [1, 3]
+    keys: '2iA<BS><BS><Esc>'
+  - id: insert/count-append-bs-past-session-start
+    buffer: 'ab'
+    cursor: [1, 2]
+    keys: '2a1<BS><BS><Esc>'
+  - id: insert/count-insert-bs-joins-lines
+    note: the replayed <BS> joins lines again on the second iteration
+    buffer: ['ab', 'cd']
+    cursor: [2, 1]
+    keys: '2i<BS>X<Esc>'
+  - id: insert/empty-session-mints-no-undo
+    note: >-
+      i<Esc> changes nothing, so it must NOT create an undo block — the u here
+      has to undo the x, not the empty insert session.
+    buffer: 'ab'
+    cursor: [1, 1]
+    keys: ['x', 'i<Esc>', 'u']
+  - id: insert/empty-replace-session-mints-no-undo
+    buffer: 'ab'
+    cursor: [1, 1]
+    keys: ['x', 'R<Esc>', 'u']
+  - id: insert/empty-change-session-still-mints-undo
+    note: >-
+      The other side of the rule: cl on an empty line deletes nothing and types
+      nothing, but op_change prepared an undo entry before insert mode began, so
+      this DOES mint a block and the u burns on it. An empty i-session does not.
+    buffer: ['ab', '']
+    cursor: [1, 1]
+    keys: ['x', 'j', 'cl<Esc>', 'u']
+  - id: insert/empty-s-session-still-mints-undo
+    buffer: ['ab', '']
+    cursor: [1, 1]
+    keys: ['x', 'j', 's<Esc>', 'u']
+  - id: insert/empty-C-session-still-mints-undo
+    buffer: ['ab', '']
+    cursor: [1, 1]
+    keys: ['x', 'j', 'C<Esc>', 'u']
+  - id: insert/undo-two-separate-inserts
+    note: >-
+      Grouped so each insert is its own undo block — one u must peel back only
+      the second one.
+    buffer: 'abc'
+    cursor: [1, 1]
+    keys: ['iX<Esc>', 'aY<Esc>', 'u']

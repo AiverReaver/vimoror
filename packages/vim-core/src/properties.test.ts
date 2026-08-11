@@ -77,12 +77,41 @@ describe('invariants', () => {
 
   it('u after any single change restores the exact prior buffer', () => {
     fc.assert(
-      fc.property(arbState, fc.constantFrom('x', 'X', 'rZ'), (s0, cmd) => {
-        const changed = feed(s0, cmd);
-        // Only meaningful when the command actually changed something.
-        fc.pre(JSON.stringify(changed.lines) !== JSON.stringify(s0.lines));
-        const undone = feed(changed, 'u');
-        expect(undone.lines).toEqual(s0.lines);
+      fc.property(
+        arbState,
+        fc.constantFrom('x', 'X', 'rZ', 'dd', 'dw', 'D', 'cwQ<Esc>', 'ccQ<Esc>', '>>', 'gUU', '~', 'iQ<Esc>', 'oQ<Esc>'),
+        (s0, cmd) => {
+          const changed = feed(s0, cmd);
+          // Only meaningful when the command actually changed something.
+          fc.pre(JSON.stringify(changed.lines) !== JSON.stringify(s0.lines));
+          const undone = feed(changed, 'u');
+          expect(undone.lines).toEqual(s0.lines);
+        },
+      ),
+    );
+  });
+
+  it('dd reduces the line count by exactly one, except on a one-line buffer', () => {
+    fc.assert(
+      fc.property(arbState, (s0) => {
+        const after = feed(s0, 'dd');
+        const expected = s0.lines.length === 1 ? 1 : s0.lines.length - 1;
+        expect(after.lines.length).toBe(expected);
+      }),
+    );
+  });
+
+  it('an operator abandoned with <Esc> is a no-op', () => {
+    // Tokens rather than notation: a literal `<` next to `<Esc>` would parse
+    // as a malformed named key.
+    const ops = fc.constantFrom(['d'], ['c'], ['y'], ['>'], ['<'], ['2', 'd'], ['"', 'a', 'd'], ['g', 'U']);
+    fc.assert(
+      fc.property(arbState, ops, (s0, op) => {
+        const s = replay(s0, [...op, '<Esc>']);
+        expect(s.lines).toEqual(s0.lines);
+        expect(s.cursor).toEqual(s0.cursor);
+        expect(s.mode).toBe('normal');
+        expect(s.pending.keyBuffer).toHaveLength(0);
       }),
     );
   });

@@ -1,0 +1,295 @@
+# Wave 2 — the c (change) operator.
+#
+# c composed with every Wave 1/2 motion, plus cc, C, and the counted forms.
+# The headline wart: when the cursor is ON a word, cw/cW behave like ce/cE and
+# do NOT swallow the trailing whitespace — but on whitespace they keep w's
+# ordinary meaning. Both halves are covered heavily below, along with the
+# usual edges: empty lines, all-blank lines, single-char buffers, last word of
+# a line, last line of the buffer, counts that overshoot, motions that must
+# FAIL and abort the operator, and changing to nothing at all.
+#
+# Cases whose motion is expected (or suspected) to fail deliberately type no
+# text: a failed operator drops back to normal mode, where the "text" would be
+# replayed as commands. Those cases use a bare '<Esc>' terminator instead, so a
+# failure can never leak keystrokes into the buffer.
+
+cases:
+  # --- cw on a word: the ce special case ------------------------------------
+  - id: change/cw-on-word-start
+    note: >-
+      cw from the start of a word acts like ce — the space after alpha must
+      survive, unlike dw which eats it.
+    buffer: 'alpha beta gamma'
+    cursor: [1, 1]
+    keys: 'cwNEW<Esc>'
+  - id: change/cw-mid-word
+    note: from mid-word cw changes only the tail of the word
+    buffer: 'alpha beta'
+    cursor: [1, 3]
+    keys: 'cwNEW<Esc>'
+  - id: change/cw-on-last-char-of-word
+    note: >-
+      On the final character of a word cw changes just that one character.
+      ce from the same spot jumps to the end of the NEXT word — see the
+      companion case.
+    buffer: 'alpha beta'
+    cursor: [1, 5]
+    keys: 'cwNEW<Esc>'
+  - id: change/ce-on-last-char-of-word
+    note: the ce contrast to cw-on-last-char-of-word
+    buffer: 'alpha beta'
+    cursor: [1, 5]
+    keys: 'ceNEW<Esc>'
+  - id: change/cw-last-word-of-line
+    note: cw on the last word of a line must not reach across the newline
+    buffer: ['alpha beta', 'gamma']
+    cursor: [1, 7]
+    keys: 'cwNEW<Esc>'
+  - id: change/cw-last-word-of-last-line
+    buffer: ['one', 'two three']
+    cursor: [2, 5]
+    keys: 'cwNEW<Esc>'
+  - id: change/cw-single-char-word
+    buffer: 'a bc de'
+    cursor: [1, 1]
+    keys: 'cwY<Esc>'
+  - id: change/cw-on-last-char-of-line
+    note: single-character line, cursor at end of line
+    buffer: 'abc'
+    cursor: [1, 3]
+    keys: 'cwY<Esc>'
+  - id: change/cw-to-empty
+    note: changing to nothing still deletes the word and leaves the space
+    buffer: 'alpha beta'
+    cursor: [1, 1]
+    keys: 'cw<Esc>'
+
+  # --- cw on whitespace: the special case does NOT apply --------------------
+  - id: change/cw-on-space-run
+    note: >-
+      On whitespace cw keeps w's ordinary meaning, so it changes the run of
+      spaces rather than behaving like ce.
+    buffer: 'alpha   beta'
+    cursor: [1, 6]
+    keys: 'cwNEW<Esc>'
+  - id: change/cw-on-single-space
+    buffer: 'a b c'
+    cursor: [1, 2]
+    keys: 'cwY<Esc>'
+  - id: change/cw-on-trailing-whitespace
+    note: whitespace at end of line — plain w would cross onto the next line
+    buffer: ['foo   ', 'bar']
+    cursor: [1, 5]
+    keys: 'cwY<Esc>'
+  - id: change/cw-on-empty-line
+    buffer: ['', 'next']
+    cursor: [1, 1]
+    keys: 'cwY<Esc>'
+  - id: change/cw-on-all-blank-line
+    buffer: ['   ', 'next']
+    cursor: [1, 2]
+    keys: 'cwY<Esc>'
+
+  # --- counts on cw --------------------------------------------------------
+  - id: change/c2w
+    buffer: 'alpha beta gamma'
+    cursor: [1, 1]
+    keys: 'c2wNEW<Esc>'
+  - id: change/count-before-operator-2cw
+    note: the count may precede the operator and must multiply identically
+    buffer: 'alpha beta gamma'
+    cursor: [1, 1]
+    keys: '2cwNEW<Esc>'
+  - id: change/c9w-overshoot
+    note: >-
+      More words requested than the buffer has. No text is typed so that an
+      aborted operator cannot replay letters as normal-mode commands.
+    buffer: ['one two', 'three']
+    cursor: [1, 1]
+    keys: 'c9w<Esc>'
+
+  # --- punctuation, and cw vs cW -------------------------------------------
+  - id: change/cw-punctuation-word
+    note: a run of punctuation is its own word for w, so cw stops at the dot
+    buffer: 'foo.bar baz'
+    cursor: [1, 1]
+    keys: 'cwNEW<Esc>'
+  - id: change/cw-on-punctuation-run
+    buffer: 'foo...bar'
+    cursor: [1, 4]
+    keys: 'cwY<Esc>'
+  - id: change/cW-punctuated-word
+    note: cW takes the whole space-delimited blob
+    buffer: 'foo.bar baz'
+    cursor: [1, 1]
+    keys: 'cWNEW<Esc>'
+  - id: change/c2W
+    buffer: 'a.b c.d e.f'
+    cursor: [1, 1]
+    keys: 'c2WNEW<Esc>'
+
+  # --- cc: linewise change --------------------------------------------------
+  - id: change/cc-basic
+    buffer: ['one', 'two', 'three']
+    cursor: [2, 2]
+    keys: 'ccNEW<Esc>'
+  - id: change/cc-drops-indent
+    note: with the baseline noautoindent, cc discards the leading whitespace
+    buffer: ['    indented', 'next']
+    cursor: [1, 7]
+    keys: 'ccNEW<Esc>'
+  - id: change/cc-autoindent-keeps-indent
+    note: the same case with autoindent on — the indent is re-inserted
+    buffer: ['    indented', 'next']
+    cursor: [1, 7]
+    keys: 'ccNEW<Esc>'
+    options: ['autoindent']
+  - id: change/cc-on-empty-line
+    buffer: ['', 'next']
+    cursor: [1, 1]
+    keys: 'ccY<Esc>'
+  - id: change/cc-to-empty
+    note: cc then Esc must leave an empty line, not remove the line
+    buffer: ['one', 'two']
+    cursor: [1, 2]
+    keys: 'cc<Esc>'
+  - id: change/cc-only-line-in-buffer
+    buffer: 'only'
+    cursor: [1, 2]
+    keys: 'ccNEW<Esc>'
+  - id: change/cc-on-last-line
+    buffer: ['one', 'two']
+    cursor: [2, 1]
+    keys: 'ccNEW<Esc>'
+  - id: change/cc-count-two
+    buffer: ['one', 'two', 'three', 'four']
+    cursor: [2, 1]
+    keys: '2ccNEW<Esc>'
+  - id: change/cc-count-overshoot
+    note: more lines requested than remain below the cursor
+    buffer: ['one', 'two']
+    cursor: [1, 1]
+    keys: '9cc<Esc>'
+
+  # --- C --------------------------------------------------------------------
+  - id: change/C-mid-line
+    buffer: 'alpha beta gamma'
+    cursor: [1, 7]
+    keys: 'CNEW<Esc>'
+  - id: change/C-on-last-char
+    buffer: 'abc'
+    cursor: [1, 3]
+    keys: 'CY<Esc>'
+  - id: change/C-on-empty-line
+    buffer: ['', 'next']
+    cursor: [1, 1]
+    keys: 'CY<Esc>'
+  - id: change/C-count-two
+    note: C with a count also swallows the following line
+    buffer: ['one two', 'three four', 'five']
+    cursor: [1, 5]
+    keys: '2CNEW<Esc>'
+
+  # --- c$ c0 c^ -------------------------------------------------------------
+  - id: change/c-dollar
+    buffer: 'alpha beta'
+    cursor: [1, 7]
+    keys: 'c$NEW<Esc>'
+  - id: change/c-zero
+    buffer: 'alpha beta'
+    cursor: [1, 7]
+    keys: 'c0NEW<Esc>'
+  - id: change/c-zero-at-col1
+    note: an empty region at column 1 — nothing should be removed
+    buffer: 'alpha'
+    cursor: [1, 1]
+    keys: 'c0<Esc>'
+  - id: change/c-caret
+    buffer: '    alpha beta'
+    cursor: [1, 11]
+    keys: 'c^NEW<Esc>'
+  - id: change/c-caret-inside-indent
+    note: >-
+      From inside the leading whitespace, caret moves FORWARD to the first
+      non-blank, so c^ changes the rest of the indent.
+    buffer: '    alpha'
+    cursor: [1, 2]
+    keys: 'c^Y<Esc>'
+
+  # --- linewise motions: j k G gg -------------------------------------------
+  - id: change/cj-linewise
+    note: cj is linewise and takes both lines whole
+    buffer: ['one', 'two', 'three']
+    cursor: [1, 2]
+    keys: 'cjNEW<Esc>'
+  - id: change/ck-linewise
+    buffer: ['one', 'two', 'three']
+    cursor: [3, 2]
+    keys: 'ckNEW<Esc>'
+  - id: change/cj-on-last-line-fails
+    buffer: ['one', 'two']
+    cursor: [2, 1]
+    keys: 'cj<Esc>'
+  - id: change/cG-to-end-of-buffer
+    buffer: ['one', 'two', 'three']
+    cursor: [2, 2]
+    keys: 'cGNEW<Esc>'
+  - id: change/cgg-to-start-of-buffer
+    buffer: ['one', 'two', 'three']
+    cursor: [3, 2]
+    keys: 'cggNEW<Esc>'
+
+  # --- char search and % ----------------------------------------------------
+  - id: change/cf-inclusive
+    buffer: 'a,b,c,d'
+    cursor: [1, 1]
+    keys: 'cf,Y<Esc>'
+  - id: change/ct-exclusive
+    buffer: 'foo(bar)'
+    cursor: [1, 1]
+    keys: 'ct(NEW<Esc>'
+  - id: change/cf-not-found-fails
+    note: the operator must abort, leaving the buffer untouched
+    buffer: 'abc'
+    cursor: [1, 1]
+    keys: 'cfz<Esc>'
+  - id: change/cT-backward
+    note: T is exclusive backward, so the character it lands on survives
+    buffer: 'x,abc'
+    cursor: [1, 5]
+    keys: 'cT,Y<Esc>'
+  - id: change/c-percent
+    buffer: 'fn(a, b) end'
+    cursor: [1, 3]
+    keys: 'c%NEW<Esc>'
+  - id: change/c-percent-unmatched-fails
+    buffer: 'a(b'
+    cursor: [1, 2]
+    keys: 'c%<Esc>'
+  - id: change/cb-at-col1-fails
+    buffer: 'alpha'
+    cursor: [1, 1]
+    keys: 'cb<Esc>'
+
+  # --- inserted text and undo -----------------------------------------------
+  - id: change/cw-insert-newline
+    note: a single change may still produce two lines
+    buffer: 'alpha beta'
+    cursor: [1, 1]
+    keys: 'cwone<CR>two<Esc>'
+  - id: change/cw-undo
+    note: groups so the change and the undo are separate undo blocks
+    buffer: 'alpha beta gamma'
+    cursor: [1, 7]
+    keys: ['cwNEW<Esc>', 'u']
+  - id: change/cw-undo-redo
+    buffer: 'alpha beta gamma'
+    cursor: [1, 7]
+    keys: ['cwNEW<Esc>', 'u', '<C-r>']
+  - id: change/two-changes-one-undo
+    note: >-
+      Two discrete changes fed as two groups. One u must restore only the
+      second — fed as one string feedkeys would collapse both.
+    buffer: 'alpha beta gamma'
+    cursor: [1, 1]
+    keys: ['cwONE<Esc>', 'wcwTWO<Esc>', 'u']

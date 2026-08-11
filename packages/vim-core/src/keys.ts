@@ -69,10 +69,18 @@ export function tokenize(notation: string): KeyToken[] {
     const ch = notation[i]!;
 
     if (ch === '<') {
+      // `<` doubles as the un-indent operator, so `<<` and `<j` are ordinary
+      // keys. Only a bracketed name of two or more characters is notation —
+      // Vim has no `<j>` key, and every real named key is longer than that.
       const close = notation.indexOf('>', i);
-      if (close === -1) throw new Error(`unterminated key notation at ${i} in ${JSON.stringify(notation)}`);
-      out.push(canonicalizeNamed(notation.slice(i, close + 1)));
-      i = close + 1;
+      const inner = close === -1 ? null : notation.slice(i + 1, close);
+      if (inner !== null && inner.length >= 2) {
+        out.push(canonicalizeNamed(notation.slice(i, close + 1)));
+        i = close + 1;
+        continue;
+      }
+      out.push('<');
+      i += 1;
       continue;
     }
 

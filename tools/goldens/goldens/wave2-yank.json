@@ -1,0 +1,2187 @@
+[
+  {
+    "id": "yank/yw-basic",
+    "buffer": [
+      "alpha beta gamma"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "yw",
+    "groups": [
+      "yw"
+    ],
+    "note": "yw takes the trailing whitespace, ye does not — same cursor, different register",
+    "encodedKeys": "yw",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "alpha "
+        },
+        "\"": {
+          "type": "v",
+          "text": "alpha "
+        }
+      },
+      "buffer": [
+        "alpha beta gamma"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "yank/ye-basic",
+    "buffer": [
+      "alpha beta gamma"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "ye",
+    "groups": [
+      "ye"
+    ],
+    "encodedKeys": "ye",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "alpha"
+        },
+        "\"": {
+          "type": "v",
+          "text": "alpha"
+        }
+      },
+      "buffer": [
+        "alpha beta gamma"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "yank/yw-last-word-on-line",
+    "buffer": [
+      "one two",
+      "three"
+    ],
+    "cursor": [
+      1,
+      5
+    ],
+    "keys": "yw",
+    "groups": [
+      "yw"
+    ],
+    "note": "yw on the last word stops at end of line, it does not eat the newline",
+    "encodedKeys": "yw",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "two"
+        },
+        "\"": {
+          "type": "v",
+          "text": "two"
+        }
+      },
+      "buffer": [
+        "one two",
+        "three"
+      ],
+      "cursor": [
+        1,
+        5
+      ],
+      "error": "",
+      "curswant": 5
+    }
+  },
+  {
+    "id": "yank/yw-across-lines",
+    "buffer": [
+      "one two",
+      "three four"
+    ],
+    "cursor": [
+      1,
+      5
+    ],
+    "keys": "y2w",
+    "groups": [
+      "y2w"
+    ],
+    "note": "y2w spanning a line break is charwise, so the register holds an embedded newline",
+    "encodedKeys": "y2w",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "two\nthree "
+        },
+        "\"": {
+          "type": "v",
+          "text": "two\nthree "
+        }
+      },
+      "buffer": [
+        "one two",
+        "three four"
+      ],
+      "cursor": [
+        1,
+        5
+      ],
+      "error": "",
+      "curswant": 5
+    }
+  },
+  {
+    "id": "yank/yw-on-empty-line",
+    "buffer": [
+      "",
+      "two"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "yw",
+    "groups": [
+      "yw"
+    ],
+    "encodedKeys": "yw",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "\n"
+        }
+      },
+      "buffer": [
+        "",
+        "two"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "yank/yw-punctuation-run",
+    "buffer": [
+      "foo.,;bar baz"
+    ],
+    "cursor": [
+      1,
+      4
+    ],
+    "keys": "yw",
+    "groups": [
+      "yw"
+    ],
+    "encodedKeys": "yw",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": ".,;"
+        },
+        "\"": {
+          "type": "v",
+          "text": ".,;"
+        }
+      },
+      "buffer": [
+        "foo.,;bar baz"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "yank/yw-count-overshoot",
+    "buffer": [
+      "one two",
+      "three"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "y9w",
+    "groups": [
+      "y9w"
+    ],
+    "encodedKeys": "y9w",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "one two\nthree"
+        },
+        "\"": {
+          "type": "v",
+          "text": "one two\nthree"
+        }
+      },
+      "buffer": [
+        "one two",
+        "three"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "yank/yW-skips-punctuation",
+    "buffer": [
+      "foo.bar baz"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "yW",
+    "groups": [
+      "yW"
+    ],
+    "encodedKeys": "yW",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "foo.bar "
+        },
+        "\"": {
+          "type": "v",
+          "text": "foo.bar "
+        }
+      },
+      "buffer": [
+        "foo.bar baz"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "yank/y-dollar",
+    "buffer": [
+      "alpha beta"
+    ],
+    "cursor": [
+      1,
+      7
+    ],
+    "keys": "y$",
+    "groups": [
+      "y$"
+    ],
+    "encodedKeys": "y$",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "beta"
+        },
+        "\"": {
+          "type": "v",
+          "text": "beta"
+        }
+      },
+      "buffer": [
+        "alpha beta"
+      ],
+      "cursor": [
+        1,
+        7
+      ],
+      "error": "",
+      "curswant": 7
+    }
+  },
+  {
+    "id": "yank/y-dollar-on-empty-line",
+    "buffer": [
+      "",
+      "x"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "y$",
+    "groups": [
+      "y$"
+    ],
+    "note": "y$ with nothing to yank — does it fail, or yank an empty string?",
+    "encodedKeys": "y$",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "",
+        "x"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "yank/yb-cursor-moves-to-start",
+    "buffer": [
+      "alpha beta gamma"
+    ],
+    "cursor": [
+      1,
+      12
+    ],
+    "keys": "yb",
+    "groups": [
+      "yb"
+    ],
+    "note": "the whole point — yb moves the cursor back to where the region begins",
+    "encodedKeys": "yb",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "beta "
+        },
+        "\"": {
+          "type": "v",
+          "text": "beta "
+        }
+      },
+      "buffer": [
+        "alpha beta gamma"
+      ],
+      "cursor": [
+        1,
+        7
+      ],
+      "error": "",
+      "curswant": 7
+    }
+  },
+  {
+    "id": "yank/y0",
+    "buffer": [
+      "   indented text"
+    ],
+    "cursor": [
+      1,
+      9
+    ],
+    "keys": "y0",
+    "groups": [
+      "y0"
+    ],
+    "encodedKeys": "y0",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "   inden"
+        },
+        "\"": {
+          "type": "v",
+          "text": "   inden"
+        }
+      },
+      "buffer": [
+        "   indented text"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "yank/y-caret",
+    "buffer": [
+      "   indented text"
+    ],
+    "cursor": [
+      1,
+      9
+    ],
+    "keys": "y^",
+    "groups": [
+      "y^"
+    ],
+    "note": "^ is exclusive and backward — the cursor ends on the first non-blank",
+    "encodedKeys": "y^",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "inden"
+        },
+        "\"": {
+          "type": "v",
+          "text": "inden"
+        }
+      },
+      "buffer": [
+        "   indented text"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "yank/yge",
+    "buffer": [
+      "alpha beta gamma"
+    ],
+    "cursor": [
+      1,
+      12
+    ],
+    "keys": "yge",
+    "groups": [
+      "yge"
+    ],
+    "encodedKeys": "yge",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "a g"
+        },
+        "\"": {
+          "type": "v",
+          "text": "a g"
+        }
+      },
+      "buffer": [
+        "alpha beta gamma"
+      ],
+      "cursor": [
+        1,
+        10
+      ],
+      "error": "",
+      "curswant": 10
+    }
+  },
+  {
+    "id": "yank/yh-at-col1-fails",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "yh",
+    "groups": [
+      "yh"
+    ],
+    "note": "a failed motion must leave every register untouched",
+    "encodedKeys": "yh",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "abc"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "yank/yl-count-overshoot",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "y9l",
+    "groups": [
+      "y9l"
+    ],
+    "note": "for an operator, l past end of line clamps instead of failing",
+    "encodedKeys": "y9l",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "bc"
+        },
+        "\"": {
+          "type": "v",
+          "text": "bc"
+        }
+      },
+      "buffer": [
+        "abc"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "yank/yf-inclusive",
+    "buffer": [
+      "a,b,c,d"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "yf,",
+    "groups": [
+      "yf,"
+    ],
+    "encodedKeys": "yf,",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "a,"
+        },
+        "\"": {
+          "type": "v",
+          "text": "a,"
+        }
+      },
+      "buffer": [
+        "a,b,c,d"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "yank/yt-exclusive",
+    "buffer": [
+      "a,b,c,d"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "yt,",
+    "groups": [
+      "yt,"
+    ],
+    "encodedKeys": "yt,",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "a"
+        },
+        "\"": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "a,b,c,d"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "yank/yF-backward",
+    "buffer": [
+      "a,b,c,d"
+    ],
+    "cursor": [
+      1,
+      7
+    ],
+    "keys": "yF,",
+    "groups": [
+      "yF,"
+    ],
+    "encodedKeys": "yF,",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": ","
+        },
+        "\"": {
+          "type": "v",
+          "text": ","
+        }
+      },
+      "buffer": [
+        "a,b,c,d"
+      ],
+      "cursor": [
+        1,
+        6
+      ],
+      "error": "",
+      "curswant": 6
+    }
+  },
+  {
+    "id": "yank/yf-not-found-fails",
+    "buffer": [
+      "alpha beta"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "ywyfz",
+    "groups": [
+      "ywyfz"
+    ],
+    "note": "the earlier yank must survive the failed one intact",
+    "encodedKeys": "ywyfz",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "alpha "
+        },
+        "\"": {
+          "type": "v",
+          "text": "alpha "
+        }
+      },
+      "buffer": [
+        "alpha beta"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "yank/y-percent",
+    "buffer": [
+      "fn(a, b) end"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "y%",
+    "groups": [
+      "y%"
+    ],
+    "encodedKeys": "y%",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "(a, b)"
+        },
+        "\"": {
+          "type": "v",
+          "text": "(a, b)"
+        }
+      },
+      "buffer": [
+        "fn(a, b) end"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "yank/y-percent-backward",
+    "buffer": [
+      "fn(a, b) end"
+    ],
+    "cursor": [
+      1,
+      8
+    ],
+    "keys": "y%",
+    "groups": [
+      "y%"
+    ],
+    "note": "% backward is inclusive, so the closing bracket is in the region too",
+    "encodedKeys": "y%",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "(a, b)"
+        },
+        "\"": {
+          "type": "v",
+          "text": "(a, b)"
+        }
+      },
+      "buffer": [
+        "fn(a, b) end"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "yank/y-percent-unmatched-fails",
+    "buffer": [
+      "a(b"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "y%",
+    "groups": [
+      "y%"
+    ],
+    "encodedKeys": "y%",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "a(b"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "yank/yj-is-linewise",
+    "buffer": [
+      "alpha",
+      "beta",
+      "gamma"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "yj",
+    "groups": [
+      "yj"
+    ],
+    "note": "yj yanks two whole lines, not the characters between the two cursors",
+    "encodedKeys": "yj",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "alpha\nbeta\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "alpha\nbeta\n"
+        }
+      },
+      "buffer": [
+        "alpha",
+        "beta",
+        "gamma"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "yank/yk-is-linewise-and-moves-up",
+    "buffer": [
+      "alpha",
+      "beta",
+      "gamma"
+    ],
+    "cursor": [
+      3,
+      3
+    ],
+    "keys": "yk",
+    "groups": [
+      "yk"
+    ],
+    "encodedKeys": "yk",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "beta\ngamma\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "beta\ngamma\n"
+        }
+      },
+      "buffer": [
+        "alpha",
+        "beta",
+        "gamma"
+      ],
+      "cursor": [
+        2,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "yank/yj-on-last-line-fails",
+    "buffer": [
+      "alpha",
+      "beta"
+    ],
+    "cursor": [
+      2,
+      2
+    ],
+    "keys": "yj",
+    "groups": [
+      "yj"
+    ],
+    "encodedKeys": "yj",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "alpha",
+        "beta"
+      ],
+      "cursor": [
+        2,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "yank/yG-to-end",
+    "buffer": [
+      "one",
+      "  two",
+      "three"
+    ],
+    "cursor": [
+      2,
+      4
+    ],
+    "keys": "yG",
+    "groups": [
+      "yG"
+    ],
+    "encodedKeys": "yG",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "  two\nthree\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "  two\nthree\n"
+        }
+      },
+      "buffer": [
+        "one",
+        "  two",
+        "three"
+      ],
+      "cursor": [
+        2,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "yank/ygg-to-top",
+    "buffer": [
+      "one",
+      "  two",
+      "three"
+    ],
+    "cursor": [
+      3,
+      4
+    ],
+    "keys": "ygg",
+    "groups": [
+      "ygg"
+    ],
+    "note": "backward linewise — the cursor should end up on line 1",
+    "encodedKeys": "ygg",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "one\n  two\nthree\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "one\n  two\nthree\n"
+        }
+      },
+      "buffer": [
+        "one",
+        "  two",
+        "three"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "yank/y-underscore",
+    "buffer": [
+      "   one",
+      "two"
+    ],
+    "cursor": [
+      1,
+      5
+    ],
+    "keys": "y_",
+    "groups": [
+      "y_"
+    ],
+    "note": "_ is the current line linewise — nothing to do with the \"_ register",
+    "encodedKeys": "y_",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "   one\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "   one\n"
+        }
+      },
+      "buffer": [
+        "   one",
+        "two"
+      ],
+      "cursor": [
+        1,
+        5
+      ],
+      "error": "",
+      "curswant": 5
+    }
+  },
+  {
+    "id": "yank/yy-basic",
+    "buffer": [
+      "    alpha",
+      "beta"
+    ],
+    "cursor": [
+      1,
+      7
+    ],
+    "keys": "yy",
+    "groups": [
+      "yy"
+    ],
+    "note": "yy leaves the cursor column alone — it does not jump to the first non-blank",
+    "encodedKeys": "yy",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "    alpha\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "    alpha\n"
+        }
+      },
+      "buffer": [
+        "    alpha",
+        "beta"
+      ],
+      "cursor": [
+        1,
+        7
+      ],
+      "error": "",
+      "curswant": 7
+    }
+  },
+  {
+    "id": "yank/yy-last-line",
+    "buffer": [
+      "one",
+      "two"
+    ],
+    "cursor": [
+      2,
+      2
+    ],
+    "keys": "yy",
+    "groups": [
+      "yy"
+    ],
+    "encodedKeys": "yy",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "two\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "two\n"
+        }
+      },
+      "buffer": [
+        "one",
+        "two"
+      ],
+      "cursor": [
+        2,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "yank/yy-empty-line",
+    "buffer": [
+      "one",
+      "",
+      "three"
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": "yy",
+    "groups": [
+      "yy"
+    ],
+    "encodedKeys": "yy",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "\n"
+        }
+      },
+      "buffer": [
+        "one",
+        "",
+        "three"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "yank/yy-empty-buffer",
+    "buffer": [
+      ""
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "yy",
+    "groups": [
+      "yy"
+    ],
+    "encodedKeys": "yy",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "\n"
+        }
+      },
+      "buffer": [
+        ""
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "yank/2yy",
+    "buffer": [
+      "one",
+      "two",
+      "three"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "2yy",
+    "groups": [
+      "2yy"
+    ],
+    "encodedKeys": "2yy",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "one\ntwo\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "one\ntwo\n"
+        }
+      },
+      "buffer": [
+        "one",
+        "two",
+        "three"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "yank/yy-count-overshoot-fails",
+    "buffer": [
+      "one",
+      "two",
+      "three"
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": "9yy",
+    "groups": [
+      "9yy"
+    ],
+    "note": "a count reaching past the last line makes yy fail outright — no partial yank",
+    "encodedKeys": "9yy",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "two\nthree\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "two\nthree\n"
+        }
+      },
+      "buffer": [
+        "one",
+        "two",
+        "three"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "yank/Y-is-linewise",
+    "buffer": [
+      "alpha beta",
+      "gamma"
+    ],
+    "cursor": [
+      1,
+      7
+    ],
+    "keys": "Y",
+    "groups": [
+      "Y"
+    ],
+    "note": "under -u NONE there is no defaults.vim remap, so Y is yy and not y$",
+    "encodedKeys": "Y",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "alpha beta\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "alpha beta\n"
+        }
+      },
+      "buffer": [
+        "alpha beta",
+        "gamma"
+      ],
+      "cursor": [
+        1,
+        7
+      ],
+      "error": "",
+      "curswant": 7
+    }
+  },
+  {
+    "id": "yank/3Y-overshoot-from-last-line",
+    "buffer": [
+      "a",
+      "b",
+      "c"
+    ],
+    "cursor": [
+      3,
+      1
+    ],
+    "keys": "3Y",
+    "groups": [
+      "3Y"
+    ],
+    "encodedKeys": "3Y",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "a",
+        "b",
+        "c"
+      ],
+      "cursor": [
+        3,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "yank/yy-tab-indented-line",
+    "buffer": [
+      "\tfoo\tbar",
+      "baz"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "yy",
+    "groups": [
+      "yy"
+    ],
+    "note": "tabs must survive the round trip through the register byte for byte",
+    "encodedKeys": "yy",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "\tfoo\tbar\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "\tfoo\tbar\n"
+        }
+      },
+      "buffer": [
+        "\tfoo\tbar",
+        "baz"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 9
+    }
+  },
+  {
+    "id": "yank/yy-all-blank-line",
+    "buffer": [
+      "   ",
+      "x"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "yy",
+    "groups": [
+      "yy"
+    ],
+    "encodedKeys": "yy",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "   \n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "   \n"
+        }
+      },
+      "buffer": [
+        "   ",
+        "x"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "yank/named-register",
+    "buffer": [
+      "alpha beta"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "\"ayw",
+    "groups": [
+      "\"ayw"
+    ],
+    "note": "a yank into a named register must NOT also fill \"0",
+    "encodedKeys": "\"ayw",
+    "expect": {
+      "registers": {
+        "a": {
+          "type": "v",
+          "text": "alpha "
+        },
+        "\"": {
+          "type": "v",
+          "text": "alpha "
+        }
+      },
+      "buffer": [
+        "alpha beta"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "yank/named-register-count-before-prefix",
+    "buffer": [
+      "one",
+      "two",
+      "three"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "2\"ayy",
+    "groups": [
+      "2\"ayy"
+    ],
+    "note": "the count may sit on either side of the register prefix",
+    "encodedKeys": "2\"ayy",
+    "expect": {
+      "registers": {
+        "a": {
+          "type": "V",
+          "text": "one\ntwo\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "one\ntwo\n"
+        }
+      },
+      "buffer": [
+        "one",
+        "two",
+        "three"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "yank/lowercase-register-overwrites",
+    "buffer": [
+      "alpha beta"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "\"ayww\"ayw",
+    "groups": [
+      "\"ayww\"ayw"
+    ],
+    "encodedKeys": "\"ayww\"ayw",
+    "expect": {
+      "registers": {
+        "a": {
+          "type": "v",
+          "text": "beta"
+        },
+        "\"": {
+          "type": "v",
+          "text": "beta"
+        }
+      },
+      "buffer": [
+        "alpha beta"
+      ],
+      "cursor": [
+        1,
+        7
+      ],
+      "error": "",
+      "curswant": 7
+    }
+  },
+  {
+    "id": "yank/uppercase-appends-charwise",
+    "buffer": [
+      "alpha beta"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "\"ayww\"Ayw",
+    "groups": [
+      "\"ayww\"Ayw"
+    ],
+    "encodedKeys": "\"ayww\"Ayw",
+    "expect": {
+      "registers": {
+        "a": {
+          "type": "v",
+          "text": "alpha beta"
+        },
+        "\"": {
+          "type": "v",
+          "text": "alpha beta"
+        }
+      },
+      "buffer": [
+        "alpha beta"
+      ],
+      "cursor": [
+        1,
+        7
+      ],
+      "error": "",
+      "curswant": 7
+    }
+  },
+  {
+    "id": "yank/uppercase-appends-linewise",
+    "buffer": [
+      "one",
+      "two",
+      "three"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "\"ayyj\"Ayy",
+    "groups": [
+      "\"ayyj\"Ayy"
+    ],
+    "encodedKeys": "\"ayyj\"Ayy",
+    "expect": {
+      "registers": {
+        "a": {
+          "type": "V",
+          "text": "one\ntwo\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "one\ntwo\n"
+        }
+      },
+      "buffer": [
+        "one",
+        "two",
+        "three"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "yank/uppercase-append-to-empty-register",
+    "buffer": [
+      "alpha beta"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "\"Ayw",
+    "groups": [
+      "\"Ayw"
+    ],
+    "note": "appending to a register that was never set should read as a plain yank",
+    "encodedKeys": "\"Ayw",
+    "expect": {
+      "registers": {
+        "a": {
+          "type": "v",
+          "text": "alpha "
+        },
+        "\"": {
+          "type": "v",
+          "text": "alpha "
+        }
+      },
+      "buffer": [
+        "alpha beta"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "yank/append-charwise-onto-linewise",
+    "buffer": [
+      "one",
+      "two three"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "\"ayyj\"Ayw",
+    "groups": [
+      "\"ayyj\"Ayw"
+    ],
+    "note": "does the register stay linewise, and does the charwise text land on its own line?",
+    "encodedKeys": "\"ayyj\"Ayw",
+    "expect": {
+      "registers": {
+        "a": {
+          "type": "V",
+          "text": "one\ntwo \n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "one\ntwo \n"
+        }
+      },
+      "buffer": [
+        "one",
+        "two three"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "yank/append-linewise-onto-charwise",
+    "buffer": [
+      "one two",
+      "three"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "\"aywj\"Ayy",
+    "groups": [
+      "\"aywj\"Ayy"
+    ],
+    "note": "the mirror image — a linewise append should promote the register to linewise",
+    "encodedKeys": "\"aywj\"Ayy",
+    "expect": {
+      "registers": {
+        "a": {
+          "type": "V",
+          "text": "one \nthree\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "one \nthree\n"
+        }
+      },
+      "buffer": [
+        "one two",
+        "three"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "yank/blackhole-charwise",
+    "buffer": [
+      "alpha beta gamma"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "yww\"_yw",
+    "groups": [
+      "yww\"_yw"
+    ],
+    "note": "\"_ must leave the unnamed register and \"0 exactly as they were",
+    "encodedKeys": "yww\"_yw",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "alpha "
+        },
+        "\"": {
+          "type": "v",
+          "text": "alpha "
+        }
+      },
+      "buffer": [
+        "alpha beta gamma"
+      ],
+      "cursor": [
+        1,
+        7
+      ],
+      "error": "",
+      "curswant": 7
+    }
+  },
+  {
+    "id": "yank/second-yank-replaces-0",
+    "buffer": [
+      "alpha beta gamma"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "ywwyw",
+    "groups": [
+      "ywwyw"
+    ],
+    "note": "\"0 holds only the most recent yank — there is no yank history",
+    "encodedKeys": "ywwyw",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "beta "
+        },
+        "\"": {
+          "type": "v",
+          "text": "beta "
+        }
+      },
+      "buffer": [
+        "alpha beta gamma"
+      ],
+      "cursor": [
+        1,
+        7
+      ],
+      "error": "",
+      "curswant": 7
+    }
+  },
+  {
+    "id": "yank/does-not-shift-numbered",
+    "buffer": [
+      "one",
+      "two",
+      "three"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "ddyy",
+    "groups": [
+      "dd",
+      "yy"
+    ],
+    "note": "dd fills \"1; the yy that follows must leave \"1 alone. Delete shifts the numbered registers, yank does not — this is the case that proves it.",
+    "encodedKeys": "ddyy",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "two\n"
+        },
+        "1": {
+          "type": "V",
+          "text": "one\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "two\n"
+        }
+      },
+      "buffer": [
+        "two",
+        "three"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "yank/does-not-shift-numbered-twice",
+    "buffer": [
+      "one",
+      "two",
+      "three",
+      "four"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "ddddyy",
+    "groups": [
+      "dd",
+      "dd",
+      "yy"
+    ],
+    "note": "two deletes then a yank — \"1 and \"2 must both survive untouched",
+    "encodedKeys": "ddddyy",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "three\n"
+        },
+        "1": {
+          "type": "V",
+          "text": "two\n"
+        },
+        "2": {
+          "type": "V",
+          "text": "one\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "three\n"
+        }
+      },
+      "buffer": [
+        "three",
+        "four"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "yank/delete-preserves-0",
+    "buffer": [
+      "one",
+      "two",
+      "three"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "yydd",
+    "groups": [
+      "yy",
+      "dd"
+    ],
+    "note": "delete overwrites the unnamed register but must not touch \"0",
+    "encodedKeys": "yydd",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "one\n"
+        },
+        "1": {
+          "type": "V",
+          "text": "one\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "one\n"
+        }
+      },
+      "buffer": [
+        "two",
+        "three"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "yank/small-delete-register-untouched",
+    "buffer": [
+      "foo bar baz"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "dwyw",
+    "groups": [
+      "dw",
+      "yw"
+    ],
+    "note": "dw fills the small-delete register \"-; a later yank must not disturb it",
+    "encodedKeys": "dwyw",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "bar "
+        },
+        "\"": {
+          "type": "v",
+          "text": "bar "
+        },
+        "-": {
+          "type": "v",
+          "text": "foo "
+        }
+      },
+      "buffer": [
+        "bar baz"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "yank/undo-after-yank-is-noop",
+    "buffer": [
+      "alpha beta"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "ywu",
+    "groups": [
+      "ywu"
+    ],
+    "note": "yank records nothing, so u here has an empty history to walk back",
+    "encodedKeys": "ywu",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "pha "
+        },
+        "\"": {
+          "type": "v",
+          "text": "pha "
+        }
+      },
+      "buffer": [
+        "alpha beta"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "yank/yh-at-col1-clears-unnamed",
+    "buffer": [
+      "ab",
+      "cd"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "xjyh",
+    "groups": [
+      "x",
+      "j",
+      "yh"
+    ],
+    "note": "h at column one leaves an empty region instead of failing, and a yank over an empty region still WRITES its registers — so the earlier delete's text is cleared out of \"\" rather than surviving. An engine that failed the motion here would keep \"\" and betray itself only through this register.",
+    "encodedKeys": "xjyh",
+    "expect": {
+      "registers": {
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "b",
+        "cd"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "yank/yl-empty-line-clears-unnamed",
+    "buffer": [
+      "ab",
+      ""
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "xjyl",
+    "groups": [
+      "x",
+      "j",
+      "yl"
+    ],
+    "encodedKeys": "xjyl",
+    "expect": {
+      "registers": {
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "b",
+        ""
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "yank/y0-at-col1-clears-unnamed",
+    "buffer": [
+      "ab",
+      "cd"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "xjy0",
+    "groups": [
+      "x",
+      "j",
+      "y0"
+    ],
+    "encodedKeys": "xjy0",
+    "expect": {
+      "registers": {
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "b",
+        "cd"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "yank/undo-after-delete-keeps-registers",
+    "buffer": [
+      "one",
+      "two"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "yyddu",
+    "groups": [
+      "yy",
+      "dd",
+      "u"
+    ],
+    "note": "undo restores the text but must not roll the registers back with it",
+    "encodedKeys": "yyddu",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "one\n"
+        },
+        "1": {
+          "type": "V",
+          "text": "one\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "one\n"
+        }
+      },
+      "buffer": [
+        "one",
+        "two"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  }
+]

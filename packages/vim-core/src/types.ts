@@ -31,13 +31,13 @@ export type MotionResult = {
   readonly kind: MotionKind;
   /** Whether the character under `target` is included by an operator. */
   readonly inclusive: boolean;
-  /**
-   * Set when the motion wants to override the column an operator uses, e.g.
-   * the `dw`-at-end-of-line wart clamps the delete to the line end.
-   */
-  readonly clampToLineEnd?: boolean;
   /** Motions like `j`/`k` preserve the remembered column across short lines. */
   readonly keepDesiredCol?: boolean;
+  /**
+   * True for `%` (and later `( ) / ? n N { }`): a delete over this motion
+   * always shifts into `"1`, even when it removes less than a line.
+   */
+  readonly forcesNumbered?: boolean;
 };
 
 export type RegisterType = 'charwise' | 'linewise' | 'blockwise';

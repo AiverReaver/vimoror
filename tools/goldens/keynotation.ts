@@ -55,12 +55,20 @@ export function encodeKeys(notation: string): string {
       continue;
     }
 
+    // `<` is also Vim's un-indent operator, so `<<`, `<j` and `<G` are real
+    // key sequences rather than notation. Only a bracketed name of two or more
+    // characters counts as notation — there is no `<j>` key in Vim, while
+    // `<Esc>` and `<C-r>` are always longer than one character. A bracketed
+    // name that IS long enough but unknown still throws, so `<Escape>` is
+    // caught as the typo it is rather than typed into the buffer.
     const close = notation.indexOf('>', i);
-    if (close === -1) {
-      throw new Error(`unterminated key notation at index ${i} in ${JSON.stringify(notation)}`);
+    const inner = close === -1 ? null : notation.slice(i + 1, close);
+    if (inner === null || inner.length < 2) {
+      out += '<';
+      i += 1;
+      continue;
     }
 
-    const inner = notation.slice(i + 1, close);
     out += resolveNamedKey(inner, notation);
     i = close + 1;
   }

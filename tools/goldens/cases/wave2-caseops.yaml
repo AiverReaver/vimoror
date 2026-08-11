@@ -1,0 +1,307 @@
+# Wave 2 — case operators.
+#
+# gu gU g~ composed with Wave 1 motions, the doubled linewise forms guu gUU g~~
+# (plus the long spelling gUgU), the standalone ~ command, and counts on all of
+# them. Weighted toward text that has NO case — digits, punctuation, whitespace,
+# where the buffer must come back byte-identical — and toward degenerate
+# buffers: empty lines, all-blank lines, single-character buffers, the last
+# line, tab indent, and counts that overshoot.
+
+cases:
+  # --- the standalone ~ command ---------------------------------------------
+  - id: caseops/tilde-basic
+    note: ~ toggles the character under the cursor and advances one column
+    buffer: 'aBc'
+    cursor: [1, 1]
+    keys: '~'
+  - id: caseops/tilde-count
+    buffer: 'abcdef'
+    cursor: [1, 2]
+    keys: '3~'
+  - id: caseops/tilde-count-overshoot
+    note: a count past end of line does as much as it can rather than failing
+    buffer: 'abc'
+    cursor: [1, 2]
+    keys: '9~'
+  - id: caseops/tilde-at-eol
+    note: on the last character of the line there is nowhere left to advance to
+    buffer: 'abC'
+    cursor: [1, 3]
+    keys: '~'
+  - id: caseops/tilde-does-not-cross-lines
+    buffer: ['ab', 'cd']
+    cursor: [1, 1]
+    keys: '9~'
+  - id: caseops/tilde-on-empty-line
+    buffer: ['', 'x']
+    cursor: [1, 1]
+    keys: '~'
+  - id: caseops/tilde-on-digits-and-punctuation
+    note: digits and punctuation have no case; only the cursor should move
+    buffer: 'a1!B2?'
+    cursor: [1, 1]
+    keys: '6~'
+  - id: caseops/tilde-separate-undo-blocks
+    note: each ~ is its own change, so u must peel off exactly one of them
+    buffer: 'abcd'
+    cursor: [1, 1]
+    keys: ['~', '~', 'u']
+  - id: caseops/tilde-empty-line-fails
+    note: >-
+      ~ on an empty line beeps, changes nothing, and creates no undo block —
+      the u must undo the x. Grouped so the beep cannot abort the u.
+    buffer: ['ab', '']
+    cursor: [1, 1]
+    keys: ['x', 'j', '~', 'u']
+  - id: caseops/guu-blank-line-still-mints-undo
+    note: >-
+      guu over a whitespace-only line changes nothing, yet still creates an undo
+      block — a case operator that RUNS always does, so the u burns on it and
+      the x survives. Contrast caseops/tilde-empty-line-fails, where the command
+      genuinely fails and mints nothing.
+    buffer: ['ab', '   ']
+    cursor: [1, 1]
+    keys: ['x', 'j', 'guu', 'u']
+  - id: caseops/gu-dollar-empty-line-still-mints-undo
+    buffer: ['ab', '']
+    cursor: [1, 1]
+    keys: ['x', 'j', 'gu$', 'u']
+  - id: caseops/gUU-already-uppercase-still-mints-undo
+    buffer: ['ab', 'CD']
+    cursor: [1, 1]
+    keys: ['x', 'j', 'gUU', 'u']
+  - id: caseops/tilde-on-digit-still-mints-undo
+    note: >-
+      ~ on a digit toggles nothing but is not a failure, so it mints a block —
+      unlike ~ on an EMPTY line, which beeps and mints none.
+    buffer: ['ab', '12']
+    cursor: [1, 1]
+    keys: ['x', 'j', '~', 'u']
+  - id: caseops/gu-h-at-col-one-mints-undo
+    note: h at column one leaves an empty region rather than failing the operator
+    buffer: ['ab', 'CD']
+    cursor: [1, 1]
+    keys: ['x', 'j', 'guh', 'u']
+
+  # --- gU with charwise motions ---------------------------------------------
+  - id: caseops/gU-w
+    buffer: 'alpha beta'
+    cursor: [1, 1]
+    keys: 'gUw'
+  - id: caseops/gU-w-last-word-on-line
+    note: >-
+      with an operator, w on the last word of a line stops at the end of that
+      word instead of running on into the next line
+    buffer: ['alpha beta', 'gamma']
+    cursor: [1, 7]
+    keys: 'gUw'
+  - id: caseops/gU-e
+    buffer: 'alpha beta'
+    cursor: [1, 1]
+    keys: 'gUe'
+  - id: caseops/gU-dollar
+    buffer: 'alpha beta gamma'
+    cursor: [1, 7]
+    keys: 'gU$'
+  - id: caseops/gU-zero
+    note: 0 is exclusive, so the character under the cursor is left alone
+    buffer: 'alpha beta'
+    cursor: [1, 7]
+    keys: 'gU0'
+  - id: caseops/gU-W
+    buffer: 'foo.bar baz'
+    cursor: [1, 1]
+    keys: 'gUW'
+  - id: caseops/gU-count-2w
+    buffer: 'alpha beta gamma'
+    cursor: [1, 1]
+    keys: 'gU2w'
+  - id: caseops/gU-count-before-operator
+    note: 2gUw and gU2w must agree
+    buffer: 'alpha beta gamma'
+    cursor: [1, 1]
+    keys: '2gUw'
+  - id: caseops/gU-l-count-overshoot
+    buffer: 'abc'
+    cursor: [1, 1]
+    keys: 'gU9l'
+  - id: caseops/gU-f
+    note: f is inclusive, so the target comma is inside the operated range
+    buffer: 'abc,def'
+    cursor: [1, 1]
+    keys: 'gUf,'
+  - id: caseops/gU-t
+    note: t is inclusive too, but stops one short of the target
+    buffer: 'abc,def'
+    cursor: [1, 1]
+    keys: 'gUt,'
+  - id: caseops/gU-f-not-found-fails
+    note: a failed motion must abort the operator entirely
+    buffer: 'abc def'
+    cursor: [1, 1]
+    keys: 'gUfz'
+  - id: caseops/gU-underscore-is-a-keyword-char
+    buffer: 'foo_bar baz'
+    cursor: [1, 1]
+    keys: 'gUw'
+
+  # --- gU with linewise motions ---------------------------------------------
+  - id: caseops/gU-j
+    buffer: ['one', 'two', 'three']
+    cursor: [1, 2]
+    keys: 'gUj'
+  - id: caseops/gU-j-on-last-line-fails
+    buffer: ['one', 'two']
+    cursor: [2, 1]
+    keys: 'gUj'
+  - id: caseops/gU-G
+    buffer: ['one', 'two', 'three']
+    cursor: [2, 1]
+    keys: 'gUG'
+
+  # --- gu -------------------------------------------------------------------
+  - id: caseops/gu-w
+    buffer: 'ALPHA BETA'
+    cursor: [1, 1]
+    keys: 'guw'
+  - id: caseops/gu-W
+    buffer: 'FOO.BAR BAZ'
+    cursor: [1, 1]
+    keys: 'guW'
+  - id: caseops/gu-dollar
+    buffer: 'ALPHA BETA GAMMA'
+    cursor: [1, 7]
+    keys: 'gu$'
+  - id: caseops/gu-k
+    buffer: ['ONE', 'TWO', 'THREE']
+    cursor: [2, 2]
+    keys: 'guk'
+  - id: caseops/gu-k-on-first-line-fails
+    buffer: ['ONE', 'TWO']
+    cursor: [1, 1]
+    keys: 'guk'
+  - id: caseops/gu-count-overshoot-w
+    buffer: ['ONE TWO', 'THREE']
+    cursor: [1, 1]
+    keys: 'gu9w'
+
+  # --- g~ -------------------------------------------------------------------
+  - id: caseops/gtilde-w
+    buffer: 'aLpHa beta'
+    cursor: [1, 1]
+    keys: 'g~w'
+  - id: caseops/gtilde-e
+    buffer: 'mIxEd case'
+    cursor: [1, 1]
+    keys: 'g~e'
+  - id: caseops/gtilde-dollar
+    buffer: 'MiXeD cAsE'
+    cursor: [1, 1]
+    keys: 'g~$'
+  - id: caseops/gtilde-dollar-mixed-with-digits
+    note: only the letters may flip; digits, punctuation and _ stay put
+    buffer: 'aB3d!Ef_9G'
+    cursor: [1, 1]
+    keys: 'g~$'
+  - id: caseops/gtilde-j-count
+    buffer: ['aA', 'bB', 'cC', 'dD']
+    cursor: [1, 1]
+    keys: 'g~2j'
+
+  # --- doubled linewise forms -----------------------------------------------
+  - id: caseops/gUU-line
+    buffer: ['hello world', 'next']
+    cursor: [1, 3]
+    keys: 'gUU'
+  - id: caseops/gUgU-line
+    note: gUgU is the long spelling of gUU and must behave identically
+    buffer: ['hello world', 'next']
+    cursor: [1, 3]
+    keys: 'gUgU'
+  - id: caseops/guu-line
+    buffer: ['HELLO WORLD', 'NEXT']
+    cursor: [1, 3]
+    keys: 'guu'
+  - id: caseops/gtilde-tilde-line
+    buffer: ['Hello World', 'x']
+    cursor: [1, 1]
+    keys: 'g~~'
+  - id: caseops/gUU-count
+    buffer: ['one', 'two', 'three', 'four']
+    cursor: [1, 1]
+    keys: '3gUU'
+  - id: caseops/gtilde-tilde-count
+    buffer: ['aB', 'cD', 'eF', 'gH']
+    cursor: [1, 1]
+    keys: '3g~~'
+  - id: caseops/guu-count-overshoot
+    note: a linewise count past the end of the buffer — does it clamp or fail?
+    buffer: ['AA', 'BB']
+    cursor: [1, 1]
+    keys: '9guu'
+  - id: caseops/gUU-on-last-line
+    buffer: ['one', 'last']
+    cursor: [2, 1]
+    keys: 'gUU'
+  - id: caseops/gUU-indented-cursor-lands-on-nonblank
+    buffer: ['   hello world', 'x']
+    cursor: [1, 9]
+    keys: 'gUU'
+
+  # --- degenerate buffers ---------------------------------------------------
+  - id: caseops/gUU-on-empty-line
+    buffer: ['', 'abc']
+    cursor: [1, 1]
+    keys: 'gUU'
+  - id: caseops/gU-dollar-on-empty-line
+    buffer: ['', 'x']
+    cursor: [1, 1]
+    keys: 'gU$'
+  - id: caseops/gU-dollar-on-empty-last-line
+    buffer: ['abc', '']
+    cursor: [2, 1]
+    keys: 'gU$'
+  - id: caseops/gtilde-dollar-all-blank-line
+    buffer: ['   ', 'abc']
+    cursor: [1, 1]
+    keys: 'g~$'
+  - id: caseops/gU-all-punctuation-line
+    note: nothing here has case, so the buffer must come back unchanged
+    buffer: '!@#$%^&*()'
+    cursor: [1, 1]
+    keys: 'gU$'
+  - id: caseops/guu-digits-only-line
+    buffer: ['12345', 'x']
+    cursor: [1, 1]
+    keys: 'guu'
+  - id: caseops/gU-single-char-buffer
+    buffer: 'a'
+    cursor: [1, 1]
+    keys: 'gU$'
+  - id: caseops/gU-tab-indented-line
+    note: a real tab, so byte columns and screen columns disagree
+    buffer: "\tfoo bar"
+    cursor: [1, 2]
+    keys: 'gU$'
+
+  # --- undo interaction -----------------------------------------------------
+  - id: caseops/gtilde-undo-redo
+    buffer: 'abc def'
+    cursor: [1, 1]
+    keys: 'g~$u<C-r>'
+  - id: caseops/two-gU-then-two-undos
+    note: >-
+      two discrete changes, so they are listed as groups — fed as one string
+      feedkeys would fuse them into a single undo block
+    buffer: 'alpha beta gamma'
+    cursor: [1, 1]
+    keys: ['gUw', 'wgUw', 'u', 'u']
+  - id: caseops/guu-on-two-lines-then-undo
+    buffer: ['ONE', 'TWO', 'THREE']
+    cursor: [1, 1]
+    keys: ['guu', 'jguu', 'u']
+  - id: caseops/gU-then-gu-same-word
+    note: gu must fully reverse a preceding gU on already-mixed-case text
+    buffer: 'aLpHa beta'
+    cursor: [1, 1]
+    keys: ['gUw', 'guw']

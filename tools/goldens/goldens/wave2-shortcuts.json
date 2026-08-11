@@ -1,0 +1,1998 @@
+[
+  {
+    "id": "shortcuts/D-basic",
+    "buffer": [
+      "alpha beta gamma"
+    ],
+    "cursor": [
+      1,
+      7
+    ],
+    "keys": "D",
+    "groups": [
+      "D"
+    ],
+    "encodedKeys": "D",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "beta gamma"
+        },
+        "-": {
+          "type": "v",
+          "text": "beta gamma"
+        }
+      },
+      "buffer": [
+        "alpha "
+      ],
+      "cursor": [
+        1,
+        6
+      ],
+      "error": "",
+      "curswant": 6
+    }
+  },
+  {
+    "id": "shortcuts/d-dollar-basic",
+    "buffer": [
+      "alpha beta gamma"
+    ],
+    "cursor": [
+      1,
+      7
+    ],
+    "keys": "d$",
+    "groups": [
+      "d$"
+    ],
+    "note": "sibling of shortcuts/D-basic — D must equal d$ exactly",
+    "encodedKeys": "d$",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "beta gamma"
+        },
+        "-": {
+          "type": "v",
+          "text": "beta gamma"
+        }
+      },
+      "buffer": [
+        "alpha "
+      ],
+      "cursor": [
+        1,
+        6
+      ],
+      "error": "",
+      "curswant": 6
+    }
+  },
+  {
+    "id": "shortcuts/D-at-eol",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "D",
+    "groups": [
+      "D"
+    ],
+    "note": "on the last character D deletes exactly that character",
+    "encodedKeys": "D",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "c"
+        },
+        "-": {
+          "type": "v",
+          "text": "c"
+        }
+      },
+      "buffer": [
+        "ab"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "shortcuts/D-empty-line",
+    "buffer": [
+      "",
+      "x"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "D",
+    "groups": [
+      "D"
+    ],
+    "note": "d$ on an empty line has nothing to delete — does it fail or succeed?",
+    "encodedKeys": "D",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "",
+        "x"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "shortcuts/d-dollar-empty-line",
+    "buffer": [
+      "",
+      "x"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "d$",
+    "groups": [
+      "d$"
+    ],
+    "note": "sibling of shortcuts/D-empty-line",
+    "encodedKeys": "d$",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "",
+        "x"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "shortcuts/D-whole-line-trailing-ws",
+    "buffer": [
+      "  spaced out  ",
+      "next"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "D",
+    "groups": [
+      "D"
+    ],
+    "note": "D from column 1 empties the line but never removes it; trailing blanks go too",
+    "encodedKeys": "D",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "  spaced out  "
+        },
+        "-": {
+          "type": "v",
+          "text": "  spaced out  "
+        }
+      },
+      "buffer": [
+        "",
+        "next"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "shortcuts/D-single-char-line",
+    "buffer": [
+      "a",
+      "b"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "D",
+    "groups": [
+      "D"
+    ],
+    "encodedKeys": "D",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a"
+        },
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "",
+        "b"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "shortcuts/D-count-3",
+    "buffer": [
+      "one",
+      "two",
+      "three",
+      "four"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "3D",
+    "groups": [
+      "3D"
+    ],
+    "note": "3D deletes to end of line plus 2 more lines, joining what is left",
+    "encodedKeys": "3D",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "v",
+          "text": "ne\ntwo\nthree"
+        },
+        "\"": {
+          "type": "v",
+          "text": "ne\ntwo\nthree"
+        }
+      },
+      "buffer": [
+        "o",
+        "four"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "shortcuts/d-count-3-dollar",
+    "buffer": [
+      "one",
+      "two",
+      "three",
+      "four"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "d3$",
+    "groups": [
+      "d3$"
+    ],
+    "note": "sibling of shortcuts/D-count-3 — [count]D is documented as d[count]$",
+    "encodedKeys": "d3$",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "v",
+          "text": "ne\ntwo\nthree"
+        },
+        "\"": {
+          "type": "v",
+          "text": "ne\ntwo\nthree"
+        }
+      },
+      "buffer": [
+        "o",
+        "four"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "shortcuts/D-count-overshoot-last-line",
+    "buffer": [
+      "one",
+      "two"
+    ],
+    "cursor": [
+      2,
+      2
+    ],
+    "keys": "2D",
+    "groups": [
+      "2D"
+    ],
+    "note": "2D on the last line asks for a line that does not exist",
+    "encodedKeys": "2D",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "one",
+        "two"
+      ],
+      "cursor": [
+        2,
+        2
+      ],
+      "error": "",
+      "curswant": 2147483647
+    }
+  },
+  {
+    "id": "shortcuts/C-basic",
+    "buffer": [
+      "alpha beta gamma"
+    ],
+    "cursor": [
+      1,
+      7
+    ],
+    "keys": "CXY<Esc>",
+    "groups": [
+      "CXY<Esc>"
+    ],
+    "encodedKeys": "CXY\u001b",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "beta gamma"
+        },
+        "-": {
+          "type": "v",
+          "text": "beta gamma"
+        }
+      },
+      "buffer": [
+        "alpha XY"
+      ],
+      "cursor": [
+        1,
+        8
+      ],
+      "error": "",
+      "curswant": 8
+    }
+  },
+  {
+    "id": "shortcuts/c-dollar-basic",
+    "buffer": [
+      "alpha beta gamma"
+    ],
+    "cursor": [
+      1,
+      7
+    ],
+    "keys": "c$XY<Esc>",
+    "groups": [
+      "c$XY<Esc>"
+    ],
+    "note": "sibling of shortcuts/C-basic",
+    "encodedKeys": "c$XY\u001b",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "beta gamma"
+        },
+        "-": {
+          "type": "v",
+          "text": "beta gamma"
+        }
+      },
+      "buffer": [
+        "alpha XY"
+      ],
+      "cursor": [
+        1,
+        8
+      ],
+      "error": "",
+      "curswant": 8
+    }
+  },
+  {
+    "id": "shortcuts/C-at-eol",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "CZ<Esc>",
+    "groups": [
+      "CZ<Esc>"
+    ],
+    "encodedKeys": "CZ\u001b",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "c"
+        },
+        "-": {
+          "type": "v",
+          "text": "c"
+        }
+      },
+      "buffer": [
+        "abZ"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "shortcuts/C-empty-line",
+    "buffer": [
+      "",
+      "x"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "Cnew<Esc>",
+    "groups": [
+      "Cnew<Esc>"
+    ],
+    "note": "C on an empty line is a plain append even though there is nothing to change",
+    "encodedKeys": "Cnew\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "new",
+        "x"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "shortcuts/c-dollar-empty-line",
+    "buffer": [
+      "",
+      "x"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "c$new<Esc>",
+    "groups": [
+      "c$new<Esc>"
+    ],
+    "note": "sibling of shortcuts/C-empty-line",
+    "encodedKeys": "c$new\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "new",
+        "x"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "shortcuts/C-count-2",
+    "buffer": [
+      "one",
+      "two",
+      "three"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "2Cxx<Esc>",
+    "groups": [
+      "2Cxx<Esc>"
+    ],
+    "encodedKeys": "2Cxx\u001b",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "v",
+          "text": "ne\ntwo"
+        },
+        "\"": {
+          "type": "v",
+          "text": "ne\ntwo"
+        }
+      },
+      "buffer": [
+        "oxx",
+        "three"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "shortcuts/c-count-2-dollar",
+    "buffer": [
+      "one",
+      "two",
+      "three"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "c2$xx<Esc>",
+    "groups": [
+      "c2$xx<Esc>"
+    ],
+    "note": "sibling of shortcuts/C-count-2",
+    "encodedKeys": "c2$xx\u001b",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "v",
+          "text": "ne\ntwo"
+        },
+        "\"": {
+          "type": "v",
+          "text": "ne\ntwo"
+        }
+      },
+      "buffer": [
+        "oxx",
+        "three"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "shortcuts/C-last-line-single-char",
+    "buffer": [
+      "ab",
+      "c"
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": "Cz<Esc>",
+    "groups": [
+      "Cz<Esc>"
+    ],
+    "encodedKeys": "Cz\u001b",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "c"
+        },
+        "-": {
+          "type": "v",
+          "text": "c"
+        }
+      },
+      "buffer": [
+        "ab",
+        "z"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "shortcuts/s-basic",
+    "buffer": [
+      "abcdef"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "sZ<Esc>",
+    "groups": [
+      "sZ<Esc>"
+    ],
+    "encodedKeys": "sZ\u001b",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "c"
+        },
+        "-": {
+          "type": "v",
+          "text": "c"
+        }
+      },
+      "buffer": [
+        "abZdef"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "shortcuts/cl-basic",
+    "buffer": [
+      "abcdef"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "clZ<Esc>",
+    "groups": [
+      "clZ<Esc>"
+    ],
+    "note": "sibling of shortcuts/s-basic",
+    "encodedKeys": "clZ\u001b",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "c"
+        },
+        "-": {
+          "type": "v",
+          "text": "c"
+        }
+      },
+      "buffer": [
+        "abZdef"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "shortcuts/s-at-eol",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "sZ<Esc>",
+    "groups": [
+      "sZ<Esc>"
+    ],
+    "encodedKeys": "sZ\u001b",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "c"
+        },
+        "-": {
+          "type": "v",
+          "text": "c"
+        }
+      },
+      "buffer": [
+        "abZ"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "shortcuts/s-empty-line",
+    "buffer": [
+      "",
+      "x"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "sZ<Esc>",
+    "groups": [
+      "sZ<Esc>"
+    ],
+    "note": "s on an empty line — l has nowhere to go, but s still opens insert",
+    "encodedKeys": "sZ\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "Z",
+        "x"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "shortcuts/cl-empty-line",
+    "buffer": [
+      "",
+      "x"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "clZ<Esc>",
+    "groups": [
+      "clZ<Esc>"
+    ],
+    "note": "sibling of shortcuts/s-empty-line — the identity is least obvious here",
+    "encodedKeys": "clZ\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "Z",
+        "x"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "shortcuts/s-count-3",
+    "buffer": [
+      "abcdef"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "3sZ<Esc>",
+    "groups": [
+      "3sZ<Esc>"
+    ],
+    "encodedKeys": "3sZ\u001b",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "bcd"
+        },
+        "-": {
+          "type": "v",
+          "text": "bcd"
+        }
+      },
+      "buffer": [
+        "aZef"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "shortcuts/c-count-3-l",
+    "buffer": [
+      "abcdef"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "c3lZ<Esc>",
+    "groups": [
+      "c3lZ<Esc>"
+    ],
+    "note": "sibling of shortcuts/s-count-3 — [count]s is documented as c[count]l",
+    "encodedKeys": "c3lZ\u001b",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "bcd"
+        },
+        "-": {
+          "type": "v",
+          "text": "bcd"
+        }
+      },
+      "buffer": [
+        "aZef"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "shortcuts/s-count-overshoot",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "9sZ<Esc>",
+    "groups": [
+      "9sZ<Esc>"
+    ],
+    "note": "like x, s clamps its count to end of line rather than failing",
+    "encodedKeys": "9sZ\u001b",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "bc"
+        },
+        "-": {
+          "type": "v",
+          "text": "bc"
+        }
+      },
+      "buffer": [
+        "aZ"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "shortcuts/s-single-char-last-line",
+    "buffer": [
+      "ab",
+      "c"
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": "sZ<Esc>",
+    "groups": [
+      "sZ<Esc>"
+    ],
+    "encodedKeys": "sZ\u001b",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "c"
+        },
+        "-": {
+          "type": "v",
+          "text": "c"
+        }
+      },
+      "buffer": [
+        "ab",
+        "Z"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "shortcuts/S-basic",
+    "buffer": [
+      "one",
+      "two",
+      "three"
+    ],
+    "cursor": [
+      2,
+      2
+    ],
+    "keys": "Snew<Esc>",
+    "groups": [
+      "Snew<Esc>"
+    ],
+    "encodedKeys": "Snew\u001b",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "two\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "two\n"
+        }
+      },
+      "buffer": [
+        "one",
+        "new",
+        "three"
+      ],
+      "cursor": [
+        2,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "shortcuts/cc-basic",
+    "buffer": [
+      "one",
+      "two",
+      "three"
+    ],
+    "cursor": [
+      2,
+      2
+    ],
+    "keys": "ccnew<Esc>",
+    "groups": [
+      "ccnew<Esc>"
+    ],
+    "note": "sibling of shortcuts/S-basic",
+    "encodedKeys": "ccnew\u001b",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "two\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "two\n"
+        }
+      },
+      "buffer": [
+        "one",
+        "new",
+        "three"
+      ],
+      "cursor": [
+        2,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "shortcuts/S-indented-loses-indent",
+    "buffer": [
+      "    indented",
+      "next"
+    ],
+    "cursor": [
+      1,
+      7
+    ],
+    "keys": "Snew<Esc>",
+    "groups": [
+      "Snew<Esc>"
+    ],
+    "note": "with autoindent off, S must NOT preserve the leading whitespace",
+    "encodedKeys": "Snew\u001b",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "    indented\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "    indented\n"
+        }
+      },
+      "buffer": [
+        "new",
+        "next"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "shortcuts/S-count-2",
+    "buffer": [
+      "one",
+      "two",
+      "three",
+      "four"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "2Sxx<Esc>",
+    "groups": [
+      "2Sxx<Esc>"
+    ],
+    "encodedKeys": "2Sxx\u001b",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "one\ntwo\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "one\ntwo\n"
+        }
+      },
+      "buffer": [
+        "xx",
+        "three",
+        "four"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "shortcuts/cc-count-2",
+    "buffer": [
+      "one",
+      "two",
+      "three",
+      "four"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "2ccxx<Esc>",
+    "groups": [
+      "2ccxx<Esc>"
+    ],
+    "note": "sibling of shortcuts/S-count-2",
+    "encodedKeys": "2ccxx\u001b",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "one\ntwo\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "one\ntwo\n"
+        }
+      },
+      "buffer": [
+        "xx",
+        "three",
+        "four"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "shortcuts/S-empty-line",
+    "buffer": [
+      "",
+      "b"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "SZ<Esc>",
+    "groups": [
+      "SZ<Esc>"
+    ],
+    "encodedKeys": "SZ\u001b",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "\n"
+        }
+      },
+      "buffer": [
+        "Z",
+        "b"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "shortcuts/S-count-overshoot-last-line",
+    "buffer": [
+      "one",
+      "two"
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": "9Sxx<Esc>",
+    "groups": [
+      "9S",
+      "xx<Esc>"
+    ],
+    "note": "A linewise count that runs past the last line fails outright, leaving normal mode intact. Grouped, because a failed command aborts the rest of a single feedkeys batch (macro semantics) while interactive Vim carries on — the second group proves the xx runs as NORMAL-mode keys afterwards.",
+    "encodedKeys": "9Sxx\u001b",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "w"
+        },
+        "-": {
+          "type": "v",
+          "text": "w"
+        }
+      },
+      "buffer": [
+        "one",
+        "o"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "shortcuts/S-only-line",
+    "buffer": [
+      "solo"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "Snew<Esc>",
+    "groups": [
+      "Snew<Esc>"
+    ],
+    "note": "S on a single-line buffer must leave exactly one line behind",
+    "encodedKeys": "Snew\u001b",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "solo\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "solo\n"
+        }
+      },
+      "buffer": [
+        "new"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "shortcuts/Y-linewise",
+    "buffer": [
+      "one two",
+      "three"
+    ],
+    "cursor": [
+      1,
+      5
+    ],
+    "keys": "Y",
+    "groups": [
+      "Y"
+    ],
+    "note": "Y is yy, not y$ — the unnamed register must come back linewise",
+    "encodedKeys": "Y",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "one two\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "one two\n"
+        }
+      },
+      "buffer": [
+        "one two",
+        "three"
+      ],
+      "cursor": [
+        1,
+        5
+      ],
+      "error": "",
+      "curswant": 5
+    }
+  },
+  {
+    "id": "shortcuts/yy-sibling",
+    "buffer": [
+      "one two",
+      "three"
+    ],
+    "cursor": [
+      1,
+      5
+    ],
+    "keys": "yy",
+    "groups": [
+      "yy"
+    ],
+    "note": "sibling of shortcuts/Y-linewise — must be identical",
+    "encodedKeys": "yy",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "one two\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "one two\n"
+        }
+      },
+      "buffer": [
+        "one two",
+        "three"
+      ],
+      "cursor": [
+        1,
+        5
+      ],
+      "error": "",
+      "curswant": 5
+    }
+  },
+  {
+    "id": "shortcuts/y-dollar-sibling",
+    "buffer": [
+      "one two",
+      "three"
+    ],
+    "cursor": [
+      1,
+      5
+    ],
+    "keys": "y$",
+    "groups": [
+      "y$"
+    ],
+    "note": "sibling of shortcuts/Y-linewise — must DIFFER (charwise, from the cursor)",
+    "encodedKeys": "y$",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "two"
+        },
+        "\"": {
+          "type": "v",
+          "text": "two"
+        }
+      },
+      "buffer": [
+        "one two",
+        "three"
+      ],
+      "cursor": [
+        1,
+        5
+      ],
+      "error": "",
+      "curswant": 5
+    }
+  },
+  {
+    "id": "shortcuts/Y-count-3",
+    "buffer": [
+      "a",
+      "b",
+      "c",
+      "d"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "3Y",
+    "groups": [
+      "3Y"
+    ],
+    "encodedKeys": "3Y",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "a\nb\nc\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "a\nb\nc\n"
+        }
+      },
+      "buffer": [
+        "a",
+        "b",
+        "c",
+        "d"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "shortcuts/yy-count-3",
+    "buffer": [
+      "a",
+      "b",
+      "c",
+      "d"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "3yy",
+    "groups": [
+      "3yy"
+    ],
+    "note": "sibling of shortcuts/Y-count-3",
+    "encodedKeys": "3yy",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "a\nb\nc\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "a\nb\nc\n"
+        }
+      },
+      "buffer": [
+        "a",
+        "b",
+        "c",
+        "d"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "shortcuts/y-count-3-dollar",
+    "buffer": [
+      "a",
+      "b",
+      "c",
+      "d"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "y3$",
+    "groups": [
+      "y3$"
+    ],
+    "note": "sibling of shortcuts/Y-count-3 — y3$ spans the same lines but charwise",
+    "encodedKeys": "y3$",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "a\nb\nc"
+        },
+        "\"": {
+          "type": "v",
+          "text": "a\nb\nc"
+        }
+      },
+      "buffer": [
+        "a",
+        "b",
+        "c",
+        "d"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "shortcuts/Y-last-line",
+    "buffer": [
+      "one",
+      "two"
+    ],
+    "cursor": [
+      2,
+      2
+    ],
+    "keys": "Y",
+    "groups": [
+      "Y"
+    ],
+    "encodedKeys": "Y",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "two\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "two\n"
+        }
+      },
+      "buffer": [
+        "one",
+        "two"
+      ],
+      "cursor": [
+        2,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "shortcuts/Y-count-overshoot",
+    "buffer": [
+      "one",
+      "two"
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": "3Y",
+    "groups": [
+      "3Y"
+    ],
+    "note": "3Y from the last line cannot find three lines",
+    "encodedKeys": "3Y",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "one",
+        "two"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "shortcuts/yy-count-overshoot",
+    "buffer": [
+      "one",
+      "two"
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": "3yy",
+    "groups": [
+      "3yy"
+    ],
+    "note": "sibling of shortcuts/Y-count-overshoot — both must fail the same way",
+    "encodedKeys": "3yy",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "one",
+        "two"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "shortcuts/Y-empty-line",
+    "buffer": [
+      "",
+      "x"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "Y",
+    "groups": [
+      "Y"
+    ],
+    "note": "yanking an empty line still yields a linewise register holding one empty line",
+    "encodedKeys": "Y",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "\n"
+        }
+      },
+      "buffer": [
+        "",
+        "x"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "shortcuts/x-basic",
+    "buffer": [
+      "abcdef"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "x",
+    "groups": [
+      "x"
+    ],
+    "encodedKeys": "x",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "c"
+        },
+        "-": {
+          "type": "v",
+          "text": "c"
+        }
+      },
+      "buffer": [
+        "abdef"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "shortcuts/dl-basic",
+    "buffer": [
+      "abcdef"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "dl",
+    "groups": [
+      "dl"
+    ],
+    "note": "sibling of shortcuts/x-basic",
+    "encodedKeys": "dl",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "c"
+        },
+        "-": {
+          "type": "v",
+          "text": "c"
+        }
+      },
+      "buffer": [
+        "abdef"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "shortcuts/x-count-overshoot",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "9x",
+    "groups": [
+      "9x"
+    ],
+    "note": "x clamps to end of line; the question is whether d9l clamps identically",
+    "encodedKeys": "9x",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "bc"
+        },
+        "-": {
+          "type": "v",
+          "text": "bc"
+        }
+      },
+      "buffer": [
+        "a"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "shortcuts/d-count-9-l",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "d9l",
+    "groups": [
+      "d9l"
+    ],
+    "note": "sibling of shortcuts/x-count-overshoot — a bare 9l motion would fail here",
+    "encodedKeys": "d9l",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "bc"
+        },
+        "-": {
+          "type": "v",
+          "text": "bc"
+        }
+      },
+      "buffer": [
+        "a"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "shortcuts/x-empty-line",
+    "buffer": [
+      "",
+      "b"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "x",
+    "groups": [
+      "x"
+    ],
+    "encodedKeys": "x",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "",
+        "b"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "shortcuts/dl-empty-line",
+    "buffer": [
+      "",
+      "b"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "dl",
+    "groups": [
+      "dl"
+    ],
+    "note": "sibling of shortcuts/x-empty-line",
+    "encodedKeys": "dl",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "",
+        "b"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "shortcuts/X-basic",
+    "buffer": [
+      "abcdef"
+    ],
+    "cursor": [
+      1,
+      4
+    ],
+    "keys": "X",
+    "groups": [
+      "X"
+    ],
+    "encodedKeys": "X",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "c"
+        },
+        "-": {
+          "type": "v",
+          "text": "c"
+        }
+      },
+      "buffer": [
+        "abdef"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "shortcuts/dh-basic",
+    "buffer": [
+      "abcdef"
+    ],
+    "cursor": [
+      1,
+      4
+    ],
+    "keys": "dh",
+    "groups": [
+      "dh"
+    ],
+    "note": "sibling of shortcuts/X-basic",
+    "encodedKeys": "dh",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "c"
+        },
+        "-": {
+          "type": "v",
+          "text": "c"
+        }
+      },
+      "buffer": [
+        "abdef"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "shortcuts/X-at-col1-fails",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "X",
+    "groups": [
+      "X"
+    ],
+    "encodedKeys": "X",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "abc"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "shortcuts/dh-at-col1-fails",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "dh",
+    "groups": [
+      "dh"
+    ],
+    "note": "sibling of shortcuts/X-at-col1-fails — h at column 1 never wraps",
+    "encodedKeys": "dh",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "abc"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  }
+]

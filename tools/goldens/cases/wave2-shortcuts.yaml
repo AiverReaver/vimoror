@@ -1,0 +1,287 @@
+# Wave 2 — shortcuts / sugar commands and the identities behind them.
+#
+#   D = d$      C = c$      Y = yy (linewise! NOT y$)
+#   s = cl      S = cc      x = dl      X = dh
+#
+# Cases are authored in PAIRS wherever an identity is claimed: the shortcut and
+# its longhand run on a byte-identical buffer + cursor, so any divergence in the
+# resulting buffer, cursor or register shows up as a diff between two goldens.
+# The pairs are deliberately placed on the nasty inputs — empty lines, the last
+# line, one-character lines, cursor already at end of line, and counts that
+# overshoot the buffer — because that is where the sugar stops being sugar.
+#
+# Counted forms follow Vim's own documented equivalences:
+#   [count]D == d[count]$   [count]C == c[count]$
+#   [count]s == c[count]l   [count]S == [count]cc   [count]Y == [count]yy
+
+cases:
+  # --- D  (= d$) ------------------------------------------------------------
+  - id: shortcuts/D-basic
+    buffer: 'alpha beta gamma'
+    cursor: [1, 7]
+    keys: 'D'
+  - id: shortcuts/d-dollar-basic
+    note: sibling of shortcuts/D-basic — D must equal d$ exactly
+    buffer: 'alpha beta gamma'
+    cursor: [1, 7]
+    keys: 'd$'
+  - id: shortcuts/D-at-eol
+    note: on the last character D deletes exactly that character
+    buffer: 'abc'
+    cursor: [1, 3]
+    keys: 'D'
+  - id: shortcuts/D-empty-line
+    note: d$ on an empty line has nothing to delete — does it fail or succeed?
+    buffer: ['', 'x']
+    cursor: [1, 1]
+    keys: 'D'
+  - id: shortcuts/d-dollar-empty-line
+    note: sibling of shortcuts/D-empty-line
+    buffer: ['', 'x']
+    cursor: [1, 1]
+    keys: 'd$'
+  - id: shortcuts/D-whole-line-trailing-ws
+    note: D from column 1 empties the line but never removes it; trailing blanks go too
+    buffer: ['  spaced out  ', 'next']
+    cursor: [1, 1]
+    keys: 'D'
+  - id: shortcuts/D-single-char-line
+    buffer: ['a', 'b']
+    cursor: [1, 1]
+    keys: 'D'
+  - id: shortcuts/D-count-3
+    note: 3D deletes to end of line plus 2 more lines, joining what is left
+    buffer: ['one', 'two', 'three', 'four']
+    cursor: [1, 2]
+    keys: '3D'
+  - id: shortcuts/d-count-3-dollar
+    note: sibling of shortcuts/D-count-3 — [count]D is documented as d[count]$
+    buffer: ['one', 'two', 'three', 'four']
+    cursor: [1, 2]
+    keys: 'd3$'
+  - id: shortcuts/D-count-overshoot-last-line
+    note: 2D on the last line asks for a line that does not exist
+    buffer: ['one', 'two']
+    cursor: [2, 2]
+    keys: '2D'
+
+  # --- C  (= c$) ------------------------------------------------------------
+  - id: shortcuts/C-basic
+    buffer: 'alpha beta gamma'
+    cursor: [1, 7]
+    keys: 'CXY<Esc>'
+  - id: shortcuts/c-dollar-basic
+    note: sibling of shortcuts/C-basic
+    buffer: 'alpha beta gamma'
+    cursor: [1, 7]
+    keys: 'c$XY<Esc>'
+  - id: shortcuts/C-at-eol
+    buffer: 'abc'
+    cursor: [1, 3]
+    keys: 'CZ<Esc>'
+  - id: shortcuts/C-empty-line
+    note: C on an empty line is a plain append even though there is nothing to change
+    buffer: ['', 'x']
+    cursor: [1, 1]
+    keys: 'Cnew<Esc>'
+  - id: shortcuts/c-dollar-empty-line
+    note: sibling of shortcuts/C-empty-line
+    buffer: ['', 'x']
+    cursor: [1, 1]
+    keys: 'c$new<Esc>'
+  - id: shortcuts/C-count-2
+    buffer: ['one', 'two', 'three']
+    cursor: [1, 2]
+    keys: '2Cxx<Esc>'
+  - id: shortcuts/c-count-2-dollar
+    note: sibling of shortcuts/C-count-2
+    buffer: ['one', 'two', 'three']
+    cursor: [1, 2]
+    keys: 'c2$xx<Esc>'
+  - id: shortcuts/C-last-line-single-char
+    buffer: ['ab', 'c']
+    cursor: [2, 1]
+    keys: 'Cz<Esc>'
+  # --- s  (= cl) ------------------------------------------------------------
+  - id: shortcuts/s-basic
+    buffer: 'abcdef'
+    cursor: [1, 3]
+    keys: 'sZ<Esc>'
+  - id: shortcuts/cl-basic
+    note: sibling of shortcuts/s-basic
+    buffer: 'abcdef'
+    cursor: [1, 3]
+    keys: 'clZ<Esc>'
+  - id: shortcuts/s-at-eol
+    buffer: 'abc'
+    cursor: [1, 3]
+    keys: 'sZ<Esc>'
+  - id: shortcuts/s-empty-line
+    note: s on an empty line — l has nowhere to go, but s still opens insert
+    buffer: ['', 'x']
+    cursor: [1, 1]
+    keys: 'sZ<Esc>'
+  - id: shortcuts/cl-empty-line
+    note: sibling of shortcuts/s-empty-line — the identity is least obvious here
+    buffer: ['', 'x']
+    cursor: [1, 1]
+    keys: 'clZ<Esc>'
+  - id: shortcuts/s-count-3
+    buffer: 'abcdef'
+    cursor: [1, 2]
+    keys: '3sZ<Esc>'
+  - id: shortcuts/c-count-3-l
+    note: sibling of shortcuts/s-count-3 — [count]s is documented as c[count]l
+    buffer: 'abcdef'
+    cursor: [1, 2]
+    keys: 'c3lZ<Esc>'
+  - id: shortcuts/s-count-overshoot
+    note: like x, s clamps its count to end of line rather than failing
+    buffer: 'abc'
+    cursor: [1, 2]
+    keys: '9sZ<Esc>'
+  - id: shortcuts/s-single-char-last-line
+    buffer: ['ab', 'c']
+    cursor: [2, 1]
+    keys: 'sZ<Esc>'
+
+  # --- S  (= cc) ------------------------------------------------------------
+  - id: shortcuts/S-basic
+    buffer: ['one', 'two', 'three']
+    cursor: [2, 2]
+    keys: 'Snew<Esc>'
+  - id: shortcuts/cc-basic
+    note: sibling of shortcuts/S-basic
+    buffer: ['one', 'two', 'three']
+    cursor: [2, 2]
+    keys: 'ccnew<Esc>'
+  - id: shortcuts/S-indented-loses-indent
+    note: with autoindent off, S must NOT preserve the leading whitespace
+    buffer: ['    indented', 'next']
+    cursor: [1, 7]
+    keys: 'Snew<Esc>'
+  - id: shortcuts/S-count-2
+    buffer: ['one', 'two', 'three', 'four']
+    cursor: [1, 1]
+    keys: '2Sxx<Esc>'
+  - id: shortcuts/cc-count-2
+    note: sibling of shortcuts/S-count-2
+    buffer: ['one', 'two', 'three', 'four']
+    cursor: [1, 1]
+    keys: '2ccxx<Esc>'
+  - id: shortcuts/S-empty-line
+    buffer: ['', 'b']
+    cursor: [1, 1]
+    keys: 'SZ<Esc>'
+  - id: shortcuts/S-count-overshoot-last-line
+    note: >-
+      A linewise count that runs past the last line fails outright, leaving
+      normal mode intact. Grouped, because a failed command aborts the rest of
+      a single feedkeys batch (macro semantics) while interactive Vim carries
+      on — the second group proves the xx runs as NORMAL-mode keys afterwards.
+    buffer: ['one', 'two']
+    cursor: [2, 1]
+    keys: ['9S', 'xx<Esc>']
+  - id: shortcuts/S-only-line
+    note: S on a single-line buffer must leave exactly one line behind
+    buffer: 'solo'
+    cursor: [1, 3]
+    keys: 'Snew<Esc>'
+
+  # --- Y  (= yy, LINEWISE — the point of these cases) -----------------------
+  - id: shortcuts/Y-linewise
+    note: Y is yy, not y$ — the unnamed register must come back linewise
+    buffer: ['one two', 'three']
+    cursor: [1, 5]
+    keys: 'Y'
+  - id: shortcuts/yy-sibling
+    note: sibling of shortcuts/Y-linewise — must be identical
+    buffer: ['one two', 'three']
+    cursor: [1, 5]
+    keys: 'yy'
+  - id: shortcuts/y-dollar-sibling
+    note: sibling of shortcuts/Y-linewise — must DIFFER (charwise, from the cursor)
+    buffer: ['one two', 'three']
+    cursor: [1, 5]
+    keys: 'y$'
+  - id: shortcuts/Y-count-3
+    buffer: ['a', 'b', 'c', 'd']
+    cursor: [1, 1]
+    keys: '3Y'
+  - id: shortcuts/yy-count-3
+    note: sibling of shortcuts/Y-count-3
+    buffer: ['a', 'b', 'c', 'd']
+    cursor: [1, 1]
+    keys: '3yy'
+  - id: shortcuts/y-count-3-dollar
+    note: sibling of shortcuts/Y-count-3 — y3$ spans the same lines but charwise
+    buffer: ['a', 'b', 'c', 'd']
+    cursor: [1, 1]
+    keys: 'y3$'
+  - id: shortcuts/Y-last-line
+    buffer: ['one', 'two']
+    cursor: [2, 2]
+    keys: 'Y'
+  - id: shortcuts/Y-count-overshoot
+    note: 3Y from the last line cannot find three lines
+    buffer: ['one', 'two']
+    cursor: [2, 1]
+    keys: '3Y'
+  - id: shortcuts/yy-count-overshoot
+    note: sibling of shortcuts/Y-count-overshoot — both must fail the same way
+    buffer: ['one', 'two']
+    cursor: [2, 1]
+    keys: '3yy'
+  - id: shortcuts/Y-empty-line
+    note: yanking an empty line still yields a linewise register holding one empty line
+    buffer: ['', 'x']
+    cursor: [1, 1]
+    keys: 'Y'
+
+  # --- x (= dl) and X (= dh) ------------------------------------------------
+  - id: shortcuts/x-basic
+    buffer: 'abcdef'
+    cursor: [1, 3]
+    keys: 'x'
+  - id: shortcuts/dl-basic
+    note: sibling of shortcuts/x-basic
+    buffer: 'abcdef'
+    cursor: [1, 3]
+    keys: 'dl'
+  - id: shortcuts/x-count-overshoot
+    note: x clamps to end of line; the question is whether d9l clamps identically
+    buffer: 'abc'
+    cursor: [1, 2]
+    keys: '9x'
+  - id: shortcuts/d-count-9-l
+    note: sibling of shortcuts/x-count-overshoot — a bare 9l motion would fail here
+    buffer: 'abc'
+    cursor: [1, 2]
+    keys: 'd9l'
+  - id: shortcuts/x-empty-line
+    buffer: ['', 'b']
+    cursor: [1, 1]
+    keys: 'x'
+  - id: shortcuts/dl-empty-line
+    note: sibling of shortcuts/x-empty-line
+    buffer: ['', 'b']
+    cursor: [1, 1]
+    keys: 'dl'
+  - id: shortcuts/X-basic
+    buffer: 'abcdef'
+    cursor: [1, 4]
+    keys: 'X'
+  - id: shortcuts/dh-basic
+    note: sibling of shortcuts/X-basic
+    buffer: 'abcdef'
+    cursor: [1, 4]
+    keys: 'dh'
+  - id: shortcuts/X-at-col1-fails
+    buffer: 'abc'
+    cursor: [1, 1]
+    keys: 'X'
+  - id: shortcuts/dh-at-col1-fails
+    note: sibling of shortcuts/X-at-col1-fails — h at column 1 never wraps
+    buffer: 'abc'
+    cursor: [1, 1]
+    keys: 'dh'

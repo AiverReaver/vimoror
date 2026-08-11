@@ -1,0 +1,431 @@
+# Wave 2 — the 'd' operator.
+#
+# d composed with every Wave 1 motion, counts in both positions, and the two
+# places engines reliably get Vim wrong:
+#
+#   1. The inclusive/exclusive boundary. dw, de and d$ from the SAME cursor
+#      give three different answers, and the exclusive-motion adjustments
+#      (end of motion in column 1 -> back up to the previous line and become
+#      inclusive; started at/before the first non-blank -> become LINEWISE)
+#      turn dw on an empty line into a whole-line delete. The boundary cases
+#      are written as trios over one buffer so the three answers can be read
+#      side by side.
+#
+#   2. Which register a delete lands in. Registers are captured for every
+#      case, so most of that is free — but "" vs "- vs "1 and the numbered
+#      shift get their own cases, since nothing else exercises the shift
+#      across separate undo blocks.
+#
+# Plain `dl` and `d_` are deliberately absent: dl is x and d_ is dd, both
+# already golden in wave1/this file. The count forms d9l and d2_ are here
+# because the count is where they stop agreeing.
+
+cases:
+  # --- the boundary trio, mid-line ------------------------------------------
+  # One buffer, one cursor, three motions: dw takes the trailing space,
+  # de stops before it, d$ takes everything through end of line.
+  - id: delete/boundary-dw
+    buffer: 'foo bar baz'
+    cursor: [1, 5]
+    keys: 'dw'
+  - id: delete/boundary-de
+    buffer: 'foo bar baz'
+    cursor: [1, 5]
+    keys: 'de'
+  - id: delete/boundary-d-dollar
+    buffer: 'foo bar baz'
+    cursor: [1, 5]
+    keys: 'd$'
+
+  # --- the boundary trio, on the last word of a line ------------------------
+  - id: delete/boundary-dw-at-eol
+    note: >-
+      THE wart. Plain w would move to line 2, but dw on the last word of a
+      line stops at end of line: no newline eaten, no join.
+    buffer: ['foo bar', 'baz qux']
+    cursor: [1, 5]
+    keys: 'dw'
+  - id: delete/boundary-de-at-eol
+    buffer: ['foo bar', 'baz qux']
+    cursor: [1, 5]
+    keys: 'de'
+  - id: delete/boundary-d-dollar-at-eol
+    buffer: ['foo bar', 'baz qux']
+    cursor: [1, 5]
+    keys: 'd$'
+
+  # --- dw warts -------------------------------------------------------------
+  - id: delete/dw-last-word-of-last-line
+    note: the same wart with no line below to join to
+    buffer: ['foo bar', 'baz qux']
+    cursor: [2, 5]
+    keys: 'dw'
+  - id: delete/dw-trailing-whitespace
+    note: dw sitting on trailing blanks eats them but must not join lines
+    buffer: ['foo   ', 'bar']
+    cursor: [1, 4]
+    keys: 'dw'
+  - id: delete/dw-mid-word
+    note: from mid-word, dw takes only the tail plus the following space
+    buffer: 'alpha beta'
+    cursor: [1, 3]
+    keys: 'dw'
+  - id: delete/dw-on-whitespace-run
+    buffer: 'foo   bar'
+    cursor: [1, 4]
+    keys: 'dw'
+  - id: delete/dw-on-empty-line
+    note: >-
+      Exclusive motion ending in column 1, started at/before the first
+      non-blank, is promoted to LINEWISE — so dw on an empty line deletes the
+      whole line instead of joining lines 1 and 2.
+    buffer: ['', 'next', 'last']
+    cursor: [1, 1]
+    keys: 'dw'
+  - id: delete/dw-single-char-buffer
+    buffer: 'a'
+    cursor: [1, 1]
+    keys: 'dw'
+  - id: delete/dw-tab-indent
+    buffer: "\tfoo bar"
+    cursor: [1, 1]
+    keys: 'dw'
+  - id: delete/dW-punctuation
+    note: dW takes the whole blank-delimited chunk where dw stops at the dot
+    buffer: 'foo.bar baz'
+    cursor: [1, 1]
+    keys: 'dW'
+  - id: delete/dE-punctuation
+    buffer: 'foo.bar baz'
+    cursor: [1, 1]
+    keys: 'dE'
+  - id: delete/de-at-word-end
+    note: e already at a word end advances to the NEXT end before deleting
+    buffer: 'alpha beta'
+    cursor: [1, 5]
+    keys: 'de'
+
+  # --- counts in both positions ---------------------------------------------
+  - id: delete/d2w-spans-line-boundary
+    note: >-
+      The second w does cross the newline, so unlike dw this joins the lines.
+      Charwise but multi-line, so it also lands in "1, not only "-.
+    buffer: ['one two', 'three four']
+    cursor: [1, 5]
+    keys: 'd2w'
+  - id: delete/d9w-overshoot
+    note: w overshooting the end of the buffer clamps rather than failing
+    buffer: ['one two', 'three']
+    cursor: [1, 1]
+    keys: 'd9w'
+  - id: delete/2dw-count-before-operator
+    buffer: 'alpha beta gamma delta'
+    cursor: [1, 1]
+    keys: '2dw'
+  - id: delete/2d3w-counts-multiply
+    buffer: 'a b c d e f g h i'
+    cursor: [1, 1]
+    keys: '2d3w'
+
+  # --- db dB dge: backward --------------------------------------------------
+  - id: delete/db-basic
+    buffer: 'alpha beta'
+    cursor: [1, 7]
+    keys: 'db'
+  - id: delete/db-at-line-start-joins
+    note: b crosses the newline backwards, so this one does join
+    buffer: ['one two', 'three']
+    cursor: [2, 1]
+    keys: 'db'
+  - id: delete/db-at-buffer-start-noop
+    buffer: 'alpha beta'
+    cursor: [1, 1]
+    keys: 'db'
+  - id: delete/dB-punctuation
+    buffer: 'foo.bar baz'
+    cursor: [1, 9]
+    keys: 'dB'
+  - id: delete/dge-inclusive-backward
+    note: ge is inclusive backwards — the word end it lands on goes too
+    buffer: 'alpha beta gamma'
+    cursor: [1, 12]
+    keys: 'dge'
+  - id: delete/dge-punct-boundary
+    note: ge from 'c' lands on the '-', so dge removes only '-c'
+    buffer: 'ab-cd'
+    cursor: [1, 4]
+    keys: 'dge'
+  - id: delete/dge-across-line-boundary
+    note: >-
+      ge stops at the end of the previous line's word; the delete spans the
+      newline, so it joins and the text lands in "1.
+    buffer: ['foo', 'bar']
+    cursor: [2, 2]
+    keys: 'dge'
+
+  # --- d0 d^ d$ dh dl -------------------------------------------------------
+  - id: delete/d0-basic
+    buffer: '   hello world'
+    cursor: [1, 10]
+    keys: 'd0'
+  - id: delete/d-caret-basic
+    note: d^ leaves the indent, d0 does not
+    buffer: '   hello world'
+    cursor: [1, 10]
+    keys: 'd^'
+  - id: delete/d-caret-at-first-nonblank-noop
+    note: a motion that cannot move must abort the whole operator
+    buffer: '   hello'
+    cursor: [1, 4]
+    keys: 'd^'
+  - id: delete/d-dollar-on-empty-line
+    buffer: ['', 'x']
+    cursor: [1, 1]
+    keys: 'd$'
+  - id: delete/d2-dollar-spans-lines
+    note: 2$ ends on the next line, making this a charwise multi-line delete
+    buffer: ['one', 'three', 'four']
+    cursor: [1, 2]
+    keys: 'd2$'
+  - id: delete/d9l-overshoot
+    note: does dl clamp to end of line like x, or fail like most motions?
+    buffer: 'abc'
+    cursor: [1, 2]
+    keys: 'd9l'
+  - id: delete/dh-at-col1-noop
+    note: >-
+      h at column one beeps on its own, but with an operator pending it merely
+      stops — leaving an empty region the delete runs over harmlessly.
+    buffer: ['abc', 'def']
+    cursor: [2, 1]
+    keys: 'dh'
+  - id: delete/d9h-overshoot
+    buffer: 'abcdef'
+    cursor: [1, 3]
+    keys: 'd9h'
+
+  # --- dj dk: LINEWISE ------------------------------------------------------
+  - id: delete/dj-is-linewise
+    note: dj deletes both whole lines, not the charwise span between cursors
+    buffer: ['one', 'two', 'three']
+    cursor: [2, 2]
+    keys: 'dj'
+  - id: delete/dj-at-last-line-noop
+    note: no line below, so the operator fails and deletes nothing at all
+    buffer: ['one', 'two']
+    cursor: [2, 1]
+    keys: 'dj'
+  - id: delete/dk-is-linewise
+    buffer: ['one', 'two', 'three']
+    cursor: [2, 2]
+    keys: 'dk'
+  - id: delete/d2j-cursor-to-first-nonblank
+    buffer: ['a', 'b', 'c', '    d', 'e']
+    cursor: [1, 1]
+    keys: 'd2j'
+
+  # --- dG dgg d{n}G ---------------------------------------------------------
+  - id: delete/dG-from-middle
+    buffer: ['one', 'two', 'three', 'four']
+    cursor: [2, 2]
+    keys: 'dG'
+  - id: delete/dG-whole-buffer
+    note: deleting every line still leaves one empty line behind
+    buffer: ['one', 'two']
+    cursor: [1, 1]
+    keys: 'dG'
+  - id: delete/dgg-from-middle
+    buffer: ['one', 'two', 'three', 'four']
+    cursor: [3, 2]
+    keys: 'dgg'
+  - id: delete/d2G-to-line-two
+    note: '{n}G is linewise and works backwards from line 4 to line 2'
+    buffer: ['one', 'two', 'three', 'four']
+    cursor: [4, 1]
+    keys: 'd2G'
+
+  # --- df dF dt dT d; d, ----------------------------------------------------
+  - id: delete/df-inclusive
+    buffer: 'a,b,c,d'
+    cursor: [1, 1]
+    keys: 'df,'
+  - id: delete/d2f-count
+    buffer: 'a,b,c,d'
+    cursor: [1, 1]
+    keys: 'd2f,'
+  - id: delete/df-not-found-noop
+    note: f never crosses lines, so this fails and the operator aborts
+    buffer: ['abc', 'xzy']
+    cursor: [1, 1]
+    keys: 'dfz'
+  - id: delete/dt-basic
+    buffer: 'a,b,c,d'
+    cursor: [1, 1]
+    keys: 'dt,'
+  - id: delete/dt-target-adjacent-noop
+    note: t cannot move when the target is the very next character
+    buffer: 'ab,c'
+    cursor: [1, 2]
+    keys: 'dt,'
+  - id: delete/dF-backward-exclusive
+    note: backward f/F is exclusive — the character under the cursor survives
+    buffer: 'a,b,c,d'
+    cursor: [1, 7]
+    keys: 'dF,'
+  - id: delete/dT-backward
+    buffer: 'a,b,c,d'
+    cursor: [1, 7]
+    keys: 'dT,'
+  - id: delete/d-semicolon-repeat
+    buffer: 'a,b,c,d'
+    cursor: [1, 1]
+    keys: 'f,d;'
+  - id: delete/d-comma-reverse
+    buffer: 'a,b,c,d'
+    cursor: [1, 1]
+    keys: 'f,f,d,'
+
+  # --- d% -------------------------------------------------------------------
+  - id: delete/d-percent-forward
+    note: '% is inclusive, so both brackets go'
+    buffer: 'fn(a, b) end'
+    cursor: [1, 3]
+    keys: 'd%'
+  - id: delete/d-percent-nested-backward
+    buffer: 'a(b(c)d)e'
+    cursor: [1, 6]
+    keys: 'd%'
+  - id: delete/d-percent-unmatched-noop
+    buffer: 'a(b'
+    cursor: [1, 2]
+    keys: 'd%'
+  - id: delete/d-percent-across-lines
+    note: charwise, inclusive, spanning three lines
+    buffer: ['fn(', '  arg', ') end']
+    cursor: [1, 3]
+    keys: 'd%'
+
+  # --- d+ d- d_: linewise ---------------------------------------------------
+  - id: delete/d-plus-linewise
+    buffer: ['one', 'two', 'three']
+    cursor: [1, 2]
+    keys: 'd+'
+  - id: delete/d-plus-at-last-line-noop
+    buffer: ['one', 'two']
+    cursor: [2, 1]
+    keys: 'd+'
+  - id: delete/d-minus-linewise
+    buffer: ['one', 'two', 'three']
+    cursor: [3, 3]
+    keys: 'd-'
+  - id: delete/d2-underscore
+    note: d_ is dd, so d2_ is 2dd
+    buffer: ['one', 'two', 'three']
+    cursor: [1, 1]
+    keys: 'd2_'
+
+  # --- dd and D -------------------------------------------------------------
+  - id: delete/dd-last-line
+    note: the cursor must move UP onto the new last line
+    buffer: ['one', 'two']
+    cursor: [2, 3]
+    keys: 'dd'
+  - id: delete/dd-only-line
+    note: leaves one empty line — a buffer can never have zero lines
+    buffer: 'only'
+    cursor: [1, 3]
+    keys: 'dd'
+  - id: delete/dd-empty-line
+    buffer: ['a', '', 'b']
+    cursor: [2, 1]
+    keys: 'dd'
+  - id: delete/dd-cursor-to-first-nonblank
+    buffer: ['one', '    two']
+    cursor: [1, 1]
+    keys: 'dd'
+  - id: delete/d3d-count-after-operator
+    buffer: ['a', 'b', 'c', 'd']
+    cursor: [1, 1]
+    keys: 'd3d'
+  - id: delete/dd-count-overshoot
+    note: too few lines left — does 9dd clamp, or fail outright?
+    buffer: ['a', 'b']
+    cursor: [1, 1]
+    keys: '9dd'
+  - id: delete/D-on-empty-line
+    buffer: ['', 'x']
+    cursor: [1, 1]
+    keys: 'D'
+  - id: delete/D-count-spans-lines
+    note: 2D takes the rest of this line plus all of the next
+    buffer: ['one two', 'three', 'four']
+    cursor: [1, 5]
+    keys: '2D'
+
+  # --- registers: "" "- "1 and the numbered shift ---------------------------
+  - id: delete/register-linewise-into-1
+    note: any linewise delete fills "1 as well as "", and leaves "- alone
+    buffer: ['one', 'two', 'three']
+    cursor: [1, 1]
+    keys: 'dd'
+  - id: delete/register-numbered-shift
+    note: >-
+      Each linewise delete pushes "1 down to "2 and so on. Grouped so every dd
+      is its own change — fed as one string, feedkeys would fuse them into a
+      single undo block and the shift would be recorded wrong.
+    buffer: ['aaa', 'bbb', 'ccc', 'ddd']
+    cursor: [1, 1]
+    keys: ['dd', 'dd', 'dd']
+  - id: delete/register-shift-mixed-small-and-line
+    note: the small delete in the middle updates "- and "" but must not shift "1
+    buffer: ['aaa bbb', 'ccc', 'ddd']
+    cursor: [1, 1]
+    keys: ['dd', 'dw', 'dd']
+  - id: delete/register-blackhole-preserves-unnamed
+    note: '"_ must leave "", "- and "1 completely untouched'
+    buffer: ['keep me', 'zap me']
+    cursor: [1, 1]
+    keys: ['dw', '"_dd']
+
+  # --- undo interaction -----------------------------------------------------
+  #
+  # The empty-region rule, which splits two cases that look identical from the
+  # buffer's point of view. op_delete's very first act is
+  # `if (oap->empty) return u_save_cursor()` — so a DEGENERATE region (an
+  # exclusive motion that could not move: dl on an empty line, dh or d0 at
+  # column one) mints an undo block while deleting nothing, but a real region
+  # that merely holds zero characters (D / d$ on an empty line, where $ is
+  # inclusive) runs the full delete path and mints nothing at all.
+  - id: delete/dl-empty-line-mints-undo
+    note: degenerate region — the u burns on it, so the x survives
+    buffer: ['ab', '']
+    cursor: [1, 1]
+    keys: ['x', 'j', 'dl', 'u']
+  - id: delete/dh-at-col1-mints-undo
+    buffer: ['ab', 'cd']
+    cursor: [1, 1]
+    keys: ['x', 'j', 'dh', 'u']
+  - id: delete/d0-at-col1-mints-undo
+    buffer: ['ab', 'cd']
+    cursor: [1, 1]
+    keys: ['x', 'j', 'd0', 'u']
+  - id: delete/D-empty-line-mints-no-undo
+    note: >-
+      the mirror case: $ is inclusive, so this is NOT an empty region, the
+      delete simply removes nothing, and the u reaches back to the x.
+    buffer: ['ab', '']
+    cursor: [1, 1]
+    keys: ['x', 'j', 'D', 'u']
+  - id: delete/d-dollar-empty-line-mints-no-undo
+    buffer: ['ab', '']
+    cursor: [1, 1]
+    keys: ['x', 'j', 'd$', 'u']
+  - id: delete/two-deletes-one-undo
+    note: grouped, so a single u restores only the second delete
+    buffer: 'alpha beta gamma'
+    cursor: [1, 1]
+    keys: ['dw', 'dw', 'u']
+  - id: delete/dd-undo-redo
+    buffer: ['one', 'two', 'three']
+    cursor: [2, 1]
+    keys: 'ddu<C-r>'

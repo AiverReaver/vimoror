@@ -13,6 +13,7 @@
 
 import { applyEdit, clamp, type Lines } from './buffer.ts';
 import { render, tokenize } from './keys.ts';
+import { DEFAULT_OPTIONS, type EditorOptions } from './operators.ts';
 import { pushUndo } from './undo.ts';
 import { EMPTY_PENDING, initState, step, type EditorState, type Pending } from './state.ts';
 import type { Edit, EngineEvent, KeyPolicy, KeyToken, Mode, Pos, RegisterType, ResolvedCommand } from './types.ts';
@@ -24,6 +25,7 @@ export type EngineSnapshot = {
   readonly mode: Mode;
   readonly registers: Readonly<Record<string, { text: string; type: RegisterType }>>;
   readonly searchPattern: string;
+  readonly options: EditorOptions;
 };
 
 export type PendingView = {
@@ -38,8 +40,8 @@ export class VimEngine {
   #state: EditorState;
   #commandListeners: ((c: ResolvedCommand) => void)[] = [];
 
-  constructor(lines: Lines, cursor: Pos = { line: 0, col: 0 }) {
-    this.#state = initState(lines, cursor);
+  constructor(lines: Lines, cursor: Pos = { line: 0, col: 0 }, options: EditorOptions = DEFAULT_OPTIONS) {
+    this.#state = initState(lines, cursor, options);
   }
 
   get state(): EditorState {
@@ -130,7 +132,7 @@ export class VimEngine {
         ...this.#state,
         lines,
         cursor,
-        undoState: pushUndo(this.#state.undoState, lines, cursor),
+        undoState: pushUndo(this.#state.undoState, lines, cursor, edit.start),
         pending: EMPTY_PENDING,
       };
     },
@@ -138,7 +140,7 @@ export class VimEngine {
     /** An undo entry the player never made — Act IV's "edits you didn't make". */
     injectUndoEntry: (lines: readonly string[], cursor?: Pos): void => {
       const at = clamp(lines, cursor ?? this.#state.cursor, false);
-      this.#state = { ...this.#state, undoState: pushUndo(this.#state.undoState, lines, at) };
+      this.#state = { ...this.#state, undoState: pushUndo(this.#state.undoState, lines, at, at) };
     },
 
     rewriteRegister: (name: string, value: string, type: RegisterType = 'charwise'): void => {
@@ -158,15 +160,22 @@ export class VimEngine {
       mode: this.#state.mode,
       registers: { ...this.#state.registers },
       searchPattern: this.#state.searchPattern,
+      options: this.#state.options,
     };
   }
 
   static restore(s: EngineSnapshot): VimEngine {
-    const engine = new VimEngine(s.lines, s.cursor);
+    const engine = new VimEngine(s.lines, s.cursor, s.options ?? DEFAULT_OPTIONS);
+    // A snapshot taken mid-insert restores to NORMAL mode, like a real Vim
+    // session after a reload. Restoring `mode: 'insert'` without its session
+    // would leave an engine that rejects every key, <Esc> included.
+    // The undo tree is not serialized yet — a restored engine starts with the
+    // snapshot as its undo root.
+    const mode: Mode = s.mode === 'insert' || s.mode === 'replace' ? 'normal' : s.mode;
     engine.#state = {
       ...engine.#state,
       desiredCol: s.desiredCol,
-      mode: s.mode,
+      mode,
       registers: { ...s.registers },
       searchPattern: s.searchPattern,
     };

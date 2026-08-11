@@ -279,6 +279,33 @@ cases:
     buffer: 'foo.bar baz'
     cursor: [1, 9]
     keys: 'gE'
+  - id: wave1/ge-from-blank
+    note: >-
+      Starting ON a blank must not strip the word behind it — the word class
+      is taken at the original cursor, before the first backward step.
+    buffer: 'xy ab cd'
+    cursor: [1, 6]
+    keys: 'ge'
+  - id: wave1/ge-punct-boundary
+    note: a word/punct boundary is a word END — ge from 'c' lands on '-'
+    buffer: 'ab-cd'
+    cursor: [1, 4]
+    keys: 'ge'
+  - id: wave1/ge-across-line-boundary
+    note: >-
+      The virtual end-of-line position terminates word runs, so ge from 'a'
+      of "bar" must stop at the END of "foo", not merge the two words.
+    buffer: ['foo', 'bar']
+    cursor: [2, 2]
+    keys: 'ge'
+  - id: wave1/ge-at-buffer-start-fails
+    buffer: 'ab'
+    cursor: [1, 1]
+    keys: 'ge'
+  - id: wave1/gE-across-line-boundary
+    buffer: ['a.b c', 'd']
+    cursor: [2, 1]
+    keys: 'gE'
 
   # --- f F t T ; , ----------------------------------------------------------
   - id: wave1/f-basic
@@ -422,6 +449,13 @@ cases:
     buffer: 'abc'
     cursor: [1, 2]
     keys: 'r<Esc>'
+  - id: wave1/r-same-char-still-mints-undo
+    note: >-
+      replacing a character with itself changes nothing, yet r ran, so it mints
+      an undo block for the u to burn on — the x survives.
+    buffer: 'ab'
+    cursor: [1, 1]
+    keys: ['x', 'rb', 'u']
 
   # --- u <C-r> --------------------------------------------------------------
   - id: wave1/u-single-change
