@@ -17,6 +17,7 @@ import * as M from './motions.ts';
 import * as O from './operators.ts';
 import * as P from './put.ts';
 import { BLACKHOLE, readRegister, recordWrite, UNNAMED } from './registers.ts';
+import * as T from './textobjects.ts';
 import { canRedo, canUndo, initUndo, pushUndo, redo, undo, type UndoState } from './undo.ts';
 import type {
   EngineEvent,
@@ -42,8 +43,10 @@ export type Pending = {
   readonly operator: O.OperatorName | undefined;
   readonly operatorCount: string;
   readonly keyBuffer: readonly KeyToken[];
-  readonly awaiting: 'find' | 'replace' | 'register' | 'g' | undefined;
+  readonly awaiting: 'find' | 'replace' | 'register' | 'g' | 'textobject' | undefined;
   readonly findCmd: 'f' | 'F' | 't' | 'T' | undefined;
+  /** `i` or `a`, while waiting for the object character in `di(`, `caw`. */
+  readonly textObjectKind: T.ObjectKind | undefined;
 };
 
 export const EMPTY_PENDING: Pending = {
@@ -54,6 +57,7 @@ export const EMPTY_PENDING: Pending = {
   keyBuffer: [],
   awaiting: undefined,
   findCmd: undefined,
+  textObjectKind: undefined,
 };
 
 export type EditorState = {
@@ -334,6 +338,20 @@ function stepNormal(state: EditorState, key: KeyToken): StepResult {
     return withCursor(remembered, r.target);
   }
 
+  if (p.awaiting === 'textobject') {
+    if (key === '<Esc>') return { state: { ...state, pending: EMPTY_PENDING }, events: [] };
+    if (key.length !== 1) return invalid(state, keys.join(''), 'unknown-key');
+    const range = T.textObject(state.lines, state.cursor, p.textObjectKind!, key, countOf(p).count);
+    // Not FOUND (`di(` with no brackets) aborts the operator and mints nothing.
+    // Found-but-EMPTY (`di(` on `()`) is a degenerate region, which still runs.
+    if (range === null) return invalid(state, keys.join(''), 'no-such-motion');
+    // An object names its region outright, so the operated text starts at the
+    // region's own start — column ZERO for a linewise object, which is why
+    // `yip` lands on column one while `yy` keeps the column it had.
+    const opStart: Pos = range.kind === 'linewise' ? { line: range.firstLine, col: 0 } : range.start;
+    return runOperator(state, p.operator!, range, opStart, false, true);
+  }
+
   if (p.awaiting === 'replace') {
     if (key === '<Esc>') return { state: { ...state, pending: EMPTY_PENDING }, events: [] };
     if (key.length !== 1) return invalid(state, keys.join(''), 'unknown-key');
@@ -400,6 +418,12 @@ function stepNormal(state: EditorState, key: KeyToken): StepResult {
   const asOperator = OPERATORS[key];
   if (asOperator !== undefined && !opPending) {
     return pendingOnly(state, bump({ operator: asOperator }));
+  }
+
+  // `i` and `a` mean "insert" only in normal mode; with an operator pending
+  // they are the two text-object prefixes and nothing else.
+  if (opPending && (key === 'i' || key === 'a')) {
+    return pendingOnly(state, bump({ awaiting: 'textobject', textObjectKind: key }));
   }
 
   // --- motions --------------------------------------------------------------
@@ -545,6 +569,8 @@ function runOperator(
   range: O.OperatorRange,
   opStart: Pos,
   forcesNumbered: boolean,
+  /** The region came from a text object rather than from a motion. */
+  fromObject = false,
 ): StepResult {
   const explicit = state.pending.register;
   const firstLine = range.kind === 'linewise' ? range.firstLine : range.start.line;
@@ -564,7 +590,11 @@ function runOperator(
   if (degenerate && op === 'd') {
     // `op_delete`'s first act: `if (oap->empty) return u_save_cursor()`. Buffer
     // and registers untouched, but `u` now has a step to burn on.
-    return { state: commit(state, state.lines, state.cursor, undefined, opStart), events: [] };
+    //
+    // The cursor still lands on the region's start, which for a motion is where
+    // it already was — but NOT for a text object: `di(` on `()` moves onto the
+    // position between the brackets even though it deletes nothing.
+    return { state: commit(state, state.lines, range.start, undefined, opStart), events: [] };
   }
 
   if (op === '>' || op === '<') {
@@ -595,10 +625,18 @@ function runOperator(
       multiline: r.captured!.multiline,
     });
     // A yank moves the cursor to the start of the yanked text only when the
-    // motion ran backward — and a LINEWISE yank only counts crossing lines as
-    // backward, which is why `y_` stays put while `ygg` jumps.
+    // region begins before where the cursor was — but "before" is measured
+    // differently depending on where the region came from, and the two cases
+    // genuinely disagree in Vim:
+    //
+    //  - from a MOTION, a linewise region has no meaningful start column, so
+    //    only crossing lines counts. `y_` and `yy` leave the column alone even
+    //    though `_` moves to the first non-blank; `ygg` jumps.
+    //  - from an OBJECT, the region's start column is real and it is zero, so
+    //    `yip` and `yi{` pull the cursor to column one of the first line even
+    //    when that line is the one the cursor was already on.
     const moved =
-      range.kind === 'charwise'
+      range.kind === 'charwise' || fromObject
         ? comparePos(opStart, state.cursor) < 0
         : opStart.line < state.cursor.line;
     const cursor = clamp(state.lines, moved ? opStart : state.cursor, false);

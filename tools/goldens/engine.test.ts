@@ -21,6 +21,7 @@ const FAMILIES = [
   'wave2-indent',
   'wave2-insert',
   'wave3-paste',
+  'wave3-textobj',
 ];
 
 for (const family of FAMILIES) {

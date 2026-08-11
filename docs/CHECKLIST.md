@@ -63,9 +63,9 @@ not a bug fix.
       Vim left empty is a diff. This is what catches an engine that clamps
       where Vim fails: buffer and cursor agree either way and only the stray
       register betrays it (`yank/yh-at-col1-clears-unnamed`).
-- [x] **≥400 cases** — 674 committed (proven 7, wave1 113, wave2 492 across
+- [x] **≥400 cases** — 780 committed (proven 7, wave1 113, wave2 492 across
       8 families: caseops 62, change 55, delete 79, doubled 55, indent 59,
-      insert 69, shortcuts 55, yank 58; wave3 62 across 1 family: paste 62)
+      insert 69, shortcuts 55, yank 58; wave3 168 so far: paste 62, textobj 106)
 - [x] `expectError: true` per case, for a case that MEANS to fail. An
       undeclared error is a reported problem, and so is a declared one that
       did not happen — a case written to pin a failure that quietly started
@@ -240,7 +240,38 @@ fixed, and each now has a golden case or a unit test.
       successive lines, space-padding short lines) but **not pinned by any
       golden yet**, because nothing produces a blockwise register until `<C-v>`
       lands. Goldens come with Wave 3c, not before
-- [ ] Text objects: `iw aw iW aW i" a" i' a' i( a( i[ a[ i{ a{ i< a< it at ip ap`
+- [x] Text objects: `iw aw iW aW i" a" i' a' i( a( i[ a[ i{ a{ i< a< it at ip ap`,
+      plus the aliases (`ib`/`ab` = `i(`/`a(`, `iB`/`aB` = `i{`/`a{`, and either
+      half of a pair names the pair). 106 `textobj` goldens. An object is not a
+      motion — it names its region outright — so `textobject.ts` returns an
+      `OperatorRange` and `runOperator` takes it directly
+- [x] Semantics measured off real Vim while building these, every one of which
+      an intuitively-written implementation gets wrong:
+      - `i{` is genuinely **linewise** when the braces sit on their own lines, so
+        `di{` removes the body LINE and `yi{` yields a linewise register. Nothing
+        in the keys says so; the shape of the text decides
+      - a linewise **object** pulls the cursor to column one (`yip`, `yi{`) while
+        a linewise **motion** leaves the column alone (`yy`, `y_`). Same range
+        kind, different rule — only the object has a real start column. Trying to
+        unify them broke `y_`, which is why `runOperator` takes a `fromObject` flag
+      - `end_word`'s `stop` argument, which `current_word` passes and `e` does
+        not: without it `diw` on the `.` of `foo.bar` takes `.bar`
+      - `iw` on an empty line is a **real zero-length region, not a degenerate
+        one** — so `yiw` writes an empty register while `diw` mints no undo node.
+        This is the same split Wave 2 drew between `D` and `dl` on an empty line
+      - `iw` on an empty **last** line is not empty at all: `fwd_word` cannot
+        advance, so Vim's `decl` reaches BACKWARD onto the previous line's last
+        character, and `op_delete`'s promotion then turns that into whole lines.
+        `aw` there genuinely fails instead, because `end_word` fails
+      - **quotes are CHAINED, not paired off disjointly.** Candidates are every
+        consecutive pair of quotes, so the gap between two strings is itself a
+        quoted object and `di"` from the `x` in `"one" x "two"` deletes ` x `.
+        Stepping by two looks more sensible and is wrong
+      - `di(` finds a block AHEAD of the cursor, across lines. `:h ib` says the
+        cursor must be inside the block; the code disagrees
+      - a not-FOUND object aborts the operator and mints nothing; a found-but-EMPTY
+        one is degenerate and still runs, which is why `ci(` on `()` types between
+        the brackets
 - [ ] **`.` dot-repeat** — build as an explicit recorded-change record, *never*
       by replaying raw keystrokes. `f,x` repeats only the `x`; `df,` repeats the
       whole delete. The subtlest thing in the engine.

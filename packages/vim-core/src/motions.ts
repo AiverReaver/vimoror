@@ -163,7 +163,7 @@ export function moveLineFirstNonBlank(ctx: MotionContext): MotionResult {
  * real character, 2 = moved onto the end-of-line position, 1 = wrapped to the
  * next line, -1 = end of buffer.
  */
-function incPos(lines: Lines, p: Pos): { readonly pos: Pos; readonly ret: number } {
+export function incPos(lines: Lines, p: Pos): { readonly pos: Pos; readonly ret: number } {
   const len = lineAt(lines, p.line).length;
   if (p.col < len) {
     const col = p.col + 1;
@@ -180,7 +180,7 @@ function incPos(lines: Lines, p: Pos): { readonly pos: Pos; readonly ret: number
  * behind every `dw`-near-line-end wart. `failed` mirrors Vim's FAIL return:
  * an operator proceeds with the region anyway; plain `w` clamps and beeps.
  */
-function fwdWordWalk(
+export function fwdWordWalk(
   lines: Lines,
   start: Pos,
   big: boolean,
@@ -341,7 +341,7 @@ export function moveWordBackward(ctx: MotionContext): MotionResult | null {
  * codes mirror Vim's: 0 = moved within the line, 1 = crossed onto the previous
  * line's end, -1 = start of buffer.
  */
-function decPos(lines: Lines, p: Pos): { readonly pos: Pos; readonly ret: number } {
+export function decPos(lines: Lines, p: Pos): { readonly pos: Pos; readonly ret: number } {
   if (p.col > 0) return { pos: { line: p.line, col: p.col - 1 }, ret: 0 };
   if (p.line > 0) return { pos: { line: p.line - 1, col: lineAt(lines, p.line - 1).length }, ret: 1 };
   return { pos: p, ret: -1 };

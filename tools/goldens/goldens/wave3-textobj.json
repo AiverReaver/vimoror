@@ -1,0 +1,3881 @@
+[
+  {
+    "id": "textobj/diw-mid-word",
+    "buffer": [
+      "alpha beta gamma"
+    ],
+    "cursor": [
+      1,
+      8
+    ],
+    "keys": "diw",
+    "groups": [
+      "diw"
+    ],
+    "encodedKeys": "diw",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "beta"
+        },
+        "-": {
+          "type": "v",
+          "text": "beta"
+        }
+      },
+      "buffer": [
+        "alpha  gamma"
+      ],
+      "cursor": [
+        1,
+        7
+      ],
+      "error": "",
+      "curswant": 7
+    }
+  },
+  {
+    "id": "textobj/daw-mid-word",
+    "buffer": [
+      "alpha beta gamma"
+    ],
+    "cursor": [
+      1,
+      8
+    ],
+    "keys": "daw",
+    "groups": [
+      "daw"
+    ],
+    "note": "aw takes the word plus its TRAILING whitespace",
+    "encodedKeys": "daw",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "beta "
+        },
+        "-": {
+          "type": "v",
+          "text": "beta "
+        }
+      },
+      "buffer": [
+        "alpha gamma"
+      ],
+      "cursor": [
+        1,
+        7
+      ],
+      "error": "",
+      "curswant": 7
+    }
+  },
+  {
+    "id": "textobj/daw-last-word-takes-leading-space",
+    "buffer": [
+      "alpha beta"
+    ],
+    "cursor": [
+      1,
+      8
+    ],
+    "keys": "daw",
+    "groups": [
+      "daw"
+    ],
+    "note": "no trailing whitespace to take, so `aw` takes the LEADING space instead",
+    "encodedKeys": "daw",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": " beta"
+        },
+        "-": {
+          "type": "v",
+          "text": " beta"
+        }
+      },
+      "buffer": [
+        "alpha"
+      ],
+      "cursor": [
+        1,
+        5
+      ],
+      "error": "",
+      "curswant": 5
+    }
+  },
+  {
+    "id": "textobj/daw-last-word-of-line-does-not-eat-the-break",
+    "buffer": [
+      "one two",
+      "three"
+    ],
+    "cursor": [
+      1,
+      5
+    ],
+    "keys": "daw",
+    "groups": [
+      "daw"
+    ],
+    "encodedKeys": "daw",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": " two"
+        },
+        "-": {
+          "type": "v",
+          "text": " two"
+        }
+      },
+      "buffer": [
+        "one",
+        "three"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "textobj/diw-last-word-of-line",
+    "buffer": [
+      "one two",
+      "three"
+    ],
+    "cursor": [
+      1,
+      5
+    ],
+    "keys": "diw",
+    "groups": [
+      "diw"
+    ],
+    "encodedKeys": "diw",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "two"
+        },
+        "-": {
+          "type": "v",
+          "text": "two"
+        }
+      },
+      "buffer": [
+        "one ",
+        "three"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "textobj/diw-on-whitespace",
+    "buffer": [
+      "alpha beta"
+    ],
+    "cursor": [
+      1,
+      6
+    ],
+    "keys": "diw",
+    "groups": [
+      "diw"
+    ],
+    "note": "the blank run is itself an inner object",
+    "encodedKeys": "diw",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": " "
+        },
+        "-": {
+          "type": "v",
+          "text": " "
+        }
+      },
+      "buffer": [
+        "alphabeta"
+      ],
+      "cursor": [
+        1,
+        6
+      ],
+      "error": "",
+      "curswant": 6
+    }
+  },
+  {
+    "id": "textobj/daw-on-whitespace-takes-the-next-word",
+    "buffer": [
+      "alpha beta"
+    ],
+    "cursor": [
+      1,
+      6
+    ],
+    "keys": "daw",
+    "groups": [
+      "daw"
+    ],
+    "encodedKeys": "daw",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": " beta"
+        },
+        "-": {
+          "type": "v",
+          "text": " beta"
+        }
+      },
+      "buffer": [
+        "alpha"
+      ],
+      "cursor": [
+        1,
+        5
+      ],
+      "error": "",
+      "curswant": 5
+    }
+  },
+  {
+    "id": "textobj/diw-first-word",
+    "buffer": [
+      "alpha beta"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "diw",
+    "groups": [
+      "diw"
+    ],
+    "encodedKeys": "diw",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "alpha"
+        },
+        "-": {
+          "type": "v",
+          "text": "alpha"
+        }
+      },
+      "buffer": [
+        " beta"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "textobj/daw-first-word",
+    "buffer": [
+      "alpha beta"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "daw",
+    "groups": [
+      "daw"
+    ],
+    "encodedKeys": "daw",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "alpha "
+        },
+        "-": {
+          "type": "v",
+          "text": "alpha "
+        }
+      },
+      "buffer": [
+        "beta"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "textobj/d2iw",
+    "buffer": [
+      "alpha beta gamma"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "d2iw",
+    "groups": [
+      "d2iw"
+    ],
+    "note": "each extra count adds the NEXT run, alternating word and whitespace",
+    "encodedKeys": "d2iw",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "alpha "
+        },
+        "-": {
+          "type": "v",
+          "text": "alpha "
+        }
+      },
+      "buffer": [
+        "beta gamma"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "textobj/d3iw",
+    "buffer": [
+      "alpha beta gamma"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "d3iw",
+    "groups": [
+      "d3iw"
+    ],
+    "encodedKeys": "d3iw",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "alpha beta"
+        },
+        "-": {
+          "type": "v",
+          "text": "alpha beta"
+        }
+      },
+      "buffer": [
+        " gamma"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "textobj/d2aw",
+    "buffer": [
+      "alpha beta gamma"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "d2aw",
+    "groups": [
+      "d2aw"
+    ],
+    "note": "each extra count adds a whole word WITH its whitespace",
+    "encodedKeys": "d2aw",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "alpha beta "
+        },
+        "-": {
+          "type": "v",
+          "text": "alpha beta "
+        }
+      },
+      "buffer": [
+        "gamma"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "textobj/diw-punctuation-run",
+    "buffer": [
+      "foo.bar"
+    ],
+    "cursor": [
+      1,
+      4
+    ],
+    "keys": "diw",
+    "groups": [
+      "diw"
+    ],
+    "encodedKeys": "diw",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "."
+        },
+        "-": {
+          "type": "v",
+          "text": "."
+        }
+      },
+      "buffer": [
+        "foobar"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "textobj/daw-punctuation-run",
+    "buffer": [
+      "foo.bar"
+    ],
+    "cursor": [
+      1,
+      4
+    ],
+    "keys": "daw",
+    "groups": [
+      "daw"
+    ],
+    "note": "punctuation is its own word class, and it has no whitespace either side",
+    "encodedKeys": "daw",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "."
+        },
+        "-": {
+          "type": "v",
+          "text": "."
+        }
+      },
+      "buffer": [
+        "foobar"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "textobj/diW-crosses-punctuation",
+    "buffer": [
+      "foo.bar baz"
+    ],
+    "cursor": [
+      1,
+      4
+    ],
+    "keys": "diW",
+    "groups": [
+      "diW"
+    ],
+    "encodedKeys": "diW",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "foo.bar"
+        },
+        "-": {
+          "type": "v",
+          "text": "foo.bar"
+        }
+      },
+      "buffer": [
+        " baz"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "textobj/daW-crosses-punctuation",
+    "buffer": [
+      "foo.bar baz"
+    ],
+    "cursor": [
+      1,
+      4
+    ],
+    "keys": "daW",
+    "groups": [
+      "daW"
+    ],
+    "encodedKeys": "daW",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "foo.bar "
+        },
+        "-": {
+          "type": "v",
+          "text": "foo.bar "
+        }
+      },
+      "buffer": [
+        "baz"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "textobj/diw-on-empty-line-is-degenerate",
+    "buffer": [
+      "a",
+      "",
+      "b"
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": "diw",
+    "groups": [
+      "diw"
+    ],
+    "note": "nothing to take, but the region exists — no register is written",
+    "encodedKeys": "diw",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "a",
+        "",
+        "b"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "textobj/daw-on-empty-line-crosses-the-break",
+    "buffer": [
+      "a",
+      "",
+      "b"
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": "daw",
+    "groups": [
+      "daw"
+    ],
+    "note": "the empty line counts as whitespace, so `aw` takes it plus the following word — which spans a line boundary and is then promoted to linewise by op_delete's rule",
+    "encodedKeys": "daw",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "\nb\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "\nb\n"
+        }
+      },
+      "buffer": [
+        "a"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "textobj/ciw-mid-word",
+    "buffer": [
+      "alpha beta gamma"
+    ],
+    "cursor": [
+      1,
+      8
+    ],
+    "keys": "ciwXY<Esc>",
+    "groups": [
+      "ciwXY<Esc>"
+    ],
+    "encodedKeys": "ciwXY\u001b",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "beta"
+        },
+        "-": {
+          "type": "v",
+          "text": "beta"
+        }
+      },
+      "buffer": [
+        "alpha XY gamma"
+      ],
+      "cursor": [
+        1,
+        8
+      ],
+      "error": "",
+      "curswant": 8
+    }
+  },
+  {
+    "id": "textobj/caw-mid-word",
+    "buffer": [
+      "alpha beta gamma"
+    ],
+    "cursor": [
+      1,
+      8
+    ],
+    "keys": "cawXY<Esc>",
+    "groups": [
+      "cawXY<Esc>"
+    ],
+    "encodedKeys": "cawXY\u001b",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "beta "
+        },
+        "-": {
+          "type": "v",
+          "text": "beta "
+        }
+      },
+      "buffer": [
+        "alpha XYgamma"
+      ],
+      "cursor": [
+        1,
+        8
+      ],
+      "error": "",
+      "curswant": 8
+    }
+  },
+  {
+    "id": "textobj/yiw-mid-word",
+    "buffer": [
+      "alpha beta"
+    ],
+    "cursor": [
+      1,
+      8
+    ],
+    "keys": "yiw",
+    "groups": [
+      "yiw"
+    ],
+    "encodedKeys": "yiw",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "beta"
+        },
+        "\"": {
+          "type": "v",
+          "text": "beta"
+        }
+      },
+      "buffer": [
+        "alpha beta"
+      ],
+      "cursor": [
+        1,
+        7
+      ],
+      "error": "",
+      "curswant": 7
+    }
+  },
+  {
+    "id": "textobj/yaw-mid-word",
+    "buffer": [
+      "alpha beta"
+    ],
+    "cursor": [
+      1,
+      8
+    ],
+    "keys": "yaw",
+    "groups": [
+      "yaw"
+    ],
+    "note": "yank lands the cursor on the start of the region, one column left of the word",
+    "encodedKeys": "yaw",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": " beta"
+        },
+        "\"": {
+          "type": "v",
+          "text": " beta"
+        }
+      },
+      "buffer": [
+        "alpha beta"
+      ],
+      "cursor": [
+        1,
+        6
+      ],
+      "error": "",
+      "curswant": 6
+    }
+  },
+  {
+    "id": "textobj/gUiw",
+    "buffer": [
+      "alpha beta"
+    ],
+    "cursor": [
+      1,
+      8
+    ],
+    "keys": "gUiw",
+    "groups": [
+      "gUiw"
+    ],
+    "encodedKeys": "gUiw",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "alpha BETA"
+      ],
+      "cursor": [
+        1,
+        7
+      ],
+      "error": "",
+      "curswant": 7
+    }
+  },
+  {
+    "id": "textobj/diw-then-u",
+    "buffer": [
+      "alpha beta"
+    ],
+    "cursor": [
+      1,
+      8
+    ],
+    "keys": "diwu",
+    "groups": [
+      "diw",
+      "u"
+    ],
+    "encodedKeys": "diwu",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "beta"
+        },
+        "-": {
+          "type": "v",
+          "text": "beta"
+        }
+      },
+      "buffer": [
+        "alpha beta"
+      ],
+      "cursor": [
+        1,
+        7
+      ],
+      "error": "",
+      "curswant": 7
+    }
+  },
+  {
+    "id": "textobj/diw-empty-line-mints-an-undo-node",
+    "buffer": [
+      "ab",
+      "",
+      "c"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "xjdiwu",
+    "groups": [
+      "x",
+      "j",
+      "diw",
+      "u"
+    ],
+    "note": "a DEGENERATE object still runs, so `u` burns on it and the `x` survives. The empty line must be in the MIDDLE of the buffer: on the LAST line `iw` reaches backward instead and is not degenerate at all (below).",
+    "encodedKeys": "xjdiwu",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a"
+        },
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "ab",
+        "",
+        "c"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "textobj/diw-on-empty-last-line-reaches-backward",
+    "buffer": [
+      "b",
+      ""
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": "diw",
+    "groups": [
+      "diw"
+    ],
+    "note": "`fwd_word` cannot advance off the last line, so Vim's `decl` steps back onto the PREVIOUS line's last character — an inverted region that op_delete then promotes to whole lines. Nothing about `iw` suggests this.",
+    "encodedKeys": "diw",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "b\n\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "b\n\n"
+        }
+      },
+      "buffer": [
+        ""
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "textobj/yiw-on-empty-last-line-is-charwise",
+    "buffer": [
+      "b",
+      ""
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": "yiw",
+    "groups": [
+      "yiw"
+    ],
+    "note": "the same region, but yank has no promotion — so the register is charwise here and linewise for `d`",
+    "encodedKeys": "yiw",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "b\n"
+        },
+        "\"": {
+          "type": "v",
+          "text": "b\n"
+        }
+      },
+      "buffer": [
+        "b",
+        ""
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "textobj/diw-on-empty-last-line-three-lines",
+    "buffer": [
+      "a",
+      "b",
+      ""
+    ],
+    "cursor": [
+      3,
+      1
+    ],
+    "keys": "diw",
+    "groups": [
+      "diw"
+    ],
+    "encodedKeys": "diw",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "b\n\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "b\n\n"
+        }
+      },
+      "buffer": [
+        "a"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "textobj/daw-on-empty-last-line-fails",
+    "buffer": [
+      "b",
+      ""
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": "xjdawu",
+    "groups": [
+      "x",
+      "j",
+      "daw",
+      "u"
+    ],
+    "note": "`aw` uses end_word, which genuinely FAILS at end of buffer — so nothing happens at all",
+    "encodedKeys": "xjdawu",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "b",
+        ""
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "textobj/diw-on-the-only-line-being-empty",
+    "buffer": [
+      ""
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "diw",
+    "groups": [
+      "diw"
+    ],
+    "encodedKeys": "diw",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        ""
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "textobj/diw-blank-run-on-last-line",
+    "buffer": [
+      "b",
+      "   "
+    ],
+    "cursor": [
+      2,
+      2
+    ],
+    "keys": "diw",
+    "groups": [
+      "diw"
+    ],
+    "encodedKeys": "diw",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "   "
+        },
+        "-": {
+          "type": "v",
+          "text": "   "
+        }
+      },
+      "buffer": [
+        "b",
+        ""
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "textobj/di-paren-inline",
+    "buffer": [
+      "fn(a, b) end"
+    ],
+    "cursor": [
+      1,
+      5
+    ],
+    "keys": "di(",
+    "groups": [
+      "di("
+    ],
+    "encodedKeys": "di(",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a, b"
+        },
+        "-": {
+          "type": "v",
+          "text": "a, b"
+        }
+      },
+      "buffer": [
+        "fn() end"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "textobj/da-paren-inline",
+    "buffer": [
+      "fn(a, b) end"
+    ],
+    "cursor": [
+      1,
+      5
+    ],
+    "keys": "da(",
+    "groups": [
+      "da("
+    ],
+    "encodedKeys": "da(",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "(a, b)"
+        },
+        "-": {
+          "type": "v",
+          "text": "(a, b)"
+        }
+      },
+      "buffer": [
+        "fn end"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "textobj/di-paren-cursor-on-open",
+    "buffer": [
+      "fn(a,b)"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "di(",
+    "groups": [
+      "di("
+    ],
+    "note": "sitting ON the open bracket selects that pair, it does not look outward",
+    "encodedKeys": "di(",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a,b"
+        },
+        "-": {
+          "type": "v",
+          "text": "a,b"
+        }
+      },
+      "buffer": [
+        "fn()"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "textobj/di-paren-cursor-on-close",
+    "buffer": [
+      "fn(a,b)"
+    ],
+    "cursor": [
+      1,
+      7
+    ],
+    "keys": "di(",
+    "groups": [
+      "di("
+    ],
+    "encodedKeys": "di(",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a,b"
+        },
+        "-": {
+          "type": "v",
+          "text": "a,b"
+        }
+      },
+      "buffer": [
+        "fn()"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "textobj/di-paren-empty-is-degenerate",
+    "buffer": [
+      "fn()"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "di(",
+    "groups": [
+      "di("
+    ],
+    "note": "found but EMPTY — deletes nothing, writes no register, cursor moves between the brackets",
+    "encodedKeys": "di(",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "fn()"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "textobj/ci-paren-empty-still-enters-insert",
+    "buffer": [
+      "fn()"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "ci(X<Esc>",
+    "groups": [
+      "ci(X<Esc>"
+    ],
+    "note": "the degenerate region is why `ci(` on `()` can type between the brackets at all",
+    "encodedKeys": "ci(X\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "fn(X)"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "textobj/di-paren-not-found-mints-nothing",
+    "buffer": [
+      "plain text"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "xdi(u",
+    "groups": [
+      "x",
+      "di(",
+      "u"
+    ],
+    "note": "NOT FOUND aborts the operator entirely — `u` must reach past it to the `x`",
+    "encodedKeys": "xdi(u",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a"
+        },
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "plain text"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "textobj/di-paren-cursor-before-the-block-on-the-same-line",
+    "buffer": [
+      "fn(a, b)"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "di(",
+    "groups": [
+      "di("
+    ],
+    "note": "the cursor is OUTSIDE the parentheses, yet the object is still found — `findmatch` looks ahead on the line. \":h ib\" says the cursor must be inside the block, and that is not what the code does.",
+    "encodedKeys": "di(",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a, b"
+        },
+        "-": {
+          "type": "v",
+          "text": "a, b"
+        }
+      },
+      "buffer": [
+        "fn()"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "textobj/di-paren-block-later-on-the-line",
+    "buffer": [
+      "xx yy (a) zz"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "di(",
+    "groups": [
+      "di("
+    ],
+    "encodedKeys": "di(",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a"
+        },
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "xx yy () zz"
+      ],
+      "cursor": [
+        1,
+        8
+      ],
+      "error": "",
+      "curswant": 8
+    }
+  },
+  {
+    "id": "textobj/di-brace-before-the-block-on-the-same-line",
+    "buffer": [
+      "head {a} tail"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "di{",
+    "groups": [
+      "di{"
+    ],
+    "encodedKeys": "di{",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a"
+        },
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "head {} tail"
+      ],
+      "cursor": [
+        1,
+        7
+      ],
+      "error": "",
+      "curswant": 7
+    }
+  },
+  {
+    "id": "textobj/di-paren-block-on-a-LATER-line",
+    "buffer": [
+      "plain",
+      "fn(a, b)"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "xdi(u",
+    "groups": [
+      "x",
+      "di(",
+      "u"
+    ],
+    "note": "does the look-ahead stop at the end of the line, or run on into the buffer? Authored not knowing — the oracle decides.",
+    "encodedKeys": "xdi(u",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a, b"
+        },
+        "-": {
+          "type": "v",
+          "text": "a, b"
+        }
+      },
+      "buffer": [
+        "pain",
+        "fn(a, b)"
+      ],
+      "cursor": [
+        2,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "textobj/d2i-paren-nested",
+    "buffer": [
+      "a(b(c)d)e"
+    ],
+    "cursor": [
+      1,
+      5
+    ],
+    "keys": "d2i(",
+    "groups": [
+      "d2i("
+    ],
+    "note": "a count walks OUTWARD one pair at a time",
+    "encodedKeys": "d2i(",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "b(c)d"
+        },
+        "-": {
+          "type": "v",
+          "text": "b(c)d"
+        }
+      },
+      "buffer": [
+        "a()e"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "textobj/d2a-paren-nested",
+    "buffer": [
+      "a(b(c)d)e"
+    ],
+    "cursor": [
+      1,
+      5
+    ],
+    "keys": "d2a(",
+    "groups": [
+      "d2a("
+    ],
+    "encodedKeys": "d2a(",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "(b(c)d)"
+        },
+        "-": {
+          "type": "v",
+          "text": "(b(c)d)"
+        }
+      },
+      "buffer": [
+        "ae"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "textobj/di-paren-nested-inner",
+    "buffer": [
+      "a(b(c)d)e"
+    ],
+    "cursor": [
+      1,
+      5
+    ],
+    "keys": "di(",
+    "groups": [
+      "di("
+    ],
+    "encodedKeys": "di(",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "c"
+        },
+        "-": {
+          "type": "v",
+          "text": "c"
+        }
+      },
+      "buffer": [
+        "a(b()d)e"
+      ],
+      "cursor": [
+        1,
+        5
+      ],
+      "error": "",
+      "curswant": 5
+    }
+  },
+  {
+    "id": "textobj/di-paren-spans-lines",
+    "buffer": [
+      "fn(a,",
+      "b) end"
+    ],
+    "cursor": [
+      1,
+      4
+    ],
+    "keys": "di(",
+    "groups": [
+      "di("
+    ],
+    "encodedKeys": "di(",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "v",
+          "text": "a,\nb"
+        },
+        "\"": {
+          "type": "v",
+          "text": "a,\nb"
+        }
+      },
+      "buffer": [
+        "fn() end"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "textobj/di-bracket-square",
+    "buffer": [
+      "x[1, 2]y"
+    ],
+    "cursor": [
+      1,
+      4
+    ],
+    "keys": "di[",
+    "groups": [
+      "di["
+    ],
+    "encodedKeys": "di[",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "1, 2"
+        },
+        "-": {
+          "type": "v",
+          "text": "1, 2"
+        }
+      },
+      "buffer": [
+        "x[]y"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "textobj/da-bracket-square",
+    "buffer": [
+      "x[1, 2]y"
+    ],
+    "cursor": [
+      1,
+      4
+    ],
+    "keys": "da[",
+    "groups": [
+      "da["
+    ],
+    "encodedKeys": "da[",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "[1, 2]"
+        },
+        "-": {
+          "type": "v",
+          "text": "[1, 2]"
+        }
+      },
+      "buffer": [
+        "xy"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "textobj/di-angle",
+    "buffer": [
+      "x<abc>y"
+    ],
+    "cursor": [
+      1,
+      4
+    ],
+    "keys": "di<",
+    "groups": [
+      "di<"
+    ],
+    "encodedKeys": "di<",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "abc"
+        },
+        "-": {
+          "type": "v",
+          "text": "abc"
+        }
+      },
+      "buffer": [
+        "x<>y"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "textobj/da-angle",
+    "buffer": [
+      "x<abc>y"
+    ],
+    "cursor": [
+      1,
+      4
+    ],
+    "keys": "da<",
+    "groups": [
+      "da<"
+    ],
+    "encodedKeys": "da<",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "<abc>"
+        },
+        "-": {
+          "type": "v",
+          "text": "<abc>"
+        }
+      },
+      "buffer": [
+        "xy"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "textobj/di-brace-inline",
+    "buffer": [
+      "x {body} y"
+    ],
+    "cursor": [
+      1,
+      4
+    ],
+    "keys": "di{",
+    "groups": [
+      "di{"
+    ],
+    "encodedKeys": "di{",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "body"
+        },
+        "-": {
+          "type": "v",
+          "text": "body"
+        }
+      },
+      "buffer": [
+        "x {} y"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "textobj/alias-ib-is-i-paren",
+    "buffer": [
+      "f(a)"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "dib",
+    "groups": [
+      "dib"
+    ],
+    "encodedKeys": "dib",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a"
+        },
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "f()"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "textobj/alias-aB-is-a-brace",
+    "buffer": [
+      "x{a}y"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "daB",
+    "groups": [
+      "daB"
+    ],
+    "encodedKeys": "daB",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "{a}"
+        },
+        "-": {
+          "type": "v",
+          "text": "{a}"
+        }
+      },
+      "buffer": [
+        "xy"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "textobj/alias-closing-half-names-the-pair",
+    "buffer": [
+      "f(a)"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "di)",
+    "groups": [
+      "di)"
+    ],
+    "encodedKeys": "di)",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a"
+        },
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "f()"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "textobj/alias-i-brace-close",
+    "buffer": [
+      "x{ab}y"
+    ],
+    "cursor": [
+      1,
+      4
+    ],
+    "keys": "di}",
+    "groups": [
+      "di}"
+    ],
+    "encodedKeys": "di}",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "ab"
+        },
+        "-": {
+          "type": "v",
+          "text": "ab"
+        }
+      },
+      "buffer": [
+        "x{}y"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "textobj/di-brace-body-on-its-own-line-is-linewise",
+    "buffer": [
+      "{",
+      "  body",
+      "}"
+    ],
+    "cursor": [
+      2,
+      3
+    ],
+    "keys": "di{",
+    "groups": [
+      "di{"
+    ],
+    "note": "the braces sit on their own lines, so `i{` is LINEWISE — the body line goes away entirely rather than being emptied",
+    "encodedKeys": "di{",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "  body\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "  body\n"
+        }
+      },
+      "buffer": [
+        "{",
+        "}"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "textobj/yi-brace-body-on-its-own-line-is-linewise",
+    "buffer": [
+      "{",
+      "  body",
+      "}"
+    ],
+    "cursor": [
+      2,
+      3
+    ],
+    "keys": "yi{",
+    "groups": [
+      "yi{"
+    ],
+    "note": "same shape, and the register type is what proves it",
+    "encodedKeys": "yi{",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "  body\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "  body\n"
+        }
+      },
+      "buffer": [
+        "{",
+        "  body",
+        "}"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "textobj/ci-brace-body-on-its-own-line",
+    "buffer": [
+      "{",
+      "  body",
+      "}"
+    ],
+    "cursor": [
+      2,
+      3
+    ],
+    "keys": "ci{Z<Esc>",
+    "groups": [
+      "ci{Z<Esc>"
+    ],
+    "note": "linewise change keeps ONE line to type into, exactly as `cc` does",
+    "encodedKeys": "ci{Z\u001b",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "  body\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "  body\n"
+        }
+      },
+      "buffer": [
+        "{",
+        "Z",
+        "}"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "textobj/di-brace-two-body-lines",
+    "buffer": [
+      "{",
+      "  a",
+      "  b",
+      "}"
+    ],
+    "cursor": [
+      2,
+      3
+    ],
+    "keys": "di{",
+    "groups": [
+      "di{"
+    ],
+    "encodedKeys": "di{",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "  a\n  b\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "  a\n  b\n"
+        }
+      },
+      "buffer": [
+        "{",
+        "}"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "textobj/da-brace-body-on-its-own-line",
+    "buffer": [
+      "{",
+      "  body",
+      "}"
+    ],
+    "cursor": [
+      2,
+      3
+    ],
+    "keys": "da{",
+    "groups": [
+      "da{"
+    ],
+    "encodedKeys": "da{",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "{\n  body\n}\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "{\n  body\n}\n"
+        }
+      },
+      "buffer": [
+        ""
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "textobj/ya-brace-body-on-its-own-line",
+    "buffer": [
+      "{",
+      "  body",
+      "}"
+    ],
+    "cursor": [
+      2,
+      3
+    ],
+    "keys": "ya{",
+    "groups": [
+      "ya{"
+    ],
+    "note": "does `a{` get the linewise treatment too, or only `i{`?",
+    "encodedKeys": "ya{",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "{\n  body\n}"
+        },
+        "\"": {
+          "type": "v",
+          "text": "{\n  body\n}"
+        }
+      },
+      "buffer": [
+        "{",
+        "  body",
+        "}"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "textobj/di-brace-adjacent-lines-no-body",
+    "buffer": [
+      "{",
+      "}"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "di{",
+    "groups": [
+      "di{"
+    ],
+    "note": "nothing between the braces at all — the linewise promotion must not fire",
+    "encodedKeys": "di{",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "{",
+        "}"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "textobj/di-brace-open-not-last-on-line",
+    "buffer": [
+      "{ head",
+      "  mid",
+      "}"
+    ],
+    "cursor": [
+      2,
+      3
+    ],
+    "keys": "di{",
+    "groups": [
+      "di{"
+    ],
+    "note": "text after the open brace, so the block is NOT whole lines",
+    "encodedKeys": "di{",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "v",
+          "text": " head\n  mid"
+        },
+        "\"": {
+          "type": "v",
+          "text": " head\n  mid"
+        }
+      },
+      "buffer": [
+        "{",
+        "}"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "textobj/di-brace-close-not-alone-on-line",
+    "buffer": [
+      "{",
+      "  mid",
+      "tail }"
+    ],
+    "cursor": [
+      2,
+      3
+    ],
+    "keys": "di{",
+    "groups": [
+      "di{"
+    ],
+    "encodedKeys": "di{",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "v",
+          "text": "  mid\ntail "
+        },
+        "\"": {
+          "type": "v",
+          "text": "  mid\ntail "
+        }
+      },
+      "buffer": [
+        "{",
+        "}"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "textobj/yi-brace-cursor-lands-on-column-one",
+    "buffer": [
+      "{",
+      "    body",
+      "}"
+    ],
+    "cursor": [
+      2,
+      6
+    ],
+    "keys": "yi{",
+    "groups": [
+      "yi{"
+    ],
+    "note": "a linewise OBJECT pulls the cursor to column one, unlike a linewise motion",
+    "encodedKeys": "yi{",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "    body\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "    body\n"
+        }
+      },
+      "buffer": [
+        "{",
+        "    body",
+        "}"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "textobj/indent-operator-over-a-linewise-block",
+    "buffer": [
+      "{",
+      "  body",
+      "}"
+    ],
+    "cursor": [
+      2,
+      3
+    ],
+    "keys": ">i{",
+    "groups": [
+      ">i{"
+    ],
+    "encodedKeys": ">i{",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "{",
+        "      body",
+        "}"
+      ],
+      "cursor": [
+        2,
+        7
+      ],
+      "error": "",
+      "curswant": 7
+    }
+  },
+  {
+    "id": "textobj/di-quote-inside",
+    "buffer": [
+      "say \"hello there\" ok"
+    ],
+    "cursor": [
+      1,
+      8
+    ],
+    "keys": "di\"",
+    "groups": [
+      "di\""
+    ],
+    "encodedKeys": "di\"",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "hello there"
+        },
+        "-": {
+          "type": "v",
+          "text": "hello there"
+        }
+      },
+      "buffer": [
+        "say \"\" ok"
+      ],
+      "cursor": [
+        1,
+        6
+      ],
+      "error": "",
+      "curswant": 6
+    }
+  },
+  {
+    "id": "textobj/da-quote-inside",
+    "buffer": [
+      "say \"hello there\" ok"
+    ],
+    "cursor": [
+      1,
+      8
+    ],
+    "keys": "da\"",
+    "groups": [
+      "da\""
+    ],
+    "note": "a\" takes the quotes AND the trailing whitespace",
+    "encodedKeys": "da\"",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "\"hello there\" "
+        },
+        "-": {
+          "type": "v",
+          "text": "\"hello there\" "
+        }
+      },
+      "buffer": [
+        "say ok"
+      ],
+      "cursor": [
+        1,
+        5
+      ],
+      "error": "",
+      "curswant": 5
+    }
+  },
+  {
+    "id": "textobj/da-quote-no-trailing-takes-leading",
+    "buffer": [
+      "a \"b\""
+    ],
+    "cursor": [
+      1,
+      4
+    ],
+    "keys": "da\"",
+    "groups": [
+      "da\""
+    ],
+    "encodedKeys": "da\"",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": " \"b\""
+        },
+        "-": {
+          "type": "v",
+          "text": " \"b\""
+        }
+      },
+      "buffer": [
+        "a"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "textobj/di-quote-cursor-before-the-pair",
+    "buffer": [
+      "say \"hello\" ok"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "di\"",
+    "groups": [
+      "di\""
+    ],
+    "note": "not inside a pair, so it uses the next pair on the line",
+    "encodedKeys": "di\"",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "hello"
+        },
+        "-": {
+          "type": "v",
+          "text": "hello"
+        }
+      },
+      "buffer": [
+        "say \"\" ok"
+      ],
+      "cursor": [
+        1,
+        6
+      ],
+      "error": "",
+      "curswant": 6
+    }
+  },
+  {
+    "id": "textobj/di-quote-cursor-on-open",
+    "buffer": [
+      "a \"b\" c"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "di\"",
+    "groups": [
+      "di\""
+    ],
+    "encodedKeys": "di\"",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "b"
+        },
+        "-": {
+          "type": "v",
+          "text": "b"
+        }
+      },
+      "buffer": [
+        "a \"\" c"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "textobj/di-quote-cursor-on-close",
+    "buffer": [
+      "a \"bc\" d"
+    ],
+    "cursor": [
+      1,
+      6
+    ],
+    "keys": "di\"",
+    "groups": [
+      "di\""
+    ],
+    "encodedKeys": "di\"",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "bc"
+        },
+        "-": {
+          "type": "v",
+          "text": "bc"
+        }
+      },
+      "buffer": [
+        "a \"\" d"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "textobj/di-quote-escaped-quote-is-not-a-delimiter",
+    "buffer": [
+      "a \"b\\\"c\" d"
+    ],
+    "cursor": [
+      1,
+      5
+    ],
+    "keys": "di\"",
+    "groups": [
+      "di\""
+    ],
+    "encodedKeys": "di\"",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "b\\\"c"
+        },
+        "-": {
+          "type": "v",
+          "text": "b\\\"c"
+        }
+      },
+      "buffer": [
+        "a \"\" d"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "textobj/di-quote-empty-is-degenerate",
+    "buffer": [
+      "a \"\" b"
+    ],
+    "cursor": [
+      1,
+      4
+    ],
+    "keys": "di\"",
+    "groups": [
+      "di\""
+    ],
+    "encodedKeys": "di\"",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "a \"\" b"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "textobj/di-quote-between-two-pairs-takes-the-gap",
+    "buffer": [
+      "\"one\" x \"two\""
+    ],
+    "cursor": [
+      1,
+      7
+    ],
+    "keys": "di\"",
+    "groups": [
+      "di\""
+    ],
+    "note": "quotes are CHAINED, not paired off disjointly — the span between two strings is itself a quoted object, so this deletes ` x ` rather than jumping ahead to `two`. Pairing (q0,q1),(q2,q3) looks far more sensible and is wrong.",
+    "encodedKeys": "di\"",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": " x "
+        },
+        "-": {
+          "type": "v",
+          "text": " x "
+        }
+      },
+      "buffer": [
+        "\"one\"\"two\""
+      ],
+      "cursor": [
+        1,
+        6
+      ],
+      "error": "",
+      "curswant": 6
+    }
+  },
+  {
+    "id": "textobj/di-quote-gap-from-its-left-edge",
+    "buffer": [
+      "\"one\" x \"two\""
+    ],
+    "cursor": [
+      1,
+      6
+    ],
+    "keys": "di\"",
+    "groups": [
+      "di\""
+    ],
+    "encodedKeys": "di\"",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": " x "
+        },
+        "-": {
+          "type": "v",
+          "text": " x "
+        }
+      },
+      "buffer": [
+        "\"one\"\"two\""
+      ],
+      "cursor": [
+        1,
+        6
+      ],
+      "error": "",
+      "curswant": 6
+    }
+  },
+  {
+    "id": "textobj/di-quote-gap-from-its-right-edge",
+    "buffer": [
+      "\"one\" x \"two\""
+    ],
+    "cursor": [
+      1,
+      8
+    ],
+    "keys": "di\"",
+    "groups": [
+      "di\""
+    ],
+    "encodedKeys": "di\"",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": " x "
+        },
+        "-": {
+          "type": "v",
+          "text": " x "
+        }
+      },
+      "buffer": [
+        "\"one\"\"two\""
+      ],
+      "cursor": [
+        1,
+        6
+      ],
+      "error": "",
+      "curswant": 6
+    }
+  },
+  {
+    "id": "textobj/da-quote-between-two-pairs",
+    "buffer": [
+      "\"one\" x \"two\""
+    ],
+    "cursor": [
+      1,
+      7
+    ],
+    "keys": "da\"",
+    "groups": [
+      "da\""
+    ],
+    "encodedKeys": "da\"",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "\" x \""
+        },
+        "-": {
+          "type": "v",
+          "text": "\" x \""
+        }
+      },
+      "buffer": [
+        "\"onetwo\""
+      ],
+      "cursor": [
+        1,
+        5
+      ],
+      "error": "",
+      "curswant": 5
+    }
+  },
+  {
+    "id": "textobj/di-quote-odd-count-of-quotes",
+    "buffer": [
+      "\"a\" b \"c"
+    ],
+    "cursor": [
+      1,
+      5
+    ],
+    "keys": "di\"",
+    "groups": [
+      "di\""
+    ],
+    "encodedKeys": "di\"",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": " b "
+        },
+        "-": {
+          "type": "v",
+          "text": " b "
+        }
+      },
+      "buffer": [
+        "\"a\"\"c"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "textobj/di-quote-after-the-last-pair-fails",
+    "buffer": [
+      "\"one\" tail"
+    ],
+    "cursor": [
+      1,
+      8
+    ],
+    "keys": "xdi\"u",
+    "groups": [
+      "x",
+      "di\"",
+      "u"
+    ],
+    "encodedKeys": "xdi\"u",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a"
+        },
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "\"one\" tail"
+      ],
+      "cursor": [
+        1,
+        8
+      ],
+      "error": "",
+      "curswant": 8
+    }
+  },
+  {
+    "id": "textobj/di-single-quote",
+    "buffer": [
+      "it 'x y' z"
+    ],
+    "cursor": [
+      1,
+      6
+    ],
+    "keys": "di'",
+    "groups": [
+      "di'"
+    ],
+    "encodedKeys": "di'",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "x y"
+        },
+        "-": {
+          "type": "v",
+          "text": "x y"
+        }
+      },
+      "buffer": [
+        "it '' z"
+      ],
+      "cursor": [
+        1,
+        5
+      ],
+      "error": "",
+      "curswant": 5
+    }
+  },
+  {
+    "id": "textobj/da-single-quote",
+    "buffer": [
+      "it 'x y' z"
+    ],
+    "cursor": [
+      1,
+      6
+    ],
+    "keys": "da'",
+    "groups": [
+      "da'"
+    ],
+    "encodedKeys": "da'",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "'x y' "
+        },
+        "-": {
+          "type": "v",
+          "text": "'x y' "
+        }
+      },
+      "buffer": [
+        "it z"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "textobj/di-quote-none-on-line-mints-nothing",
+    "buffer": [
+      "abc",
+      "no quotes"
+    ],
+    "cursor": [
+      2,
+      3
+    ],
+    "keys": "xdi\"u",
+    "groups": [
+      "x",
+      "di\"",
+      "u"
+    ],
+    "encodedKeys": "xdi\"u",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": " "
+        },
+        "-": {
+          "type": "v",
+          "text": " "
+        }
+      },
+      "buffer": [
+        "abc",
+        "no quotes"
+      ],
+      "cursor": [
+        2,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "textobj/ci-quote",
+    "buffer": [
+      "say \"old\" ok"
+    ],
+    "cursor": [
+      1,
+      7
+    ],
+    "keys": "ci\"new<Esc>",
+    "groups": [
+      "ci\"new<Esc>"
+    ],
+    "encodedKeys": "ci\"new\u001b",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "old"
+        },
+        "-": {
+          "type": "v",
+          "text": "old"
+        }
+      },
+      "buffer": [
+        "say \"new\" ok"
+      ],
+      "cursor": [
+        1,
+        8
+      ],
+      "error": "",
+      "curswant": 8
+    }
+  },
+  {
+    "id": "textobj/dip-in-a-paragraph",
+    "buffer": [
+      "a",
+      "b",
+      "",
+      "c"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "dip",
+    "groups": [
+      "dip"
+    ],
+    "encodedKeys": "dip",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "a\nb\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "a\nb\n"
+        }
+      },
+      "buffer": [
+        "",
+        "c"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "textobj/dap-in-a-paragraph",
+    "buffer": [
+      "a",
+      "b",
+      "",
+      "c"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "dap",
+    "groups": [
+      "dap"
+    ],
+    "note": "ap adds the run of blank lines that FOLLOWS",
+    "encodedKeys": "dap",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "a\nb\n\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "a\nb\n\n"
+        }
+      },
+      "buffer": [
+        "c"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "textobj/dip-on-a-blank-run",
+    "buffer": [
+      "a",
+      "",
+      "",
+      "b"
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": "dip",
+    "groups": [
+      "dip"
+    ],
+    "note": "a run of blank lines is itself a paragraph object",
+    "encodedKeys": "dip",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "\n\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "\n\n"
+        }
+      },
+      "buffer": [
+        "a",
+        "b"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "textobj/dap-on-a-blank-run",
+    "buffer": [
+      "a",
+      "",
+      "",
+      "b"
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": "dap",
+    "groups": [
+      "dap"
+    ],
+    "encodedKeys": "dap",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "\n\nb\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "\n\nb\n"
+        }
+      },
+      "buffer": [
+        "a"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "textobj/dap-last-paragraph-takes-the-blanks-before-it",
+    "buffer": [
+      "a",
+      "",
+      "b",
+      "c"
+    ],
+    "cursor": [
+      3,
+      1
+    ],
+    "keys": "dap",
+    "groups": [
+      "dap"
+    ],
+    "note": "nothing follows, so `ap` reaches BACKWARD instead",
+    "encodedKeys": "dap",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "\nb\nc\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "\nb\nc\n"
+        }
+      },
+      "buffer": [
+        "a"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "textobj/yip-cursor-lands-on-column-one",
+    "buffer": [
+      "  hello world",
+      "x"
+    ],
+    "cursor": [
+      1,
+      8
+    ],
+    "keys": "yip",
+    "groups": [
+      "yip"
+    ],
+    "note": "the linewise-object cursor rule again, this time with no braces involved",
+    "encodedKeys": "yip",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "  hello world\nx\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "  hello world\nx\n"
+        }
+      },
+      "buffer": [
+        "  hello world",
+        "x"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "textobj/yy-keeps-its-column",
+    "buffer": [
+      "  hello world",
+      "x"
+    ],
+    "cursor": [
+      1,
+      8
+    ],
+    "keys": "yy",
+    "groups": [
+      "yy"
+    ],
+    "note": "the control for the case above — a linewise MOTION leaves the column alone",
+    "encodedKeys": "yy",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "  hello world\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "  hello world\n"
+        }
+      },
+      "buffer": [
+        "  hello world",
+        "x"
+      ],
+      "cursor": [
+        1,
+        8
+      ],
+      "error": "",
+      "curswant": 8
+    }
+  },
+  {
+    "id": "textobj/dip-whitespace-only-line-counts-as-blank",
+    "buffer": [
+      "a",
+      "   ",
+      "b"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "dip",
+    "groups": [
+      "dip"
+    ],
+    "encodedKeys": "dip",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "a\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "a\n"
+        }
+      },
+      "buffer": [
+        "   ",
+        "b"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "textobj/cip",
+    "buffer": [
+      "a",
+      "b",
+      "",
+      "c"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "cipZ<Esc>",
+    "groups": [
+      "cipZ<Esc>"
+    ],
+    "encodedKeys": "cipZ\u001b",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "a\nb\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "a\nb\n"
+        }
+      },
+      "buffer": [
+        "Z",
+        "",
+        "c"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "textobj/dit-simple",
+    "buffer": [
+      "<a>text</a>"
+    ],
+    "cursor": [
+      1,
+      5
+    ],
+    "keys": "dit",
+    "groups": [
+      "dit"
+    ],
+    "encodedKeys": "dit",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "text"
+        },
+        "-": {
+          "type": "v",
+          "text": "text"
+        }
+      },
+      "buffer": [
+        "<a></a>"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "textobj/dat-simple",
+    "buffer": [
+      "<a>text</a>"
+    ],
+    "cursor": [
+      1,
+      5
+    ],
+    "keys": "dat",
+    "groups": [
+      "dat"
+    ],
+    "encodedKeys": "dat",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "<a>text</a>"
+        },
+        "-": {
+          "type": "v",
+          "text": "<a>text</a>"
+        }
+      },
+      "buffer": [
+        ""
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "textobj/dit-nested-takes-the-innermost",
+    "buffer": [
+      "<a><b>x</b></a>"
+    ],
+    "cursor": [
+      1,
+      7
+    ],
+    "keys": "dit",
+    "groups": [
+      "dit"
+    ],
+    "encodedKeys": "dit",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "x"
+        },
+        "-": {
+          "type": "v",
+          "text": "x"
+        }
+      },
+      "buffer": [
+        "<a><b></b></a>"
+      ],
+      "cursor": [
+        1,
+        7
+      ],
+      "error": "",
+      "curswant": 7
+    }
+  },
+  {
+    "id": "textobj/d2it-nested-walks-outward",
+    "buffer": [
+      "<a><b>x</b></a>"
+    ],
+    "cursor": [
+      1,
+      7
+    ],
+    "keys": "d2it",
+    "groups": [
+      "d2it"
+    ],
+    "encodedKeys": "d2it",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "<b>x</b>"
+        },
+        "-": {
+          "type": "v",
+          "text": "<b>x</b>"
+        }
+      },
+      "buffer": [
+        "<a></a>"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "textobj/dit-spans-lines",
+    "buffer": [
+      "<a>",
+      "  x",
+      "</a>"
+    ],
+    "cursor": [
+      2,
+      3
+    ],
+    "keys": "dit",
+    "groups": [
+      "dit"
+    ],
+    "encodedKeys": "dit",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "v",
+          "text": "\n  x\n"
+        },
+        "\"": {
+          "type": "v",
+          "text": "\n  x\n"
+        }
+      },
+      "buffer": [
+        "<a></a>"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "textobj/dit-tag-with-attributes",
+    "buffer": [
+      "<a href=\"q\">x</a>"
+    ],
+    "cursor": [
+      1,
+      13
+    ],
+    "keys": "dit",
+    "groups": [
+      "dit"
+    ],
+    "encodedKeys": "dit",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "x"
+        },
+        "-": {
+          "type": "v",
+          "text": "x"
+        }
+      },
+      "buffer": [
+        "<a href=\"q\"></a>"
+      ],
+      "cursor": [
+        1,
+        13
+      ],
+      "error": "",
+      "curswant": 13
+    }
+  },
+  {
+    "id": "textobj/dit-cursor-inside-the-open-tag",
+    "buffer": [
+      "<a href=\"q\">x</a>"
+    ],
+    "cursor": [
+      1,
+      4
+    ],
+    "keys": "dit",
+    "groups": [
+      "dit"
+    ],
+    "encodedKeys": "dit",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "x"
+        },
+        "-": {
+          "type": "v",
+          "text": "x"
+        }
+      },
+      "buffer": [
+        "<a href=\"q\"></a>"
+      ],
+      "cursor": [
+        1,
+        13
+      ],
+      "error": "",
+      "curswant": 13
+    }
+  },
+  {
+    "id": "textobj/dit-empty-element-is-degenerate",
+    "buffer": [
+      "<a></a>"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "dit",
+    "groups": [
+      "dit"
+    ],
+    "encodedKeys": "dit",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "<a></a>"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "textobj/dit-no-tag-mints-nothing",
+    "buffer": [
+      "plain text"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "xditu",
+    "groups": [
+      "x",
+      "dit",
+      "u"
+    ],
+    "encodedKeys": "xditu",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a"
+        },
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "plain text"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "textobj/cit",
+    "buffer": [
+      "<a>old</a>"
+    ],
+    "cursor": [
+      1,
+      5
+    ],
+    "keys": "citnew<Esc>",
+    "groups": [
+      "citnew<Esc>"
+    ],
+    "encodedKeys": "citnew\u001b",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "old"
+        },
+        "-": {
+          "type": "v",
+          "text": "old"
+        }
+      },
+      "buffer": [
+        "<a>new</a>"
+      ],
+      "cursor": [
+        1,
+        6
+      ],
+      "error": "",
+      "curswant": 6
+    }
+  },
+  {
+    "id": "textobj/yat",
+    "buffer": [
+      "<a>text</a> tail"
+    ],
+    "cursor": [
+      1,
+      5
+    ],
+    "keys": "yat",
+    "groups": [
+      "yat"
+    ],
+    "encodedKeys": "yat",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "<a>text</a>"
+        },
+        "\"": {
+          "type": "v",
+          "text": "<a>text</a>"
+        }
+      },
+      "buffer": [
+        "<a>text</a> tail"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "textobj/named-register-with-an-object",
+    "buffer": [
+      "fn(a, b) end"
+    ],
+    "cursor": [
+      1,
+      5
+    ],
+    "keys": "\"ayi(",
+    "groups": [
+      "\"ayi("
+    ],
+    "encodedKeys": "\"ayi(",
+    "expect": {
+      "registers": {
+        "a": {
+          "type": "v",
+          "text": "a, b"
+        },
+        "\"": {
+          "type": "v",
+          "text": "a, b"
+        }
+      },
+      "buffer": [
+        "fn(a, b) end"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "textobj/blackhole-delete-with-an-object",
+    "buffer": [
+      "fn(a, b)",
+      "keep"
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": "yygg\"_di(",
+    "groups": [
+      "yy",
+      "gg",
+      "\"_di("
+    ],
+    "note": "\"_ swallows the text, so unnamed still holds the earlier yank",
+    "encodedKeys": "yygg\"_di(",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "keep\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "keep\n"
+        }
+      },
+      "buffer": [
+        "fn()",
+        "keep"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  }
+]
