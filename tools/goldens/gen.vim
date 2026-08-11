@@ -114,18 +114,27 @@ endfunction
 " is right, and the harness cannot infer command boundaries without
 " reimplementing the parser it is supposed to be testing — so the case author
 " states them.
+" Each group gets its OWN try/catch, and the errors are accumulated rather than
+" thrown. Some failures — E353 "Nothing in register" among them — surface out of
+" feedkeys() as a real exception, not merely as a beep. One try around the whole
+" loop therefore abandoned every remaining group, which silently defeated the
+" one remedy README detail 9 prescribes: a case that deliberately fails a
+" command and then presses more keys puts the follow-up keys in a separate
+" group. That remedy only works if a group's failure is contained to that group,
+" which is also what interactive Vim does.
 function! s:RunAndCapture(groups) abort
-  let l:err = ''
-  try
-    for l:g in a:groups
+  let l:errors = []
+  for l:g in a:groups
+    try
       call feedkeys(l:g, 'x')
       call feedkeys('', 'x')
-      " The documented idiom for starting a new undo block (:help undo-blocks).
-      let &undolevels = &undolevels
-    endfor
-  catch
-    let l:err = v:exception
-  endtry
+    catch
+      call add(l:errors, v:exception)
+    endtry
+    " The documented idiom for starting a new undo block (:help undo-blocks).
+    let &undolevels = &undolevels
+  endfor
+  let l:err = join(l:errors, ' | ')
 
   let l:pos = getcurpos()
   let l:regs = {}

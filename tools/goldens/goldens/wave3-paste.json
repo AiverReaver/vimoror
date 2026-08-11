@@ -1,0 +1,2505 @@
+[
+  {
+    "id": "paste/yl-p",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "ylp",
+    "groups": [
+      "yl",
+      "p"
+    ],
+    "note": "the smallest possible put — one character, after the cursor",
+    "encodedKeys": "ylp",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "a"
+        },
+        "\"": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "aabc"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "paste/yl-P",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "ylP",
+    "groups": [
+      "yl",
+      "P"
+    ],
+    "encodedKeys": "ylP",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "a"
+        },
+        "\"": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "aabc"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "paste/xp-transposes",
+    "buffer": [
+      "ab"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "xp",
+    "groups": [
+      "x",
+      "p"
+    ],
+    "note": "x then p is the idiomatic character swap — it only works if the cursor lands on the last character put",
+    "encodedKeys": "xp",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a"
+        },
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "ba"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "paste/xP-restores",
+    "buffer": [
+      "ab"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "xP",
+    "groups": [
+      "x",
+      "P"
+    ],
+    "encodedKeys": "xP",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a"
+        },
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "ab"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "paste/yw-p-mid-line",
+    "buffer": [
+      "alpha beta"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "ywwp",
+    "groups": [
+      "yw",
+      "w",
+      "p"
+    ],
+    "encodedKeys": "ywwp",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "alpha "
+        },
+        "\"": {
+          "type": "v",
+          "text": "alpha "
+        }
+      },
+      "buffer": [
+        "alpha balpha eta"
+      ],
+      "cursor": [
+        1,
+        13
+      ],
+      "error": "",
+      "curswant": 13
+    }
+  },
+  {
+    "id": "paste/ye-p",
+    "buffer": [
+      "alpha beta"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "yep",
+    "groups": [
+      "ye",
+      "p"
+    ],
+    "encodedKeys": "yep",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "alpha"
+        },
+        "\"": {
+          "type": "v",
+          "text": "alpha"
+        }
+      },
+      "buffer": [
+        "aalphalpha beta"
+      ],
+      "cursor": [
+        1,
+        6
+      ],
+      "error": "",
+      "curswant": 6
+    }
+  },
+  {
+    "id": "paste/yl-3p",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "yl3p",
+    "groups": [
+      "yl",
+      "3p"
+    ],
+    "note": "a count repeats the register content, and the cursor ends on the very last character",
+    "encodedKeys": "yl3p",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "a"
+        },
+        "\"": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "aaaabc"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "paste/yl-3P",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "yl3P",
+    "groups": [
+      "yl",
+      "3P"
+    ],
+    "encodedKeys": "yl3P",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "a"
+        },
+        "\"": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "aaaabc"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "paste/yw-2p",
+    "buffer": [
+      "ab cd"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "yw2p",
+    "groups": [
+      "yw",
+      "2p"
+    ],
+    "encodedKeys": "yw2p",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "ab "
+        },
+        "\"": {
+          "type": "v",
+          "text": "ab "
+        }
+      },
+      "buffer": [
+        "aab ab b cd"
+      ],
+      "cursor": [
+        1,
+        7
+      ],
+      "error": "",
+      "curswant": 7
+    }
+  },
+  {
+    "id": "paste/p-at-end-of-line",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "yl$p",
+    "groups": [
+      "yl",
+      "$",
+      "p"
+    ],
+    "encodedKeys": "yl$p",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "a"
+        },
+        "\"": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "abca"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "paste/P-at-end-of-line",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "yl$P",
+    "groups": [
+      "yl",
+      "$",
+      "P"
+    ],
+    "encodedKeys": "yl$P",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "a"
+        },
+        "\"": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "abac"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "paste/p-single-char-buffer",
+    "buffer": [
+      "a"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "ylp",
+    "groups": [
+      "yl",
+      "p"
+    ],
+    "encodedKeys": "ylp",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "a"
+        },
+        "\"": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "aa"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "paste/p-on-empty-line",
+    "buffer": [
+      "abc",
+      ""
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "yljp",
+    "groups": [
+      "yl",
+      "j",
+      "p"
+    ],
+    "note": "`p` normally inserts AFTER the cursor character, but an empty line has no character to be after — so it must insert at column zero rather than at the non-existent column one.",
+    "encodedKeys": "yljp",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "a"
+        },
+        "\"": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "abc",
+        "a"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "paste/P-on-empty-line",
+    "buffer": [
+      "abc",
+      ""
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "yljP",
+    "groups": [
+      "yl",
+      "j",
+      "P"
+    ],
+    "encodedKeys": "yljP",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "a"
+        },
+        "\"": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "abc",
+        "a"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "paste/p-empty-register-is-a-silent-noop",
+    "buffer": [
+      "",
+      "abc"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "ylp",
+    "groups": [
+      "yl",
+      "p"
+    ],
+    "note": "yanking an empty region leaves the register written-but-empty, which is NOT the same as unset: the put succeeds, puts zero characters, and reports nothing. Only a register that was never written raises E353.",
+    "encodedKeys": "ylp",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "",
+        "abc"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "paste/p-multiline-charwise",
+    "buffer": [
+      "one two",
+      "three four"
+    ],
+    "cursor": [
+      1,
+      5
+    ],
+    "keys": "y2wgg0p",
+    "groups": [
+      "y2w",
+      "gg",
+      "0",
+      "p"
+    ],
+    "note": "a charwise register holding an embedded newline SPLITS the line it is put into. The cursor rule differs from the single-line case, which is the whole reason this case exists.",
+    "encodedKeys": "y2wgg0p",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "two\nthree "
+        },
+        "\"": {
+          "type": "v",
+          "text": "two\nthree "
+        }
+      },
+      "buffer": [
+        "otwo",
+        "three ne two",
+        "three four"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "paste/P-multiline-charwise",
+    "buffer": [
+      "one two",
+      "three four"
+    ],
+    "cursor": [
+      1,
+      5
+    ],
+    "keys": "y2wgg0P",
+    "groups": [
+      "y2w",
+      "gg",
+      "0",
+      "P"
+    ],
+    "encodedKeys": "y2wgg0P",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "two\nthree "
+        },
+        "\"": {
+          "type": "v",
+          "text": "two\nthree "
+        }
+      },
+      "buffer": [
+        "two",
+        "three one two",
+        "three four"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "paste/p-multiline-charwise-count",
+    "buffer": [
+      "one two",
+      "three four"
+    ],
+    "cursor": [
+      1,
+      5
+    ],
+    "keys": "y2wG$2p",
+    "groups": [
+      "y2w",
+      "G",
+      "$",
+      "2p"
+    ],
+    "encodedKeys": "y2wG$2p",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "two\nthree "
+        },
+        "\"": {
+          "type": "v",
+          "text": "two\nthree "
+        }
+      },
+      "buffer": [
+        "one two",
+        "three fourtwo",
+        "three two",
+        "three "
+      ],
+      "cursor": [
+        2,
+        11
+      ],
+      "error": "",
+      "curswant": 11
+    }
+  },
+  {
+    "id": "paste/p-multiline-charwise-mid-line",
+    "buffer": [
+      "one two",
+      "three four"
+    ],
+    "cursor": [
+      1,
+      5
+    ],
+    "keys": "y2wj$p",
+    "groups": [
+      "y2w",
+      "j",
+      "$",
+      "p"
+    ],
+    "encodedKeys": "y2wj$p",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "two\nthree "
+        },
+        "\"": {
+          "type": "v",
+          "text": "two\nthree "
+        }
+      },
+      "buffer": [
+        "one two",
+        "three fourtwo",
+        "three "
+      ],
+      "cursor": [
+        2,
+        11
+      ],
+      "error": "",
+      "curswant": 11
+    }
+  },
+  {
+    "id": "paste/yy-p",
+    "buffer": [
+      "one",
+      "two"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "yyp",
+    "groups": [
+      "yy",
+      "p"
+    ],
+    "encodedKeys": "yyp",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "one\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "one\n"
+        }
+      },
+      "buffer": [
+        "one",
+        "one",
+        "two"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "paste/yy-P",
+    "buffer": [
+      "one",
+      "two"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "yyP",
+    "groups": [
+      "yy",
+      "P"
+    ],
+    "encodedKeys": "yyP",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "one\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "one\n"
+        }
+      },
+      "buffer": [
+        "one",
+        "one",
+        "two"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "paste/Y-p",
+    "buffer": [
+      "one",
+      "two"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "Yp",
+    "groups": [
+      "Y",
+      "p"
+    ],
+    "note": "Y is yy, so its register is linewise and p opens a line",
+    "encodedKeys": "Yp",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "one\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "one\n"
+        }
+      },
+      "buffer": [
+        "one",
+        "one",
+        "two"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "paste/ddp-swaps-lines",
+    "buffer": [
+      "one",
+      "two",
+      "three"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "ddp",
+    "groups": [
+      "dd",
+      "p"
+    ],
+    "note": "the classic — dd then p exchanges a line with the one below it",
+    "encodedKeys": "ddp",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "one\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "one\n"
+        }
+      },
+      "buffer": [
+        "two",
+        "one",
+        "three"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "paste/ddP-restores",
+    "buffer": [
+      "one",
+      "two"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "ddP",
+    "groups": [
+      "dd",
+      "P"
+    ],
+    "encodedKeys": "ddP",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "one\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "one\n"
+        }
+      },
+      "buffer": [
+        "one",
+        "two"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "paste/2dd-p",
+    "buffer": [
+      "one",
+      "two",
+      "three",
+      "four"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "2ddp",
+    "groups": [
+      "2dd",
+      "p"
+    ],
+    "encodedKeys": "2ddp",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "one\ntwo\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "one\ntwo\n"
+        }
+      },
+      "buffer": [
+        "three",
+        "one",
+        "two",
+        "four"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "paste/yy-3p",
+    "buffer": [
+      "one",
+      "two"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "yy3p",
+    "groups": [
+      "yy",
+      "3p"
+    ],
+    "encodedKeys": "yy3p",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "one\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "one\n"
+        }
+      },
+      "buffer": [
+        "one",
+        "one",
+        "one",
+        "one",
+        "two"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "paste/yy-2P",
+    "buffer": [
+      "one",
+      "two"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "yy2P",
+    "groups": [
+      "yy",
+      "2P"
+    ],
+    "encodedKeys": "yy2P",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "one\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "one\n"
+        }
+      },
+      "buffer": [
+        "one",
+        "one",
+        "one",
+        "two"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "paste/2yy-p",
+    "buffer": [
+      "one",
+      "two",
+      "three"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "2yyp",
+    "groups": [
+      "2yy",
+      "p"
+    ],
+    "encodedKeys": "2yyp",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "one\ntwo\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "one\ntwo\n"
+        }
+      },
+      "buffer": [
+        "one",
+        "one",
+        "two",
+        "two",
+        "three"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "paste/p-linewise-cursor-goes-to-first-nonblank",
+    "buffer": [
+      "    indented",
+      "plain"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "yyjp",
+    "groups": [
+      "yy",
+      "j",
+      "p"
+    ],
+    "note": "linewise put lands on the first NON-BLANK of the first line put, not on column one",
+    "encodedKeys": "yyjp",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "    indented\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "    indented\n"
+        }
+      },
+      "buffer": [
+        "    indented",
+        "plain",
+        "    indented"
+      ],
+      "cursor": [
+        3,
+        5
+      ],
+      "error": "",
+      "curswant": 5
+    }
+  },
+  {
+    "id": "paste/P-linewise-cursor-goes-to-first-nonblank",
+    "buffer": [
+      "    indented",
+      "plain"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "yyjP",
+    "groups": [
+      "yy",
+      "j",
+      "P"
+    ],
+    "encodedKeys": "yyjP",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "    indented\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "    indented\n"
+        }
+      },
+      "buffer": [
+        "    indented",
+        "    indented",
+        "plain"
+      ],
+      "cursor": [
+        2,
+        5
+      ],
+      "error": "",
+      "curswant": 5
+    }
+  },
+  {
+    "id": "paste/p-linewise-on-last-line",
+    "buffer": [
+      "one",
+      "two"
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": "yyp",
+    "groups": [
+      "yy",
+      "p"
+    ],
+    "encodedKeys": "yyp",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "two\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "two\n"
+        }
+      },
+      "buffer": [
+        "one",
+        "two",
+        "two"
+      ],
+      "cursor": [
+        3,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "paste/P-linewise-on-first-line",
+    "buffer": [
+      "one",
+      "two"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "yyP",
+    "groups": [
+      "yy",
+      "P"
+    ],
+    "encodedKeys": "yyP",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "one\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "one\n"
+        }
+      },
+      "buffer": [
+        "one",
+        "one",
+        "two"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "paste/p-linewise-into-one-line-buffer",
+    "buffer": [
+      "only"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "yyp",
+    "groups": [
+      "yy",
+      "p"
+    ],
+    "encodedKeys": "yyp",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "only\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "only\n"
+        }
+      },
+      "buffer": [
+        "only",
+        "only"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "paste/dd-empty-line-then-p",
+    "buffer": [
+      "",
+      "abc"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "ddp",
+    "groups": [
+      "dd",
+      "p"
+    ],
+    "note": "a register holding one EMPTY line is not an empty register — its text is a bare newline",
+    "encodedKeys": "ddp",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "\n"
+        }
+      },
+      "buffer": [
+        "abc",
+        ""
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "paste/p-linewise-register-containing-blank-line",
+    "buffer": [
+      "one",
+      "",
+      "two"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "2yyGp",
+    "groups": [
+      "2yy",
+      "G",
+      "p"
+    ],
+    "encodedKeys": "2yyGp",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "one\n\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "one\n\n"
+        }
+      },
+      "buffer": [
+        "one",
+        "",
+        "two",
+        "one",
+        ""
+      ],
+      "cursor": [
+        4,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "paste/D-then-p",
+    "buffer": [
+      "abcdef",
+      "xy"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "Djp",
+    "groups": [
+      "D",
+      "j",
+      "p"
+    ],
+    "encodedKeys": "Djp",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "cdef"
+        },
+        "-": {
+          "type": "v",
+          "text": "cdef"
+        }
+      },
+      "buffer": [
+        "ab",
+        "xycdef"
+      ],
+      "cursor": [
+        2,
+        6
+      ],
+      "error": "",
+      "curswant": 6
+    }
+  },
+  {
+    "id": "paste/dw-then-P",
+    "buffer": [
+      "alpha beta gamma"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "dw$P",
+    "groups": [
+      "dw",
+      "$",
+      "P"
+    ],
+    "encodedKeys": "dw$P",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "alpha "
+        },
+        "-": {
+          "type": "v",
+          "text": "alpha "
+        }
+      },
+      "buffer": [
+        "beta gammalpha a"
+      ],
+      "cursor": [
+        1,
+        15
+      ],
+      "error": "",
+      "curswant": 15
+    }
+  },
+  {
+    "id": "paste/de-then-p",
+    "buffer": [
+      "alpha beta"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "de$p",
+    "groups": [
+      "de",
+      "$",
+      "p"
+    ],
+    "encodedKeys": "de$p",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "alpha"
+        },
+        "-": {
+          "type": "v",
+          "text": "alpha"
+        }
+      },
+      "buffer": [
+        " betaalpha"
+      ],
+      "cursor": [
+        1,
+        10
+      ],
+      "error": "",
+      "curswant": 10
+    }
+  },
+  {
+    "id": "paste/d-dollar-then-p-onto-empty",
+    "buffer": [
+      "abcdef",
+      ""
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "d$jp",
+    "groups": [
+      "d$",
+      "j",
+      "p"
+    ],
+    "encodedKeys": "d$jp",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "cdef"
+        },
+        "-": {
+          "type": "v",
+          "text": "cdef"
+        }
+      },
+      "buffer": [
+        "ab",
+        "cdef"
+      ],
+      "cursor": [
+        2,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "paste/named-register-round-trip",
+    "buffer": [
+      "keep me",
+      "other"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "\"ayyj\"ap",
+    "groups": [
+      "\"ayy",
+      "j",
+      "\"ap"
+    ],
+    "encodedKeys": "\"ayyj\"ap",
+    "expect": {
+      "registers": {
+        "a": {
+          "type": "V",
+          "text": "keep me\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "keep me\n"
+        }
+      },
+      "buffer": [
+        "keep me",
+        "other",
+        "keep me"
+      ],
+      "cursor": [
+        3,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "paste/uppercase-name-reads-the-lowercase-register",
+    "buffer": [
+      "keep me",
+      "other"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "\"ayyj\"AP",
+    "groups": [
+      "\"ayy",
+      "j",
+      "\"AP"
+    ],
+    "note": "\"A names the same register as \"a for READING — the case only means \"append\" when writing",
+    "encodedKeys": "\"ayyj\"AP",
+    "expect": {
+      "registers": {
+        "a": {
+          "type": "V",
+          "text": "keep me\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "keep me\n"
+        }
+      },
+      "buffer": [
+        "keep me",
+        "keep me",
+        "other"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "paste/append-then-put",
+    "buffer": [
+      "one",
+      "two",
+      "three"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "\"ayyj\"AyyG\"ap",
+    "groups": [
+      "\"ayy",
+      "j",
+      "\"Ayy",
+      "G",
+      "\"ap"
+    ],
+    "note": "\"A appends, and the put must see the whole merged value",
+    "encodedKeys": "\"ayyj\"AyyG\"ap",
+    "expect": {
+      "registers": {
+        "a": {
+          "type": "V",
+          "text": "one\ntwo\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "one\ntwo\n"
+        }
+      },
+      "buffer": [
+        "one",
+        "two",
+        "three",
+        "one",
+        "two"
+      ],
+      "cursor": [
+        4,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "paste/yank-register-survives-a-delete",
+    "buffer": [
+      "keep",
+      "kill",
+      "target"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "yyjddG\"0p",
+    "groups": [
+      "yy",
+      "j",
+      "dd",
+      "G",
+      "\"0p"
+    ],
+    "note": "\"0 holds the last YANK, so it is still there after a delete has clobbered unnamed",
+    "encodedKeys": "yyjddG\"0p",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "keep\n"
+        },
+        "1": {
+          "type": "V",
+          "text": "kill\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "kill\n"
+        }
+      },
+      "buffer": [
+        "keep",
+        "target",
+        "keep"
+      ],
+      "cursor": [
+        3,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "paste/unnamed-holds-the-delete-not-the-yank",
+    "buffer": [
+      "keep",
+      "kill",
+      "target"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "yyjddGp",
+    "groups": [
+      "yy",
+      "j",
+      "dd",
+      "G",
+      "p"
+    ],
+    "encodedKeys": "yyjddGp",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "keep\n"
+        },
+        "1": {
+          "type": "V",
+          "text": "kill\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "kill\n"
+        }
+      },
+      "buffer": [
+        "keep",
+        "target",
+        "kill"
+      ],
+      "cursor": [
+        3,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "paste/numbered-register-1",
+    "buffer": [
+      "one",
+      "two",
+      "three"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "ddG\"1p",
+    "groups": [
+      "dd",
+      "G",
+      "\"1p"
+    ],
+    "encodedKeys": "ddG\"1p",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "one\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "one\n"
+        }
+      },
+      "buffer": [
+        "two",
+        "three",
+        "one"
+      ],
+      "cursor": [
+        3,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "paste/numbered-register-2-after-shift",
+    "buffer": [
+      "one",
+      "two",
+      "three",
+      "four"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "ddddG\"2p",
+    "groups": [
+      "dd",
+      "dd",
+      "G",
+      "\"2p"
+    ],
+    "note": "the second delete pushes the first line's text down into \"2",
+    "encodedKeys": "ddddG\"2p",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "two\n"
+        },
+        "2": {
+          "type": "V",
+          "text": "one\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "two\n"
+        }
+      },
+      "buffer": [
+        "three",
+        "four",
+        "one"
+      ],
+      "cursor": [
+        3,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "paste/numbered-register-3-after-two-shifts",
+    "buffer": [
+      "one",
+      "two",
+      "three",
+      "four",
+      "five"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "ddddddG\"3p",
+    "groups": [
+      "dd",
+      "dd",
+      "dd",
+      "G",
+      "\"3p"
+    ],
+    "encodedKeys": "ddddddG\"3p",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "three\n"
+        },
+        "2": {
+          "type": "V",
+          "text": "two\n"
+        },
+        "3": {
+          "type": "V",
+          "text": "one\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "three\n"
+        }
+      },
+      "buffer": [
+        "four",
+        "five",
+        "one"
+      ],
+      "cursor": [
+        3,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "paste/small-delete-register",
+    "buffer": [
+      "abcdef",
+      "xy"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "xj\"-p",
+    "groups": [
+      "x",
+      "j",
+      "\"-p"
+    ],
+    "note": "a delete of less than one line goes to \"- and NOT to \"1",
+    "encodedKeys": "xj\"-p",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a"
+        },
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "bcdef",
+        "xay"
+      ],
+      "cursor": [
+        2,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "paste/small-delete-then-numbered-put-fails",
+    "buffer": [
+      "abcdef",
+      "xy"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "xj\"1p",
+    "groups": [
+      "x",
+      "j",
+      "\"1p"
+    ],
+    "note": "\"1 is unset after a small delete, so this put must FAIL and change nothing",
+    "expectError": true,
+    "encodedKeys": "xj\"1p",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a"
+        },
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "bcdef",
+        "xy"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "Vim(call):E353: Nothing in register 1",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "paste/blackhole-put-is-a-silent-noop",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "yl\"_p",
+    "groups": [
+      "yl",
+      "\"_p"
+    ],
+    "note": "'\"_ swallows writes and never reads back — but it reads back as written-but-empty rather than as unset, so \"_p is a silent zero-character put and NOT an E353.'",
+    "encodedKeys": "yl\"_p",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "a"
+        },
+        "\"": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "abc"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "paste/blackhole-p-mid-line-leaves-the-cursor",
+    "buffer": [
+      "abcdef"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "yl\"_p",
+    "groups": [
+      "yl",
+      "\"_p"
+    ],
+    "note": "a zero-character put must not drag the cursor along — `p` computes its column as cursor+1",
+    "encodedKeys": "yl\"_p",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "c"
+        },
+        "\"": {
+          "type": "v",
+          "text": "c"
+        }
+      },
+      "buffer": [
+        "abcdef"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "paste/blackhole-P-mid-line-leaves-the-cursor",
+    "buffer": [
+      "abcdef"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "yl\"_P",
+    "groups": [
+      "yl",
+      "\"_P"
+    ],
+    "note": "the same for `P`, whose column is the cursor itself — the naive \"last character put\" rule would step LEFT here",
+    "encodedKeys": "yl\"_P",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "c"
+        },
+        "\"": {
+          "type": "v",
+          "text": "c"
+        }
+      },
+      "buffer": [
+        "abcdef"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "paste/blackhole-write-leaves-unnamed-alone",
+    "buffer": [
+      "abc",
+      "xyz"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "ylj\"_ddp",
+    "groups": [
+      "yl",
+      "j",
+      "\"_dd",
+      "p"
+    ],
+    "encodedKeys": "ylj\"_ddp",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "a"
+        },
+        "\"": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "aabc"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "paste/unset-register-put-fails",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "\"zp",
+    "groups": [
+      "\"zp"
+    ],
+    "expectError": true,
+    "encodedKeys": "\"zp",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "abc"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "Vim(call):E353: Nothing in register z",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "paste/p-then-u",
+    "buffer": [
+      "one",
+      "two"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "yypu",
+    "groups": [
+      "yy",
+      "p",
+      "u"
+    ],
+    "encodedKeys": "yypu",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "one\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "one\n"
+        }
+      },
+      "buffer": [
+        "one",
+        "two"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "paste/P-charwise-then-u",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "ylPu",
+    "groups": [
+      "yl",
+      "P",
+      "u"
+    ],
+    "encodedKeys": "ylPu",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "b"
+        },
+        "\"": {
+          "type": "v",
+          "text": "b"
+        }
+      },
+      "buffer": [
+        "abc"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "paste/unset-register-put-still-mints-an-undo-node",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "x\"zpu",
+    "groups": [
+      "x",
+      "\"zp",
+      "u"
+    ],
+    "note": "the put reports E353 and changes nothing, yet `u` still burns on it — so the buffer stays \"bc\" rather than being restored to \"abc\". A \"failed commands mint nothing\" engine reads \"abc\" here and is wrong.",
+    "expectError": true,
+    "encodedKeys": "x\"zpu",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a"
+        },
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "bc"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "Vim(call):E353: Nothing in register z",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "paste/blackhole-put-still-mints-an-undo-node",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "x\"_pu",
+    "groups": [
+      "x",
+      "\"_p",
+      "u"
+    ],
+    "encodedKeys": "x\"_pu",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a"
+        },
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "bc"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "paste/empty-register-put-still-mints-an-undo-node",
+    "buffer": [
+      "abc",
+      ""
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "xjylpu",
+    "groups": [
+      "x",
+      "j",
+      "yl",
+      "p",
+      "u"
+    ],
+    "encodedKeys": "xjylpu",
+    "expect": {
+      "registers": {
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "bc",
+        ""
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "paste/p-multiline-charwise-then-u",
+    "buffer": [
+      "one two",
+      "three"
+    ],
+    "cursor": [
+      1,
+      5
+    ],
+    "keys": "y2wG$pu",
+    "groups": [
+      "y2w",
+      "G",
+      "$",
+      "p",
+      "u"
+    ],
+    "encodedKeys": "y2wG$pu",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "two\nthree"
+        },
+        "\"": {
+          "type": "v",
+          "text": "two\nthree"
+        }
+      },
+      "buffer": [
+        "one two",
+        "three"
+      ],
+      "cursor": [
+        2,
+        5
+      ],
+      "error": "",
+      "curswant": 5
+    }
+  },
+  {
+    "id": "paste/p-linewise-tab-indent-noexpandtab",
+    "buffer": [
+      "\tindented",
+      "plain"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "yyjp",
+    "groups": [
+      "yy",
+      "j",
+      "p"
+    ],
+    "options": [
+      "noexpandtab"
+    ],
+    "encodedKeys": "yyjp",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "\tindented\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "\tindented\n"
+        }
+      },
+      "buffer": [
+        "\tindented",
+        "plain",
+        "\tindented"
+      ],
+      "cursor": [
+        3,
+        2
+      ],
+      "error": "",
+      "curswant": 9
+    }
+  },
+  {
+    "id": "paste/p-does-not-reindent",
+    "buffer": [
+      "        deep",
+      "x"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "yyjp",
+    "groups": [
+      "yy",
+      "j",
+      "p"
+    ],
+    "note": "a put is a byte-for-byte splice — it never reformats the text it puts",
+    "encodedKeys": "yyjp",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "        deep\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "        deep\n"
+        }
+      },
+      "buffer": [
+        "        deep",
+        "x",
+        "        deep"
+      ],
+      "cursor": [
+        3,
+        9
+      ],
+      "error": "",
+      "curswant": 9
+    }
+  }
+]

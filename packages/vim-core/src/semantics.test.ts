@@ -61,6 +61,44 @@ describe('empty-region register semantics (hand-verified against Vim 9.1)', () =
   });
 });
 
+describe('put from a register with nothing in it', () => {
+  // The goldens pin the BUFFER, cursor and undo consequences of all three
+  // register states. What they cannot see is the reported event, because Vim's
+  // beep is not in the oracle's output — and that event is what the game layer
+  // renders in character, so it is worth pinning here.
+
+  const rejections = (engine: VimEngine, keys: string) =>
+    engine.feedKeys(keys).filter((e) => e.type === 'InvalidCommand');
+
+  it('an UNSET register reports empty-register, and still mints an undo node', () => {
+    const engine = new VimEngine(['abc'], { line: 0, col: 0 });
+    engine.feedKeys('x');
+    expect(rejections(engine, '"zp')).toEqual([
+      { type: 'InvalidCommand', keys: '"zp', reason: 'empty-register' },
+    ]);
+    // The node was minted before the register lookup failed, so `u` burns on it.
+    engine.feedKeys('u');
+    expect(engine.lines).toEqual(['bc']);
+  });
+
+  it('a WRITTEN-but-empty register is put silently, with no rejection', () => {
+    const engine = new VimEngine(['abc', ''], { line: 0, col: 0 });
+    engine.feedKeys('xj');
+    engine.feedKeys('yl'); // yank over an empty region: written, and empty
+    expect(rejections(engine, 'p')).toEqual([]);
+    engine.feedKeys('u');
+    expect(engine.lines).toEqual(['bc', '']);
+  });
+
+  it('the black hole reads back as written-but-empty, not as unset', () => {
+    const engine = new VimEngine(['abc'], { line: 0, col: 0 });
+    engine.feedKeys('x');
+    expect(rejections(engine, '"_p')).toEqual([]);
+    engine.feedKeys('u');
+    expect(engine.lines).toEqual(['bc']);
+  });
+});
+
 describe('snapshot/restore', () => {
   it('restoring a mid-insert snapshot yields a live normal-mode engine', () => {
     const engine = new VimEngine(['abc'], { line: 0, col: 0 });

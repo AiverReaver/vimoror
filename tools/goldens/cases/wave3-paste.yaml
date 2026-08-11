@@ -1,0 +1,327 @@
+# Wave 3 — `p` and `P`, and the register READ path behind them.
+#
+# The register's TYPE decides the shape of a put, not the key: the same `p`
+# opens new lines for a linewise register and splices inline for a charwise
+# one. That is why `ddp` swaps lines while `xp` swaps characters, and it is the
+# payoff for registers carrying a type at all.
+#
+# Two things these cases exist to pin, because both are easy to get plausibly
+# wrong:
+#   - the cursor after a put, which is NOT uniform (last character put for a
+#     single-line charwise register, first non-blank for linewise)
+#   - a put from an EMPTY register fails, so it mints no undo node — the `u`
+#     that follows must reach past it to the previous change
+#
+# Every case that runs more than one command uses the group form, so each
+# command gets its own undo block and a failure cannot abort the keys after it
+# (harness README details 7 and 9).
+
+cases:
+  # --- charwise, single line ------------------------------------------------
+  - id: paste/yl-p
+    note: the smallest possible put — one character, after the cursor
+    buffer: 'abc'
+    cursor: [1, 1]
+    keys: ['yl', 'p']
+  - id: paste/yl-P
+    buffer: 'abc'
+    cursor: [1, 1]
+    keys: ['yl', 'P']
+  - id: paste/xp-transposes
+    note: x then p is the idiomatic character swap — it only works if the cursor lands on the last character put
+    buffer: 'ab'
+    cursor: [1, 1]
+    keys: ['x', 'p']
+  - id: paste/xP-restores
+    buffer: 'ab'
+    cursor: [1, 1]
+    keys: ['x', 'P']
+  - id: paste/yw-p-mid-line
+    buffer: 'alpha beta'
+    cursor: [1, 1]
+    keys: ['yw', 'w', 'p']
+  - id: paste/ye-p
+    buffer: 'alpha beta'
+    cursor: [1, 1]
+    keys: ['ye', 'p']
+  - id: paste/yl-3p
+    note: a count repeats the register content, and the cursor ends on the very last character
+    buffer: 'abc'
+    cursor: [1, 1]
+    keys: ['yl', '3p']
+  - id: paste/yl-3P
+    buffer: 'abc'
+    cursor: [1, 1]
+    keys: ['yl', '3P']
+  - id: paste/yw-2p
+    buffer: 'ab cd'
+    cursor: [1, 1]
+    keys: ['yw', '2p']
+  - id: paste/p-at-end-of-line
+    buffer: 'abc'
+    cursor: [1, 1]
+    keys: ['yl', '$', 'p']
+  - id: paste/P-at-end-of-line
+    buffer: 'abc'
+    cursor: [1, 1]
+    keys: ['yl', '$', 'P']
+  - id: paste/p-single-char-buffer
+    buffer: 'a'
+    cursor: [1, 1]
+    keys: ['yl', 'p']
+
+  # --- charwise onto an empty line ------------------------------------------
+  - id: paste/p-on-empty-line
+    note: >-
+      `p` normally inserts AFTER the cursor character, but an empty line has no
+      character to be after — so it must insert at column zero rather than at
+      the non-existent column one.
+    buffer: ['abc', '']
+    cursor: [1, 1]
+    keys: ['yl', 'j', 'p']
+  - id: paste/P-on-empty-line
+    buffer: ['abc', '']
+    cursor: [1, 1]
+    keys: ['yl', 'j', 'P']
+  - id: paste/p-empty-register-is-a-silent-noop
+    note: >-
+      yanking an empty region leaves the register written-but-empty, which is NOT
+      the same as unset: the put succeeds, puts zero characters, and reports
+      nothing. Only a register that was never written raises E353.
+    buffer: ['', 'abc']
+    cursor: [1, 1]
+    keys: ['yl', 'p']
+
+  # --- charwise spanning a line break ---------------------------------------
+  - id: paste/p-multiline-charwise
+    note: >-
+      a charwise register holding an embedded newline SPLITS the line it is put
+      into. The cursor rule differs from the single-line case, which is the
+      whole reason this case exists.
+    buffer: ['one two', 'three four']
+    cursor: [1, 5]
+    keys: ['y2w', 'gg', '0', 'p']
+  - id: paste/P-multiline-charwise
+    buffer: ['one two', 'three four']
+    cursor: [1, 5]
+    keys: ['y2w', 'gg', '0', 'P']
+  - id: paste/p-multiline-charwise-count
+    buffer: ['one two', 'three four']
+    cursor: [1, 5]
+    keys: ['y2w', 'G', '$', '2p']
+  - id: paste/p-multiline-charwise-mid-line
+    buffer: ['one two', 'three four']
+    cursor: [1, 5]
+    keys: ['y2w', 'j', '$', 'p']
+
+  # --- linewise -------------------------------------------------------------
+  - id: paste/yy-p
+    buffer: ['one', 'two']
+    cursor: [1, 1]
+    keys: ['yy', 'p']
+  - id: paste/yy-P
+    buffer: ['one', 'two']
+    cursor: [1, 1]
+    keys: ['yy', 'P']
+  - id: paste/Y-p
+    note: Y is yy, so its register is linewise and p opens a line
+    buffer: ['one', 'two']
+    cursor: [1, 2]
+    keys: ['Y', 'p']
+  - id: paste/ddp-swaps-lines
+    note: the classic — dd then p exchanges a line with the one below it
+    buffer: ['one', 'two', 'three']
+    cursor: [1, 1]
+    keys: ['dd', 'p']
+  - id: paste/ddP-restores
+    buffer: ['one', 'two']
+    cursor: [1, 1]
+    keys: ['dd', 'P']
+  - id: paste/2dd-p
+    buffer: ['one', 'two', 'three', 'four']
+    cursor: [1, 1]
+    keys: ['2dd', 'p']
+  - id: paste/yy-3p
+    buffer: ['one', 'two']
+    cursor: [1, 1]
+    keys: ['yy', '3p']
+  - id: paste/yy-2P
+    buffer: ['one', 'two']
+    cursor: [1, 1]
+    keys: ['yy', '2P']
+  - id: paste/2yy-p
+    buffer: ['one', 'two', 'three']
+    cursor: [1, 1]
+    keys: ['2yy', 'p']
+  - id: paste/p-linewise-cursor-goes-to-first-nonblank
+    note: linewise put lands on the first NON-BLANK of the first line put, not on column one
+    buffer: ['    indented', 'plain']
+    cursor: [1, 1]
+    keys: ['yy', 'j', 'p']
+  - id: paste/P-linewise-cursor-goes-to-first-nonblank
+    buffer: ['    indented', 'plain']
+    cursor: [1, 1]
+    keys: ['yy', 'j', 'P']
+  - id: paste/p-linewise-on-last-line
+    buffer: ['one', 'two']
+    cursor: [2, 1]
+    keys: ['yy', 'p']
+  - id: paste/P-linewise-on-first-line
+    buffer: ['one', 'two']
+    cursor: [1, 1]
+    keys: ['yy', 'P']
+  - id: paste/p-linewise-into-one-line-buffer
+    buffer: 'only'
+    cursor: [1, 1]
+    keys: ['yy', 'p']
+  - id: paste/dd-empty-line-then-p
+    note: a register holding one EMPTY line is not an empty register — its text is a bare newline
+    buffer: ['', 'abc']
+    cursor: [1, 1]
+    keys: ['dd', 'p']
+  - id: paste/p-linewise-register-containing-blank-line
+    buffer: ['one', '', 'two']
+    cursor: [1, 1]
+    keys: ['2yy', 'G', 'p']
+
+  # --- charwise registers from the delete operators -------------------------
+  - id: paste/D-then-p
+    buffer: ['abcdef', 'xy']
+    cursor: [1, 3]
+    keys: ['D', 'j', 'p']
+  - id: paste/dw-then-P
+    buffer: 'alpha beta gamma'
+    cursor: [1, 1]
+    keys: ['dw', '$', 'P']
+  - id: paste/de-then-p
+    buffer: 'alpha beta'
+    cursor: [1, 1]
+    keys: ['de', '$', 'p']
+  - id: paste/d-dollar-then-p-onto-empty
+    buffer: ['abcdef', '']
+    cursor: [1, 3]
+    keys: ['d$', 'j', 'p']
+
+  # --- naming a register on the way out ------------------------------------
+  - id: paste/named-register-round-trip
+    buffer: ['keep me', 'other']
+    cursor: [1, 1]
+    keys: ['"ayy', 'j', '"ap']
+  - id: paste/uppercase-name-reads-the-lowercase-register
+    note: '"A names the same register as "a for READING — the case only means "append" when writing'
+    buffer: ['keep me', 'other']
+    cursor: [1, 1]
+    keys: ['"ayy', 'j', '"AP']
+  - id: paste/append-then-put
+    note: '"A appends, and the put must see the whole merged value'
+    buffer: ['one', 'two', 'three']
+    cursor: [1, 1]
+    keys: ['"ayy', 'j', '"Ayy', 'G', '"ap']
+  - id: paste/yank-register-survives-a-delete
+    note: '"0 holds the last YANK, so it is still there after a delete has clobbered unnamed'
+    buffer: ['keep', 'kill', 'target']
+    cursor: [1, 1]
+    keys: ['yy', 'j', 'dd', 'G', '"0p']
+  - id: paste/unnamed-holds-the-delete-not-the-yank
+    buffer: ['keep', 'kill', 'target']
+    cursor: [1, 1]
+    keys: ['yy', 'j', 'dd', 'G', 'p']
+  - id: paste/numbered-register-1
+    buffer: ['one', 'two', 'three']
+    cursor: [1, 1]
+    keys: ['dd', 'G', '"1p']
+  - id: paste/numbered-register-2-after-shift
+    note: the second delete pushes the first line's text down into "2
+    buffer: ['one', 'two', 'three', 'four']
+    cursor: [1, 1]
+    keys: ['dd', 'dd', 'G', '"2p']
+  - id: paste/numbered-register-3-after-two-shifts
+    buffer: ['one', 'two', 'three', 'four', 'five']
+    cursor: [1, 1]
+    keys: ['dd', 'dd', 'dd', 'G', '"3p']
+  - id: paste/small-delete-register
+    note: a delete of less than one line goes to "- and NOT to "1
+    buffer: ['abcdef', 'xy']
+    cursor: [1, 1]
+    keys: ['x', 'j', '"-p']
+  - id: paste/small-delete-then-numbered-put-fails
+    expectError: true
+    note: '"1 is unset after a small delete, so this put must FAIL and change nothing'
+    buffer: ['abcdef', 'xy']
+    cursor: [1, 1]
+    keys: ['x', 'j', '"1p']
+  - id: paste/blackhole-put-is-a-silent-noop
+    note: >-
+      '"_ swallows writes and never reads back — but it reads back as
+      written-but-empty rather than as unset, so "_p is a silent zero-character
+      put and NOT an E353.'
+    buffer: 'abc'
+    cursor: [1, 1]
+    keys: ['yl', '"_p']
+  - id: paste/blackhole-p-mid-line-leaves-the-cursor
+    note: a zero-character put must not drag the cursor along — `p` computes its column as cursor+1
+    buffer: 'abcdef'
+    cursor: [1, 3]
+    keys: ['yl', '"_p']
+  - id: paste/blackhole-P-mid-line-leaves-the-cursor
+    note: the same for `P`, whose column is the cursor itself — the naive "last character put" rule would step LEFT here
+    buffer: 'abcdef'
+    cursor: [1, 3]
+    keys: ['yl', '"_P']
+  - id: paste/blackhole-write-leaves-unnamed-alone
+    buffer: ['abc', 'xyz']
+    cursor: [1, 1]
+    keys: ['yl', 'j', '"_dd', 'p']
+  - id: paste/unset-register-put-fails
+    expectError: true
+    buffer: 'abc'
+    cursor: [1, 1]
+    keys: ['"zp']
+
+  # --- undo ----------------------------------------------------------------
+  - id: paste/p-then-u
+    buffer: ['one', 'two']
+    cursor: [1, 1]
+    keys: ['yy', 'p', 'u']
+  - id: paste/P-charwise-then-u
+    buffer: 'abc'
+    cursor: [1, 2]
+    keys: ['yl', 'P', 'u']
+  # A put ALWAYS mints an undo node — measured with `undotree().seq_cur`, and it
+  # refines the Wave 2 rule rather than contradicting it. Vim's `u_save` runs
+  # before `do_put` looks the register up, so even the E353 path leaves a node
+  # behind. These three are the pinning cases: in each one `u` burns on the
+  # put's own do-nothing node and never reaches the `x`.
+  - id: paste/unset-register-put-still-mints-an-undo-node
+    expectError: true
+    note: >-
+      the put reports E353 and changes nothing, yet `u` still burns on it — so
+      the buffer stays "bc" rather than being restored to "abc". A "failed
+      commands mint nothing" engine reads "abc" here and is wrong.
+    buffer: 'abc'
+    cursor: [1, 1]
+    keys: ['x', '"zp', 'u']
+  - id: paste/blackhole-put-still-mints-an-undo-node
+    buffer: 'abc'
+    cursor: [1, 1]
+    keys: ['x', '"_p', 'u']
+  - id: paste/empty-register-put-still-mints-an-undo-node
+    buffer: ['abc', '']
+    cursor: [1, 1]
+    keys: ['x', 'j', 'yl', 'p', 'u']
+  - id: paste/p-multiline-charwise-then-u
+    buffer: ['one two', 'three']
+    cursor: [1, 5]
+    keys: ['y2w', 'G', '$', 'p', 'u']
+
+  # --- interaction with options --------------------------------------------
+  - id: paste/p-linewise-tab-indent-noexpandtab
+    buffer: ["\tindented", 'plain']
+    cursor: [1, 1]
+    options: ['noexpandtab']
+    keys: ['yy', 'j', 'p']
+  - id: paste/p-does-not-reindent
+    note: a put is a byte-for-byte splice — it never reformats the text it puts
+    buffer: ['        deep', 'x']
+    cursor: [1, 1]
+    keys: ['yy', 'j', 'p']

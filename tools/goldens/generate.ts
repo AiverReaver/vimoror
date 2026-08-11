@@ -39,6 +39,14 @@ export type CaseSpec = {
   groups: string[];
   options?: string[];
   note?: string;
+  /**
+   * The author declares that Vim reports an error here — a deliberately failing
+   * command (`"zp` with nothing in `"z`). Some failures beep silently, others
+   * raise a real exception out of `feedkeys`, so "did Vim error" is not a
+   * reliable signal on its own; declaring it makes an UNEXPECTED error loud and
+   * a declared failure that silently succeeded loud as well.
+   */
+  expectError?: boolean;
 };
 
 export type VimResult = {
@@ -118,6 +126,10 @@ function loadFamily(file: string): CaseSpec[] {
     };
     if (options !== undefined) spec.options = options as string[];
     if (typeof c['note'] === 'string') spec.note = c['note'];
+    if (c['expectError'] !== undefined) {
+      if (typeof c['expectError'] !== 'boolean') throw new Error(`${where}: expectError must be a boolean`);
+      spec.expectError = c['expectError'];
+    }
     return spec;
   });
 }
@@ -194,9 +206,15 @@ function main(): void {
     const goldens: Golden[] = cases.map((spec, i) => {
       const r = results[i]!;
       if (r.id !== spec.id) throw new Error(`result order mismatch: ${r.id} vs ${spec.id}`);
-      if (r.error) {
+      // A declared failure is not a problem; an UNdeclared one is, and so is a
+      // declared one that did not actually happen.
+      if (r.error && spec.expectError !== true) {
         failed += 1;
         console.error(`  ! ${spec.id}: vim reported ${r.error}`);
+      }
+      if (!r.error && spec.expectError === true) {
+        failed += 1;
+        console.error(`  ! ${spec.id}: expectError was declared but vim reported no error`);
       }
       const { id: _id, ...expect } = r;
       return { ...spec, encodedKeys: encodeKeys(spec.keys), expect };

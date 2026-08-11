@@ -20,6 +20,7 @@ const FAMILIES = [
   'wave2-caseops',
   'wave2-indent',
   'wave2-insert',
+  'wave3-paste',
 ];
 
 for (const family of FAMILIES) {

@@ -15,7 +15,8 @@ import { applyEdit, clamp, comparePos, firstNonBlank, lastLine, lineAt, type Lin
 import * as I from './insert.ts';
 import * as M from './motions.ts';
 import * as O from './operators.ts';
-import { recordWrite } from './registers.ts';
+import * as P from './put.ts';
+import { BLACKHOLE, readRegister, recordWrite, UNNAMED } from './registers.ts';
 import { canRedo, canUndo, initUndo, pushUndo, redo, undo, type UndoState } from './undo.ts';
 import type {
   EngineEvent,
@@ -26,10 +27,14 @@ import type {
   MotionResult,
   Pos,
   Registers,
+  RegisterValue,
 } from './types.ts';
 
 /** `$` remembers "end of line" rather than a column, exactly as Vim does. */
 export const MAX_COL = 2147483647;
+
+/** What `"_` reads back as for a put: written, and empty. */
+const EMPTY_VALUE: RegisterValue = { text: '', type: 'charwise' };
 
 export type Pending = {
   readonly count: string;
@@ -433,6 +438,10 @@ function stepNormal(state: EditorState, key: KeyToken): StepResult {
       return doUndo(state);
     case '<C-r>':
       return doRedo(state);
+    case 'p':
+      return doPut(state, count, true);
+    case 'P':
+      return doPut(state, count, false);
 
     // Sugar, revealed to the player only after the grammar lands.
     case 'D':
@@ -885,6 +894,52 @@ function doTilde(state: EditorState, count: number): StepResult {
   if (lineAt(state.lines, state.cursor.line).length === 0) return invalid(state, '~', 'motion-failed');
   const r = O.applyTilde(state.lines, state.cursor, count);
   return { state: commit(state, r.lines, r.cursor), events: [bufferChanged(state.cursor.line, state.cursor.line)] };
+}
+
+/**
+ * `p` / `P`. The register's TYPE decides the shape of the put, not the key.
+ *
+ * Three states of a register, and Vim distinguishes all three:
+ *
+ *  - UNSET (never written) — raises E353 "Nothing in register" and puts nothing.
+ *  - WRITTEN BUT EMPTY (`yl` over an empty region, or anything via `"_`) — a
+ *    perfectly successful put of zero characters, reported as nothing at all.
+ *  - holding text — the ordinary case. A register holding one empty LINE is in
+ *    this group, not the previous one: its text is `"\n"`, and putting it really
+ *    does open a blank line.
+ *
+ * A put ALWAYS mints an undo node, measured with `undotree().seq_cur` — Vim's
+ * `u_save` runs before `do_put` looks the register up, so even the E353 path
+ * leaves a node for `u` to burn on. That refines the Wave 2 rule rather than
+ * contradicting it: what matters is not "ran versus failed" but whether the
+ * command reached its `u_save` before bailing out. `~` on an empty line beeps in
+ * `nv_tilde` BEFORE any save and so mints nothing; `p` from an unset register
+ * bails inside `do_put`, AFTER the save, and so mints one.
+ */
+function doPut(state: EditorState, count: number, forward: boolean): StepResult {
+  const keys = forward ? 'p' : 'P';
+  const name = state.pending.register ?? UNNAMED;
+  // `readRegister` returns nothing for `"_` because the black hole genuinely
+  // never reads back — but for a PUT that reads as written-but-empty, not as
+  // unset, so `"_p` is a silent no-op rather than an E353.
+  const value = name === BLACKHOLE ? EMPTY_VALUE : readRegister(state.registers, name);
+
+  // The undo node is minted either way; only the reported event differs, so the
+  // game layer can still reject an unset register in fiction.
+  if (value === undefined || value.text === '') {
+    const committed = commit(state, state.lines, state.cursor, undefined, state.cursor);
+    if (value !== undefined) return { state: committed, events: [] };
+    return {
+      state: committed,
+      events: [{ type: 'InvalidCommand', keys: `"${name}${keys}`, reason: 'empty-register' }],
+    };
+  }
+
+  const r = P.applyPut(state.lines, state.cursor, value, forward, count);
+  return {
+    state: commit(state, r.lines, r.cursor, undefined, state.cursor),
+    events: [changedSpan(state.lines, r.lines, r.firstLine)],
+  };
 }
 
 function doUndo(state: EditorState): StepResult {

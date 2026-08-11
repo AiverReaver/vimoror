@@ -63,9 +63,13 @@ not a bug fix.
       Vim left empty is a diff. This is what catches an engine that clamps
       where Vim fails: buffer and cursor agree either way and only the stray
       register betrays it (`yank/yh-at-col1-clears-unnamed`).
-- [x] **≥400 cases** — 612 committed (proven 7, wave1 113, wave2 492 across
+- [x] **≥400 cases** — 674 committed (proven 7, wave1 113, wave2 492 across
       8 families: caseops 62, change 55, delete 79, doubled 55, indent 59,
-      insert 69, shortcuts 55, yank 58)
+      insert 69, shortcuts 55, yank 58; wave3 62 across 1 family: paste 62)
+- [x] `expectError: true` per case, for a case that MEANS to fail. An
+      undeclared error is a reported problem, and so is a declared one that
+      did not happen — a case written to pin a failure that quietly started
+      succeeding is exactly as wrong as the reverse
 - [ ] `expect.curswant` is captured in every golden but **not compared yet** —
       it needs virtual-column conversion plus MAXCOL handling against the
       engine's `desiredCol`. Deliberate; documented in `compare.ts`.
@@ -92,6 +96,13 @@ not a bug fix.
       Cases that deliberately fail a command and then press more keys must put
       the follow-up keys in a separate group — see
       `shortcuts/S-count-overshoot-last-line`.
+- [x] **Some failures raise a catchable exception out of `feedkeys`, not just a
+      beep** — E353 among them. `gen.vim` had ONE `try` around the whole group
+      loop, so a throwing group abandoned every group after it and silently
+      defeated the line above: the follow-up keys were in their own group and
+      still never ran. Fixed to a per-group `try` that accumulates messages.
+      Found in Wave 3; no existing golden changed, because none of them ever
+      threw
 
 ### Engine — four waves
 
@@ -198,11 +209,37 @@ fixed, and each now has a golden case or a unit test.
       root. Deferred and documented in `engine.ts`; revisit before the M0
       scripted-demo done-line, which round-trips through a JSON snapshot
 
-**Wave 3 — memory** `[ ]`
+**Wave 3 — memory** `[~]`
 
-- [ ] Registers end to end: `"0`, `"1`–`"9` **with correct shift-on-delete**,
-      `"a`–`"z`, `"A`–`"Z` append, `"_` blackhole, `"-` small delete
-- [ ] `p P` with charwise/linewise/blockwise semantics
+- [x] Registers end to end: `"0`, `"1`–`"9` **with correct shift-on-delete**,
+      `"a`–`"z`, `"A`–`"Z` append, `"_` blackhole, `"-` small delete. The WRITE
+      side landed in Wave 2; Wave 3a added the READ side and pinned both ends
+      against Vim with 62 `paste` goldens
+- [x] `p P` charwise and linewise, with counts, every register class, and the
+      cursor rules — which are **not uniform**: a single-line charwise put lands
+      on the LAST character put (this is what makes `xp` transpose), a
+      multi-line charwise put lands on the FIRST, and a linewise put lands on
+      the first non-blank of the first line put
+- [x] **The three states of a register, which Vim distinguishes and most engines
+      collapse into two.** UNSET (never written) raises E353 and puts nothing;
+      WRITTEN-BUT-EMPTY puts zero characters and reports nothing at all; holding
+      text is the ordinary case. `"_` reads back as written-but-empty, *not* as
+      unset — so `"_p` is a silent no-op rather than an error. A register
+      holding one empty LINE is in the third group, not the second: its text is
+      a bare `"\n"` and putting it really does open a blank line
+- [x] **A put ALWAYS mints an undo node**, measured with `undotree().seq_cur` —
+      including from `"_`, from an empty register, and on the E353 path where it
+      reports an error and changes nothing. This **refines** the Wave 2 rule
+      rather than contradicting it: what decides the node is not "ran versus
+      failed" but whether the command reached its `u_save` before bailing.
+      `~` on an empty line beeps in `nv_tilde` BEFORE any save and mints
+      nothing; `p` from an unset register bails inside `do_put`, AFTER the save,
+      and mints one. Three goldens pin it, each one a `u` that burns on the
+      put's own do-nothing node instead of reaching the change before it
+- [ ] Blockwise `p P` — implemented in `put.ts` (splice at one column across
+      successive lines, space-padding short lines) but **not pinned by any
+      golden yet**, because nothing produces a blockwise register until `<C-v>`
+      lands. Goldens come with Wave 3c, not before
 - [ ] Text objects: `iw aw iW aW i" a" i' a' i( a( i[ a[ i{ a{ i< a< it at ip ap`
 - [ ] **`.` dot-repeat** — build as an explicit recorded-change record, *never*
       by replaying raw keystrokes. `f,x` repeats only the `x`; `df,` repeats the

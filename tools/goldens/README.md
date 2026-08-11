@@ -17,12 +17,12 @@ pnpm test                        # diff engine vs committed goldens
 everywhere else. Nobody writes that from memory. The oracle reproduces Vim's
 warts whether or not we know they exist — which is the entire argument.
 
-## Nine details that are load-bearing
+## Ten details that are load-bearing
 
 The first five were earned during the original prototype. The sixth and seventh
 were found while rebuilding the harness, the eighth and ninth while authoring
-Wave 2 — and all of them produce goldens that look entirely plausible while
-being wrong.
+Wave 2, the tenth while authoring Wave 3 — and all of them produce goldens that
+look entirely plausible while being wrong.
 
 1. **`-i NONE`** — without it Vim reads viminfo and registers leak between
    cases. This silently corrupted the first prototype run.
@@ -72,6 +72,18 @@ being wrong.
    and then presses more keys must put the follow-up keys in a **separate
    group**, or the golden bakes in the abort and no interactive-semantics
    engine can ever match it.
+10. **Some failures raise a catchable exception out of `feedkeys`, not just a
+    beep.** E353 "Nothing in register" is one. `s:RunAndCapture` therefore wraps
+    **each group in its own `try`** and accumulates the messages: one `try`
+    around the whole loop abandoned every remaining group, which silently
+    defeated detail 9's only remedy — the follow-up keys were in a separate
+    group and still never ran. Since a beep and an exception are
+    indistinguishable from the case author's side, "did Vim error" is not a
+    reliable signal on its own, so a case that means to fail says so with
+    `expectError: true`. An **undeclared** error is then reported as a problem,
+    and so is a **declared** one that did not actually happen — a case written
+    to pin a failure that quietly started succeeding is exactly as wrong as the
+    reverse.
 
 Detail 5's other half still stands: `mode()` reports `n` even inside insert
 mode under `feedkeys`, so mode goldens remain out of reach for this oracle.
@@ -125,6 +137,7 @@ cases:
     cursor: [1, 5]             # 1-based [line, byte col], Vim's own convention
     keys: 'dw'                 # supports <Esc> <CR> <Tab> <BS> <C-r> …
     options: ['shiftwidth=2']  # optional
+    expectError: true          # optional; this case MEANS to fail (detail 10)
 ```
 
 When a case makes more than one discrete change, write `keys` as a list of
