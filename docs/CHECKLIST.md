@@ -113,6 +113,18 @@ not a bug fix.
       purpose — one shared parser could mis-decode both sides identically)
 - [x] Mode machine, cursor clamping (normal vs insert differ by one column)
 - [x] `hjkl 0 ^ $`, `gg G {n}G`, `w b e W B E ge gE`, `f F t T ; ,`, `%`, `+ - _`
+- [ ] **Motions in `MergedPlan.md`'s inventory that were never implemented, and
+      that no wave claimed.** Found while auditing after Wave 3c — the Wave 1
+      done-line covered `+ - _` and `%` and quietly skipped these:
+      - `{ }` paragraph and `( )` sentence motions. `{ }` can reuse the
+        blank-line run logic already in `textobjects.ts`'s `ip`/`ap`; sentences
+        are new. **Both are on the `forcesNumbered` list**, so they must shift
+        `"1` even within a line — same rule as `%`
+      - `[[ ]]` section motions
+      - `H M L` are screen-relative and therefore **a design question, not just a
+        task**: `vim-core` has no viewport, by design. They need a window
+        height + topline fed in from the renderer (M1), or they stay out of
+        scope. Decide before M1 rather than during it
 - [x] Counts, `x X r`, `u <C-r>`
 - [x] Snapshot undo tree with redo-branch invalidation
 - [x] Engine API: `pending`, `setKeyPolicy`, `onCommandResolved`, `director.*`,
