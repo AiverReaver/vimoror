@@ -1,0 +1,2071 @@
+[
+  {
+    "id": "motions/brace-fwd-to-blank",
+    "buffer": [
+      "alpha",
+      "beta",
+      "",
+      "gamma",
+      "delta",
+      "",
+      "epsilon"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "}",
+    "groups": [
+      "}"
+    ],
+    "note": "the plain case — stop on the empty line separating two paragraphs",
+    "encodedKeys": "}",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "alpha",
+        "beta",
+        "",
+        "gamma",
+        "delta",
+        "",
+        "epsilon"
+      ],
+      "cursor": [
+        3,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "motions/brace-fwd-twice",
+    "buffer": [
+      "alpha",
+      "beta",
+      "",
+      "gamma",
+      "delta",
+      "",
+      "epsilon"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "}}",
+    "groups": [
+      "}}"
+    ],
+    "encodedKeys": "}}",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "alpha",
+        "beta",
+        "",
+        "gamma",
+        "delta",
+        "",
+        "epsilon"
+      ],
+      "cursor": [
+        6,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "motions/brace-fwd-count",
+    "buffer": [
+      "alpha",
+      "beta",
+      "",
+      "gamma",
+      "delta",
+      "",
+      "epsilon"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "2}",
+    "groups": [
+      "2}"
+    ],
+    "note": "2} is }} — the count is iterations, not lines",
+    "encodedKeys": "2}",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "alpha",
+        "beta",
+        "",
+        "gamma",
+        "delta",
+        "",
+        "epsilon"
+      ],
+      "cursor": [
+        6,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "motions/brace-fwd-to-eob",
+    "buffer": [
+      "alpha",
+      "beta",
+      "",
+      "gamma",
+      "delta",
+      "",
+      "epsilon"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "}}}",
+    "groups": [
+      "}}}"
+    ],
+    "note": "past the last paragraph lands on the LAST CHARACTER of the last line",
+    "encodedKeys": "}}}",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "alpha",
+        "beta",
+        "",
+        "gamma",
+        "delta",
+        "",
+        "epsilon"
+      ],
+      "cursor": [
+        7,
+        7
+      ],
+      "error": "",
+      "curswant": 7
+    }
+  },
+  {
+    "id": "motions/brace-fwd-at-eob-noop",
+    "buffer": [
+      "alpha",
+      "beta",
+      "",
+      "gamma",
+      "delta",
+      "",
+      "epsilon"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "}}}}",
+    "groups": [
+      "}}}}"
+    ],
+    "note": "a bare } at the end does NOT beep, it simply does not move",
+    "encodedKeys": "}}}}",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "alpha",
+        "beta",
+        "",
+        "gamma",
+        "delta",
+        "",
+        "epsilon"
+      ],
+      "cursor": [
+        7,
+        7
+      ],
+      "error": "",
+      "curswant": 7
+    }
+  },
+  {
+    "id": "motions/brace-fwd-from-blank-skips-run",
+    "buffer": [
+      "alpha",
+      "",
+      "",
+      "beta"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "}}",
+    "groups": [
+      "}}"
+    ],
+    "note": "did_skip: the walk will not accept a boundary until it has passed a NON-empty line, so from inside a run of blanks it clears the whole run rather than stopping on the next one\n",
+    "encodedKeys": "}}",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "alpha",
+        "",
+        "",
+        "beta"
+      ],
+      "cursor": [
+        4,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "motions/brace-fwd-lands-on-first-blank",
+    "buffer": [
+      "alpha",
+      "",
+      "",
+      "beta"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "}",
+    "groups": [
+      "}"
+    ],
+    "encodedKeys": "}",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "alpha",
+        "",
+        "",
+        "beta"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "motions/brace-fwd-from-empty-line",
+    "buffer": [
+      "alpha",
+      "",
+      "beta",
+      "",
+      "gamma"
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": "}",
+    "groups": [
+      "}"
+    ],
+    "encodedKeys": "}",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "alpha",
+        "",
+        "beta",
+        "",
+        "gamma"
+      ],
+      "cursor": [
+        4,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "motions/brace-fwd-spaces-are-not-blank",
+    "buffer": [
+      "alpha",
+      "   ",
+      "beta"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "}",
+    "groups": [
+      "}"
+    ],
+    "note": "THE wart. A line of spaces is not a paragraph boundary — startPS tests for a genuinely empty line — so } walks past it to the end of the buffer\n",
+    "encodedKeys": "}",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "alpha",
+        "   ",
+        "beta"
+      ],
+      "cursor": [
+        3,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "motions/brace-fwd-formfeed-is-boundary",
+    "buffer": [
+      "alpha",
+      "\fbeta",
+      "gamma"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "}",
+    "groups": [
+      "}"
+    ],
+    "note": "a leading form feed IS a boundary, unlike a line of spaces",
+    "encodedKeys": "}",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "alpha",
+        "\fbeta",
+        "gamma"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "motions/brace-fwd-no-blank-at-all",
+    "buffer": [
+      "alpha",
+      "beta"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "}",
+    "groups": [
+      "}"
+    ],
+    "encodedKeys": "}",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "alpha",
+        "beta"
+      ],
+      "cursor": [
+        2,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "motions/brace-fwd-one-line-buffer",
+    "buffer": [
+      "alpha beta"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "}",
+    "groups": [
+      "}"
+    ],
+    "encodedKeys": "}",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "alpha beta"
+      ],
+      "cursor": [
+        1,
+        10
+      ],
+      "error": "",
+      "curswant": 10
+    }
+  },
+  {
+    "id": "motions/brace-fwd-empty-last-line",
+    "buffer": [
+      "alpha",
+      ""
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "}",
+    "groups": [
+      "}"
+    ],
+    "note": "an empty last line has no character to land on, so no inclusive pullback",
+    "encodedKeys": "}",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "alpha",
+        ""
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "motions/brace-back-to-blank",
+    "buffer": [
+      "alpha",
+      "beta",
+      "",
+      "gamma",
+      "delta",
+      "",
+      "epsilon"
+    ],
+    "cursor": [
+      7,
+      3
+    ],
+    "keys": "{",
+    "groups": [
+      "{"
+    ],
+    "encodedKeys": "{",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "alpha",
+        "beta",
+        "",
+        "gamma",
+        "delta",
+        "",
+        "epsilon"
+      ],
+      "cursor": [
+        6,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "motions/brace-back-twice",
+    "buffer": [
+      "alpha",
+      "beta",
+      "",
+      "gamma",
+      "delta",
+      "",
+      "epsilon"
+    ],
+    "cursor": [
+      7,
+      3
+    ],
+    "keys": "{{",
+    "groups": [
+      "{{"
+    ],
+    "encodedKeys": "{{",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "alpha",
+        "beta",
+        "",
+        "gamma",
+        "delta",
+        "",
+        "epsilon"
+      ],
+      "cursor": [
+        3,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "motions/brace-back-to-bof",
+    "buffer": [
+      "alpha",
+      "beta",
+      "",
+      "gamma",
+      "delta",
+      "",
+      "epsilon"
+    ],
+    "cursor": [
+      7,
+      3
+    ],
+    "keys": "{{{",
+    "groups": [
+      "{{{"
+    ],
+    "encodedKeys": "{{{",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "alpha",
+        "beta",
+        "",
+        "gamma",
+        "delta",
+        "",
+        "epsilon"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "motions/brace-back-at-bof-noop",
+    "buffer": [
+      "alpha",
+      "beta",
+      "",
+      "gamma"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "{",
+    "groups": [
+      "{"
+    ],
+    "encodedKeys": "{",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "alpha",
+        "beta",
+        "",
+        "gamma"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "motions/brace-back-one-line-buffer",
+    "buffer": [
+      "alpha beta"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "{",
+    "groups": [
+      "{"
+    ],
+    "note": "backward never takes the inclusive last-line pullback, even though this \"lands on the last line\" — measured, and the reason the rule is written as forward-only rather than as \"curr == last\"\n",
+    "encodedKeys": "{",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "alpha beta"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "motions/d-brace-linewise-promotion",
+    "buffer": [
+      "alpha",
+      "beta",
+      "",
+      "gamma"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "d}",
+    "groups": [
+      "d}"
+    ],
+    "note": "exclusive-linewise rule 2 — the region ends in column one of a later line and started at the first non-blank, so the whole thing becomes linewise\n",
+    "encodedKeys": "d}",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "alpha\nbeta\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "alpha\nbeta\n"
+        }
+      },
+      "buffer": [
+        "",
+        "gamma"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "motions/d-brace-midline-stays-charwise",
+    "buffer": [
+      "alpha beta",
+      "gamma",
+      "",
+      "delta"
+    ],
+    "cursor": [
+      1,
+      7
+    ],
+    "keys": "d}",
+    "groups": [
+      "d}"
+    ],
+    "note": "rule 1 instead — started past the indent, so the newline is not eaten",
+    "encodedKeys": "d}",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "v",
+          "text": "beta\ngamma"
+        },
+        "\"": {
+          "type": "v",
+          "text": "beta\ngamma"
+        }
+      },
+      "buffer": [
+        "alpha ",
+        "",
+        "delta"
+      ],
+      "cursor": [
+        1,
+        6
+      ],
+      "error": "",
+      "curswant": 6
+    }
+  },
+  {
+    "id": "motions/d-brace-at-eob-takes-last-char",
+    "buffer": [
+      "alpha",
+      "beta"
+    ],
+    "cursor": [
+      2,
+      4
+    ],
+    "keys": "d}",
+    "groups": [
+      "d}"
+    ],
+    "note": "the forward last-line pullback makes the motion inclusive",
+    "encodedKeys": "d}",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "v",
+          "text": "a"
+        },
+        "\"": {
+          "type": "v",
+          "text": "a"
+        },
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "alpha",
+        "bet"
+      ],
+      "cursor": [
+        2,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "motions/d-brace-single-line-forces-numbered",
+    "buffer": [
+      "alpha beta"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "d}",
+    "groups": [
+      "d}"
+    ],
+    "note": "a delete over } lands in BOTH \"1 and \"- even though it is a small, single-line delete. This is the `use_reg_one` rule that % also has\n",
+    "encodedKeys": "d}",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "v",
+          "text": "alpha beta"
+        },
+        "\"": {
+          "type": "v",
+          "text": "alpha beta"
+        },
+        "-": {
+          "type": "v",
+          "text": "alpha beta"
+        }
+      },
+      "buffer": [
+        ""
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "motions/d-brace-empty-last-line",
+    "buffer": [
+      "alpha",
+      ""
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "d}",
+    "groups": [
+      "d}"
+    ],
+    "encodedKeys": "d}",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "alpha\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "alpha\n"
+        }
+      },
+      "buffer": [
+        ""
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "motions/d-brace-count-overshoot-fails",
+    "buffer": [
+      "alpha",
+      "beta"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "d2}",
+    "groups": [
+      "d2}"
+    ],
+    "note": "with a count REMAINING the walk fails, the operator aborts, and nothing is minted — the opposite of the bare } above\n",
+    "encodedKeys": "d2}",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "alpha",
+        "beta"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "motions/d-brace-back-at-bof-degenerate",
+    "buffer": [
+      "alpha",
+      "beta"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "xd{u",
+    "groups": [
+      "x",
+      "d{",
+      "u"
+    ],
+    "note": "{ at the start of the buffer SUCCEEDS without moving, so the operator runs over a degenerate region: no register is touched, but an undo node is minted — pinned by the following `u` restoring the x, not the d{\n",
+    "encodedKeys": "xd{u",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a"
+        },
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "lpha",
+        "beta"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "motions/y-brace-linewise",
+    "buffer": [
+      "alpha",
+      "beta",
+      "",
+      "gamma"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "y}",
+    "groups": [
+      "y}"
+    ],
+    "encodedKeys": "y}",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "alpha\nbeta\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "alpha\nbeta\n"
+        }
+      },
+      "buffer": [
+        "alpha",
+        "beta",
+        "",
+        "gamma"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "motions/y-brace-charwise-keeps-cursor",
+    "buffer": [
+      "alpha",
+      "beta",
+      "",
+      "gamma"
+    ],
+    "cursor": [
+      2,
+      3
+    ],
+    "keys": "y}",
+    "groups": [
+      "y}"
+    ],
+    "encodedKeys": "y}",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "ta"
+        },
+        "\"": {
+          "type": "v",
+          "text": "ta"
+        }
+      },
+      "buffer": [
+        "alpha",
+        "beta",
+        "",
+        "gamma"
+      ],
+      "cursor": [
+        2,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "motions/c-brace-linewise",
+    "buffer": [
+      "alpha",
+      "beta",
+      "",
+      "gamma"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "c}X<Esc>",
+    "groups": [
+      "c}X<Esc>"
+    ],
+    "encodedKeys": "c}X\u001b",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "alpha\nbeta\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "alpha\nbeta\n"
+        }
+      },
+      "buffer": [
+        "X",
+        "",
+        "gamma"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "motions/d-brace-back",
+    "buffer": [
+      "alpha",
+      "beta",
+      "",
+      "gamma"
+    ],
+    "cursor": [
+      4,
+      3
+    ],
+    "keys": "d{",
+    "groups": [
+      "d{"
+    ],
+    "encodedKeys": "d{",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "v",
+          "text": "\nga"
+        },
+        "\"": {
+          "type": "v",
+          "text": "\nga"
+        }
+      },
+      "buffer": [
+        "alpha",
+        "beta",
+        "mma"
+      ],
+      "cursor": [
+        3,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "motions/gU-brace",
+    "buffer": [
+      "alpha",
+      "beta",
+      "",
+      "gamma"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "gU}",
+    "groups": [
+      "gU}"
+    ],
+    "encodedKeys": "gU}",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "ALPHA",
+        "BETA",
+        "",
+        "gamma"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "motions/indent-brace",
+    "buffer": [
+      "alpha",
+      "beta",
+      "",
+      "gamma"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ">}",
+    "groups": [
+      ">}"
+    ],
+    "encodedKeys": ">}",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "    alpha",
+        "    beta",
+        "",
+        "gamma"
+      ],
+      "cursor": [
+        1,
+        5
+      ],
+      "error": "",
+      "curswant": 5
+    }
+  },
+  {
+    "id": "motions/sent-fwd-1",
+    "buffer": [
+      "One. Two! Three? Four."
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ")",
+    "groups": [
+      ")"
+    ],
+    "encodedKeys": ")",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "One. Two! Three? Four."
+      ],
+      "cursor": [
+        1,
+        6
+      ],
+      "error": "",
+      "curswant": 6
+    }
+  },
+  {
+    "id": "motions/sent-fwd-2",
+    "buffer": [
+      "One. Two! Three? Four."
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "))",
+    "groups": [
+      "))"
+    ],
+    "encodedKeys": "))",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "One. Two! Three? Four."
+      ],
+      "cursor": [
+        1,
+        11
+      ],
+      "error": "",
+      "curswant": 11
+    }
+  },
+  {
+    "id": "motions/sent-fwd-3",
+    "buffer": [
+      "One. Two! Three? Four."
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ")))",
+    "groups": [
+      ")))"
+    ],
+    "encodedKeys": ")))",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "One. Two! Three? Four."
+      ],
+      "cursor": [
+        1,
+        18
+      ],
+      "error": "",
+      "curswant": 18
+    }
+  },
+  {
+    "id": "motions/sent-fwd-count",
+    "buffer": [
+      "One. Two! Three? Four."
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "2)",
+    "groups": [
+      "2)"
+    ],
+    "encodedKeys": "2)",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "One. Two! Three? Four."
+      ],
+      "cursor": [
+        1,
+        11
+      ],
+      "error": "",
+      "curswant": 11
+    }
+  },
+  {
+    "id": "motions/sent-fwd-to-eob",
+    "buffer": [
+      "One. Two! Three? Four."
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "))))",
+    "groups": [
+      "))))"
+    ],
+    "note": "the last ) lands on the final character, inclusive via adjust_cursor",
+    "encodedKeys": "))))",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "One. Two! Three? Four."
+      ],
+      "cursor": [
+        1,
+        22
+      ],
+      "error": "",
+      "curswant": 22
+    }
+  },
+  {
+    "id": "motions/sent-fwd-eob-noop",
+    "buffer": [
+      "Only one."
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "))",
+    "groups": [
+      "))"
+    ],
+    "encodedKeys": "))",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "Only one."
+      ],
+      "cursor": [
+        1,
+        9
+      ],
+      "error": "",
+      "curswant": 9
+    }
+  },
+  {
+    "id": "motions/sent-fwd-multi-space",
+    "buffer": [
+      "One.   Two."
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ")",
+    "groups": [
+      ")"
+    ],
+    "note": "all the whitespace after the terminator is skipped, however much",
+    "encodedKeys": ")",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "One.   Two."
+      ],
+      "cursor": [
+        1,
+        8
+      ],
+      "error": "",
+      "curswant": 8
+    }
+  },
+  {
+    "id": "motions/sent-fwd-closers",
+    "buffer": [
+      "He said \"go.\") Next one."
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ")",
+    "groups": [
+      ")"
+    ],
+    "note": "any run of )]\"' may sit between the terminator and the whitespace, so the sentence ends after the `)` here\n",
+    "encodedKeys": ")",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "He said \"go.\") Next one."
+      ],
+      "cursor": [
+        1,
+        16
+      ],
+      "error": "",
+      "curswant": 16
+    }
+  },
+  {
+    "id": "motions/sent-fwd-no-space-after-dot",
+    "buffer": [
+      "a.b.c done. Next."
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ")",
+    "groups": [
+      ")"
+    ],
+    "note": "a.b.c is ONE sentence — the dots have no whitespace after them, which is exactly what stops filenames and abbreviations from splitting\n",
+    "encodedKeys": ")",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "a.b.c done. Next."
+      ],
+      "cursor": [
+        1,
+        13
+      ],
+      "error": "",
+      "curswant": 13
+    }
+  },
+  {
+    "id": "motions/sent-fwd-across-lines",
+    "buffer": [
+      "One. Two.",
+      "Three. Four."
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "))",
+    "groups": [
+      "))"
+    ],
+    "note": "an end of line terminates a sentence just as a space does",
+    "encodedKeys": "))",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "One. Two.",
+        "Three. Four."
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "motions/sent-fwd-stops-on-empty-line",
+    "buffer": [
+      "One. Two.",
+      "",
+      "Three."
+    ],
+    "cursor": [
+      1,
+      6
+    ],
+    "keys": ")",
+    "groups": [
+      ")"
+    ],
+    "note": "a paragraph boundary is a sentence boundary, and ) lands ON it",
+    "encodedKeys": ")",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "One. Two.",
+        "",
+        "Three."
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "motions/sent-fwd-past-empty-line",
+    "buffer": [
+      "One. Two.",
+      "",
+      "Three."
+    ],
+    "cursor": [
+      1,
+      6
+    ],
+    "keys": "))",
+    "groups": [
+      "))"
+    ],
+    "encodedKeys": "))",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "One. Two.",
+        "",
+        "Three."
+      ],
+      "cursor": [
+        3,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "motions/sent-fwd-from-empty-line",
+    "buffer": [
+      "One.",
+      "",
+      "Two. Three."
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": ")",
+    "groups": [
+      ")"
+    ],
+    "encodedKeys": ")",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "One.",
+        "",
+        "Two. Three."
+      ],
+      "cursor": [
+        3,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "motions/sent-back-1",
+    "buffer": [
+      "One. Two! Three? Four."
+    ],
+    "cursor": [
+      1,
+      18
+    ],
+    "keys": "(",
+    "groups": [
+      "("
+    ],
+    "encodedKeys": "(",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "One. Two! Three? Four."
+      ],
+      "cursor": [
+        1,
+        11
+      ],
+      "error": "",
+      "curswant": 11
+    }
+  },
+  {
+    "id": "motions/sent-back-2",
+    "buffer": [
+      "One. Two! Three? Four."
+    ],
+    "cursor": [
+      1,
+      18
+    ],
+    "keys": "((",
+    "groups": [
+      "(("
+    ],
+    "encodedKeys": "((",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "One. Two! Three? Four."
+      ],
+      "cursor": [
+        1,
+        6
+      ],
+      "error": "",
+      "curswant": 6
+    }
+  },
+  {
+    "id": "motions/sent-back-from-midsentence",
+    "buffer": [
+      "One. Two! Three? Four."
+    ],
+    "cursor": [
+      1,
+      13
+    ],
+    "keys": "(",
+    "groups": [
+      "("
+    ],
+    "note": "from the middle, ( goes to THIS sentence's start",
+    "encodedKeys": "(",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "One. Two! Three? Four."
+      ],
+      "cursor": [
+        1,
+        11
+      ],
+      "error": "",
+      "curswant": 11
+    }
+  },
+  {
+    "id": "motions/sent-back-from-sentence-start",
+    "buffer": [
+      "One. Two. Three."
+    ],
+    "cursor": [
+      1,
+      6
+    ],
+    "keys": "(",
+    "groups": [
+      "("
+    ],
+    "note": "…but from the exact first character it goes to the PREVIOUS one. That asymmetry is what the walk-back-over-punctuation loop exists for\n",
+    "encodedKeys": "(",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "One. Two. Three."
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "motions/sent-back-at-bof-noop",
+    "buffer": [
+      "Only one."
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "(",
+    "groups": [
+      "("
+    ],
+    "encodedKeys": "(",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "Only one."
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "motions/sent-back-from-empty-line",
+    "buffer": [
+      "One. Two.",
+      "",
+      "Three."
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": "(",
+    "groups": [
+      "("
+    ],
+    "encodedKeys": "(",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "One. Two.",
+        "",
+        "Three."
+      ],
+      "cursor": [
+        1,
+        6
+      ],
+      "error": "",
+      "curswant": 6
+    }
+  },
+  {
+    "id": "motions/d-sent-fwd-forces-numbered",
+    "buffer": [
+      "One. Two. Three."
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "d)",
+    "groups": [
+      "d)"
+    ],
+    "note": "like }, a small single-line delete over ) sets BOTH \"1 and \"-",
+    "encodedKeys": "d)",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "v",
+          "text": "One. "
+        },
+        "\"": {
+          "type": "v",
+          "text": "One. "
+        },
+        "-": {
+          "type": "v",
+          "text": "One. "
+        }
+      },
+      "buffer": [
+        "Two. Three."
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "motions/d-sent-back",
+    "buffer": [
+      "One. Two. Three."
+    ],
+    "cursor": [
+      1,
+      11
+    ],
+    "keys": "d(",
+    "groups": [
+      "d("
+    ],
+    "encodedKeys": "d(",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "v",
+          "text": "Two. "
+        },
+        "\"": {
+          "type": "v",
+          "text": "Two. "
+        },
+        "-": {
+          "type": "v",
+          "text": "Two. "
+        }
+      },
+      "buffer": [
+        "One. Three."
+      ],
+      "cursor": [
+        1,
+        6
+      ],
+      "error": "",
+      "curswant": 6
+    }
+  },
+  {
+    "id": "motions/d-sent-at-eob-takes-last-char",
+    "buffer": [
+      "Only one."
+    ],
+    "cursor": [
+      1,
+      9
+    ],
+    "keys": "d)",
+    "groups": [
+      "d)"
+    ],
+    "encodedKeys": "d)",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "v",
+          "text": "."
+        },
+        "\"": {
+          "type": "v",
+          "text": "."
+        },
+        "-": {
+          "type": "v",
+          "text": "."
+        }
+      },
+      "buffer": [
+        "Only one"
+      ],
+      "cursor": [
+        1,
+        8
+      ],
+      "error": "",
+      "curswant": 8
+    }
+  },
+  {
+    "id": "motions/d-sent-back-at-bof-degenerate",
+    "buffer": [
+      "Only one."
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "xd(u",
+    "groups": [
+      "x",
+      "d(",
+      "u"
+    ],
+    "note": "( at the start succeeds without moving — degenerate region, node minted",
+    "encodedKeys": "xd(u",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "O"
+        },
+        "-": {
+          "type": "v",
+          "text": "O"
+        }
+      },
+      "buffer": [
+        "nly one."
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "motions/c-sent-fwd",
+    "buffer": [
+      "One. Two. Three."
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "c)X<Esc>",
+    "groups": [
+      "c)X<Esc>"
+    ],
+    "encodedKeys": "c)X\u001b",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "v",
+          "text": "One. "
+        },
+        "\"": {
+          "type": "v",
+          "text": "One. "
+        },
+        "-": {
+          "type": "v",
+          "text": "One. "
+        }
+      },
+      "buffer": [
+        "XTwo. Three."
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "motions/y-sent-fwd",
+    "buffer": [
+      "One. Two. Three."
+    ],
+    "cursor": [
+      1,
+      6
+    ],
+    "keys": "y)",
+    "groups": [
+      "y)"
+    ],
+    "encodedKeys": "y)",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "Two. "
+        },
+        "\"": {
+          "type": "v",
+          "text": "Two. "
+        }
+      },
+      "buffer": [
+        "One. Two. Three."
+      ],
+      "cursor": [
+        1,
+        6
+      ],
+      "error": "",
+      "curswant": 6
+    }
+  },
+  {
+    "id": "motions/d-sent-across-lines",
+    "buffer": [
+      "One. Two.",
+      "Three. Four."
+    ],
+    "cursor": [
+      1,
+      6
+    ],
+    "keys": "d)",
+    "groups": [
+      "d)"
+    ],
+    "encodedKeys": "d)",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "v",
+          "text": "Two."
+        },
+        "\"": {
+          "type": "v",
+          "text": "Two."
+        },
+        "-": {
+          "type": "v",
+          "text": "Two."
+        }
+      },
+      "buffer": [
+        "One. ",
+        "Three. Four."
+      ],
+      "cursor": [
+        1,
+        5
+      ],
+      "error": "",
+      "curswant": 5
+    }
+  },
+  {
+    "id": "motions/visual-brace",
+    "buffer": [
+      "alpha",
+      "beta",
+      "",
+      "gamma"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "v}d",
+    "groups": [
+      "v}d"
+    ],
+    "note": "in VISUAL mode the exclusive-linewise adjustment does not apply — the selection is charwise inclusive of the cursor cell, so this eats the newlines the operator-pending form would have left\n",
+    "encodedKeys": "v}d",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "v",
+          "text": "alpha\nbeta\n\n"
+        },
+        "\"": {
+          "type": "v",
+          "text": "alpha\nbeta\n\n"
+        }
+      },
+      "buffer": [
+        "gamma"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "motions/visual-sent-no-forced-numbered",
+    "buffer": [
+      "One. Two. Three."
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "v)d",
+    "groups": [
+      "v)d"
+    ],
+    "note": "and visual mode does NOT force the numbered register: this small delete sets \"- alone, where the operator-pending `d)` above sets \"1 too\n",
+    "encodedKeys": "v)d",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "One. T"
+        },
+        "-": {
+          "type": "v",
+          "text": "One. T"
+        }
+      },
+      "buffer": [
+        "wo. Three."
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "motions/visual-line-brace",
+    "buffer": [
+      "alpha",
+      "beta",
+      "",
+      "gamma"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "V}d",
+    "groups": [
+      "V}d"
+    ],
+    "encodedKeys": "V}d",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "alpha\nbeta\n\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "alpha\nbeta\n\n"
+        }
+      },
+      "buffer": [
+        "gamma"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  }
+]

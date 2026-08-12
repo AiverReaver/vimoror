@@ -60,7 +60,26 @@ export type OperatorRange =
       readonly lastLine: number;
       readonly startCol: number;
       readonly endCol: number;
+      /**
+       * `<C-v>$` — the block's right edge is each row's OWN end of line, so the
+       * rectangle is deliberately ragged. Vim carries this as a MAXCOL
+       * curswant rather than as a column, which is why it cannot be folded
+       * into `endCol`: there is no single column that means "all of them".
+       */
+      readonly toEndOfLine?: boolean;
     };
+
+export type BlockRange = Extract<OperatorRange, { kind: 'blockwise' }>;
+
+/**
+ * The inclusive right-hand column of a block on one row. For a `$` block that
+ * is wherever the row happens to end; a row too short to reach the block at all
+ * yields an empty slice rather than a negative one.
+ */
+export function blockRowEnd(lines: Lines, range: BlockRange, line: number): number {
+  if (range.toEndOfLine !== true) return range.endCol;
+  return Math.max(range.startCol - 1, lineAt(lines, line).length - 1);
+}
 
 /** The lines a range touches, whatever its kind. */
 export function rangeLines(range: OperatorRange): { first: number; last: number } {
@@ -133,11 +152,18 @@ function rangeText(lines: Lines, range: OperatorRange): string {
     // `c`. So `gh` under a block at column two yields nothing while `g` under
     // the same block yields spaces, which looks like an inconsistency and is
     // simply where the line's end-of-line column falls.
+    //
+    // A `$` block has no fixed width, so there is nothing to pad TO: every row
+    // simply contributes whatever it has from the left column onwards.
     const width = range.endCol - range.startCol + 1;
     const rows: string[] = [];
     for (let l = range.firstLine; l <= range.lastLine; l += 1) {
       const text = lineAt(lines, l);
-      rows.push(text.length >= range.startCol ? text.slice(range.startCol, range.endCol + 1) : ' '.repeat(width));
+      if (text.length < range.startCol && range.toEndOfLine !== true) {
+        rows.push(' '.repeat(width));
+        continue;
+      }
+      rows.push(text.slice(range.startCol, blockRowEnd(lines, range, l) + 1));
     }
     return rows.join('\n');
   }
@@ -170,19 +196,27 @@ function capture(lines: Lines, range: OperatorRange) {
 }
 
 /** Cut the block's columns out of every row it covers. */
-function removeBlock(
-  lines: Lines,
-  range: Extract<OperatorRange, { kind: 'blockwise' }>,
-): string[] {
+function removeBlock(lines: Lines, range: BlockRange): string[] {
   const next = [...lines];
   for (let l = range.firstLine; l <= range.lastLine; l += 1) {
     const text = lineAt(lines, l);
-    next[l] = text.slice(0, range.startCol) + text.slice(range.endCol + 1);
+    next[l] = text.slice(0, range.startCol) + text.slice(blockRowEnd(lines, range, l) + 1);
   }
   return next;
 }
 
-export function applyDelete(lines: Lines, range: OperatorRange): OperatorResult {
+export function applyDelete(
+  lines: Lines,
+  range: OperatorRange,
+  /**
+   * Whether the linewise promotion below may fire. Vim guards it with
+   * `!oap->is_VIsual`, so a VISUAL delete keeps its charwise shape even when
+   * the identical operator-pending region would have been promoted. The buffer
+   * comes out the same either way — only the register's TYPE differs, which is
+   * why this is invisible until something puts the register back.
+   */
+  promoteLinewise = true,
+): OperatorResult {
   if (range.kind === 'blockwise') {
     return {
       lines: removeBlock(lines, range),
@@ -195,6 +229,7 @@ export function applyDelete(lines: Lines, range: OperatorRange): OperatorResult 
   // only blanks remain, and starts inside the indent, becomes LINEWISE. This
   // is what makes `d9w` overshooting the buffer take whole lines.
   if (
+    promoteLinewise &&
     range.kind === 'charwise' &&
     range.start.line < range.end.line &&
     /^[ \t]*$/.test(lineAt(lines, range.end.line).slice(range.end.col)) &&
@@ -276,7 +311,7 @@ export function applyCase(
     for (let l = range.firstLine; l <= range.lastLine; l += 1) {
       const text = lineAt(lines, l);
       const head = text.slice(0, range.startCol);
-      const body = text.slice(range.startCol, range.endCol + 1);
+      const body = text.slice(range.startCol, blockRowEnd(lines, range, l) + 1);
       next[l] = head + transformCase(op, body) + text.slice(range.startCol + body.length);
     }
     return { lines: next, cursor: { line: range.firstLine, col: range.startCol } };

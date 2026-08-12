@@ -63,9 +63,19 @@ not a bug fix.
       Vim left empty is a diff. This is what catches an engine that clamps
       where Vim fails: buffer and cursor agree either way and only the stray
       register betrays it (`yank/yh-at-col1-clears-unnamed`).
-- [x] **≥400 cases** — 780 committed (proven 7, wave1 113, wave2 492 across
-      8 families: caseops 62, change 55, delete 79, doubled 55, indent 59,
-      insert 69, shortcuts 55, yank 58; wave3 234 so far: paste 62, textobj 106, visual 66)
+- [x] **≥400 cases** — **1038 committed.** proven 7 · wave1 113 · wave2 492
+      across 8 families (caseops 62, change 55, delete 79, doubled 55,
+      indent 59, insert 69, shortcuts 55, yank 58) · wave3 426 across 7
+      families (paste 62, textobj 106, visual 66, motions 60, visualops 51,
+      marks 45, dot 36)
+- [ ] **`proven` is generated but NOT diffed against the engine.** It is absent
+      from `FAMILIES` in `engine.test.ts`, so `proven.test.ts` only checks the
+      generated goldens against the values hand-transcribed from the plan — the
+      engine itself is never run over them. That is currently unavoidable:
+      `proven/subst-g` is `:s/x/Q/g`, which is Wave 4. **Add `proven` to
+      `FAMILIES` as soon as `:s` lands** — the seven canonical cases are the
+      one set most worth having the engine diffed against, and it is easy to
+      assume they already are
 - [x] `expectError: true` per case, for a case that MEANS to fail. An
       undeclared error is a reported problem, and so is a declared one that
       did not happen — a case written to pin a failure that quietly started
@@ -82,10 +92,19 @@ not a bug fix.
 - [ ] **Undo-block goldens depend on author-declared boundaries.** `feedkeys`
       collapses its whole input into one undo block; feeding key-by-key fixes
       undo but silently no-ops `d2w`, `ci(`, macros and dot-repeat. Cases that
-      make more than one change must use the `keys:` list form. A pty oracle
-      would remove this burden — worth revisiting before Wave 3's dot-repeat.
-- [ ] Decide whether a pty oracle is worth building, or whether the group form
-      plus engine-side mode assertions is sufficient through M0.
+      make more than one change must use the `keys:` list form.
+- [x] **Decided at Wave 3e: no pty oracle.** The group form carried dot-repeat
+      without trouble — all 36 `dot` goldens generated and passed first time,
+      including `['dw', '3.', '.']` — because the redo state survives between
+      groups (they share one `s:RunAndCapture` function frame, harness detail
+      6). The group form plus engine-side mode assertions is sufficient through
+      M0. Revisit only if Wave 4's macros need it, which is the one remaining
+      candidate.
+- [ ] **A beep is not an exception.** `u` with nothing to undo, a failed motion
+      and `d<C-o>` all beep silently and report NO error, so `expectError: true`
+      on them is itself flagged as a problem. Only some failures (E20, E353)
+      raise catchable exceptions. There is no way to tell from the case which
+      you will get — generate and see.
 - [x] **`:edit!` keeps the previous buffer's undo history.** Reloading the same
       temp file let an over-eager `u` restore the PREVIOUS case's text, which
       silently corrupted every "u with nothing to undo" golden. Fixed: `gen.vim`
@@ -113,18 +132,39 @@ not a bug fix.
       purpose — one shared parser could mis-decode both sides identically)
 - [x] Mode machine, cursor clamping (normal vs insert differ by one column)
 - [x] `hjkl 0 ^ $`, `gg G {n}G`, `w b e W B E ge gE`, `f F t T ; ,`, `%`, `+ - _`
-- [ ] **Motions in `MergedPlan.md`'s inventory that were never implemented, and
-      that no wave claimed.** Found while auditing after Wave 3c — the Wave 1
-      done-line covered `+ - _` and `%` and quietly skipped these:
-      - `{ }` paragraph and `( )` sentence motions. `{ }` can reuse the
-        blank-line run logic already in `textobjects.ts`'s `ip`/`ap`; sentences
-        are new. **Both are on the `forcesNumbered` list**, so they must shift
-        `"1` even within a line — same rule as `%`
-      - `[[ ]]` section motions
-      - `H M L` are screen-relative and therefore **a design question, not just a
-        task**: `vim-core` has no viewport, by design. They need a window
-        height + topline fed in from the renderer (M1), or they stay out of
-        scope. Decide before M1 rather than during it
+- [x] **`{ }` paragraph and `( )` sentence motions** — the Wave 1 done-line
+      covered `+ - _` and `%` and quietly skipped these; found while auditing
+      after Wave 3c and closed with Wave 3d, since both are JUMP commands and
+      the jumplist needed them. Faithful ports of `findpar` and `findsent`;
+      60 `motions` goldens. Both set `forcesNumbered`, confirmed: a delete over
+      either writes **both** `"1` and `"-` even when it is a small single-line
+      delete. What an intuitive implementation gets wrong:
+      - a paragraph boundary is a genuinely **empty** line, not a blank one —
+        `}` walks straight past `"   "`. A leading form feed IS a boundary.
+        (Vim also honours nroff macros from 'paragraphs'/'sections'; that
+        option is not modelled and is documented as such rather than faked)
+      - `findpar`'s `did_skip` refuses any boundary until the walk has passed a
+        non-empty line, so `}` from inside a run of blanks clears the whole run
+      - running off the end of the buffer only FAILS while counts REMAIN. A
+        bare `}` at the end succeeds and does not move, so `d}` there runs a
+        degenerate region and mints an undo node, while `d2}` aborts and mints
+        none. Same for `{` at the start
+      - landing on the LAST line pulls the cursor onto its last character and
+        makes the motion **inclusive** — but only going FORWARD. `{` on a
+        one-line buffer also "lands on the last line" and stays exclusive at
+        column zero, which is why the rule is coded as forward-only
+      - `a.b.c` is ONE sentence: the dots have no whitespace after them. Any
+        run of `)]"'` may sit between the terminator and the whitespace
+      - `(` from mid-sentence goes to THIS sentence's start; from its exact
+        first character it goes to the previous one
+- [ ] `[[ ]]` section motions — still open, and not on Wave 3's path
+- [x] **`H M L` — decided, deferred to M1.** They are screen-relative and
+      `vim-core` has no viewport *by design*, so they cannot be implemented
+      here without importing a renderer concept the renderer does not yet
+      define. **The decision: core stays viewport-free.** `H M L` need a window
+      height + topline supplied by `@vimorror/render` at M1, at which point they
+      become a thin motion over data core is handed rather than data core owns.
+      Recorded here so M1 inherits it as an input instead of re-opening it
 - [x] Counts, `x X r`, `u <C-r>`
 - [x] Snapshot undo tree with redo-branch invalidation
 - [x] Engine API: `pending`, `setKeyPolicy`, `onCommandResolved`, `director.*`,
@@ -216,13 +256,14 @@ fixed, and each now has a golden case or a unit test.
       when it deletes nothing and types nothing (`cl<Esc>`/`s<Esc>`/`C<Esc>` on
       an empty line), because `op_change` prepared the entry first. A bare
       `i<Esc>`/`R<Esc>` still mints none
-- [ ] Undo tree, insert session and `lastFind` are **not serialized** in
-      `EngineSnapshot` — a restored engine starts with the snapshot as its undo
-      root. Deferred and documented in `engine.ts`; revisit before the M0
+- [ ] Undo tree, insert session, `lastFind`, marks, the jumplist and the `.`
+      record are **not serialized** in `EngineSnapshot` — a restored engine
+      starts with the snapshot as its undo root and with no marks or repeatable
+      change. Deferred and documented in `engine.ts`; revisit before the M0
       scripted-demo done-line, which round-trips through a JSON snapshot
 
-**Wave 3 — memory** `[~]` — registers/paste, text objects and visual modes
-landed; dot-repeat and marks not started
+**Wave 3 — memory** `[x]` — registers/paste, text objects, visual modes,
+marks + the jumplist, and `.` dot-repeat all landed and green
 
 - [x] Registers end to end: `"0`, `"1`–`"9` **with correct shift-on-delete**,
       `"a`–`"z`, `"A`–`"Z` append, `"_` blackhole, `"-` small delete. The WRITE
@@ -249,10 +290,10 @@ landed; dot-repeat and marks not started
       nothing; `p` from an unset register bails inside `do_put`, AFTER the save,
       and mints one. Three goldens pin it, each one a `u` that burns on the
       put's own do-nothing node instead of reaching the change before it
-- [ ] Blockwise `p P` — implemented in `put.ts` (splice at one column across
-      successive lines, space-padding short lines) but **not pinned by any
-      golden yet**, because nothing produces a blockwise register until `<C-v>`
-      lands. Goldens come with Wave 3c, not before
+- [x] Blockwise `p P` — implemented in `put.ts` (splice at one column across
+      successive lines, space-padding short lines). Pinned once `<C-v>` landed
+      in Wave 3c and gave it a producer, and again by the visual-`p` cases in
+      Wave 3f
 - [x] Text objects: `iw aw iW aW i" a" i' a' i( a( i[ a[ i{ a{ i< a< it at ip ap`,
       plus the aliases (`ib`/`ab` = `i(`/`a(`, `iB`/`aB` = `i{`/`a{`, and either
       half of a pair names the pair). 106 `textobj` goldens. An object is not a
@@ -285,13 +326,32 @@ landed; dot-repeat and marks not started
       - a not-FOUND object aborts the operator and mints nothing; a found-but-EMPTY
         one is degenerate and still runs, which is why `ci(` on `()` types between
         the brackets
-- [ ] **`.` dot-repeat** — build as an explicit recorded-change record, *never*
-      by replaying raw keystrokes. `f,x` repeats only the `x`; `df,` repeats the
-      whole delete. The subtlest thing in the engine.
-      One refinement earned in Wave 2: the *insert* half genuinely IS raw-key
-      replay (that is how a counted insert works, and how Vim's redo buffer
-      works), so the unit `.` repeats is the resolved command PLUS its raw
-      insert keystrokes — not one or the other.
+- [x] **`.` dot-repeat** — 36 `dot` goldens, all green on first generation.
+      Built as an explicit recorded-change record, never as raw-keystroke
+      replay of what was typed: `f,x` repeats only the `x`, while `df,` repeats
+      the whole delete *including a fresh search for the next comma*. Those two
+      cases are the pair that make the design forced rather than chosen.
+      - the record has two halves, per the Wave 2 refinement: the resolved
+        command's tokens PLUS the insert session's raw keystrokes. The insert
+        half genuinely IS key replay — `iabc<BS>Z<Esc>` replays the `<BS>`, not
+        the net text it produced
+      - **a count typed on the `.` REPLACES the whole effective count** rather
+        than multiplying it: `2d3w` deletes six words and `2.` after it deletes
+        two. So the count is stored apart from the keys, and the keys are
+        recorded with every count digit stripped — which is why `Pending`
+        carries `dotKeys` alongside `keyBuffer`
+      - a new count then STICKS for the following `.`
+      - `y` is not a change (the buffer does not move), so `x yw .` repeats the
+        `x`. Neither is `u`/`<C-r>`: `dw u .` re-does the delete
+      - a visual change repeats by **shape** at the new cursor. A single-line
+        charwise selection keeps its WIDTH; a multi-line one keeps the absolute
+        column it ended on. Vim splits these in `redo_VIsual` and so does
+        `dot.ts`
+      - the replay runs back through `step()` rather than through a parallel
+        implementation, so a repeated command cannot drift from a typed one; a
+        `replaying` flag stops it re-recording itself
+      - the recorder sits OUTSIDE the reducer and watches what a key did, so a
+        command added later cannot silently forget to be repeatable
 - [x] Blockwise register append (`"A` onto a blockwise value) — two blocks
       STACK, and **ragged**: the rows are NOT padded out to a common width.
       Authored guessing the opposite and refuted on first generation; it is the
@@ -320,16 +380,87 @@ landed; dot-repeat and marks not started
         session, not in the operator, which is also how `<C-v>I`/`A` will work
       - the explicit register has to survive the visual→normal transition, or
         `v"ay` silently writes unnamed instead of `"a`
-- [ ] Still open in visual mode: `I`/`A` blockwise insert, `p` and `r` over a
-      selection, `gv` reselect, and `$`-to-end-of-line blocks (Vim's MAXCOL
-      curswant). The insert-session replication they need is already in place
-- [ ] Marks `m` `` ` `` `'`, plus `<C-o>`/`<C-i>`
+- [x] **The visual-mode edges closed** — `<C-v>I`/`A`, `p` and `r` over a
+      selection, `gv` reselect, and `$`-to-end-of-line blocks. 51 `visualops`
+      goldens. What had to be measured rather than reasoned out:
+      - **`<C-v>I` SKIPS a row too short to reach the block's column; `<C-v>A`
+        PADS it out with spaces.** Same block, opposite treatment — and it is
+        why `<C-v>$A` is the idiom for appending to every line: with `$` the
+        column is each row's own end, so no row is ever short
+      - a typed line break abandons replication entirely: only the first row
+        gets the text
+      - after a block `I`/`A` the cursor returns to the **block's left edge**,
+        which for `A` is nowhere near where the typing happened. Block `c` does
+        NOT do this — it ends on the last character typed, like any other
+        insert. A one-character insert hides the difference, so the goldens
+        type two
+      - **`$` in visual mode parks the cursor ON the end-of-line NUL**, which
+        no other motion does (`l` refuses it without 'virtualedit'). An
+        inclusive selection ending past the line then takes the LINE BREAK, so
+        `v$d` joins the next line up while `vlld` over the same three
+        characters leaves an empty line behind. MAXCOL survives `j`/`k`
+      - the same rule explains a selection on an EMPTY line: column zero there
+        already IS the end-of-line position, so `v` alone yields `"\n"`
+      - visual `p` overwrites the unnamed register with the text it just
+        removed; visual `P` deliberately does not, which is what makes `viwP`
+        repeatable over several words. The register is read BEFORE the delete
+      - a LINEWISE register put into a charwise hole SPLITS the line open, head
+        and tail becoming lines of their own around the register's content
+      - `op_delete`'s linewise promotion is skipped in visual mode
+        (`!oap->is_VIsual`). The buffer is identical either way and only the
+        register's TYPE differs, so this stays invisible until something puts
+        it back
+      - `gv` from inside visual mode SWAPS the stored and current selections
+      - visual `r` never replaces line breaks, and ignores a count
+- [x] **Marks `m` `` ` `` `'`, plus `<C-o>`/`<C-i>`** — 45 `marks` goldens.
+      `m` is neither a change nor a jump: it mints no undo node and pushes
+      nothing. `` ` `` is charwise-exclusive and lands on the exact column;
+      `'` is linewise and lands on the first non-blank. `` ` `` is on the
+      `forcesNumbered` list, `'` does not need to be (linewise always shifts)
+- [x] **Mark ADJUSTMENT, which is the half that is easy to skip.** A mark is a
+      position in a buffer that keeps changing underneath it:
+      - insert a line above → the mark moves down; delete above → it moves up
+      - **delete the mark's own line and the mark is DESTROYED, not relocated.**
+        A later jump raises E20, indistinguishable from never having set it.
+        An implementation that only shifts passes every other case in the file
+        and fails this one, which is why it has its own golden
+      - an edit that leaves the LINE COUNT alone moves nothing — deleting a
+        character before a mark does not drag its column
+      - jumplist entries take the same shift but the OPPOSITE deletion rule:
+        an entry inside a deleted range CLAMPS to the start of the deletion
+        rather than being dropped, so the list never develops holes
+      - the shift is applied in `mutate()` as well as `commit()`. `o`/`O` open
+        their line long before `<Esc>`, so a shift deferred to `finishInsert`
+        compares two buffers that both already contain the new line and
+        concludes nothing moved
+      - **Modelled as (first differing line, net line-count delta).** That is
+        exact for the pure insertions and deletions marks care about, and a
+        deliberate approximation for an edit that deletes and inserts at once
+        (`2cc`), where Vim adjusts against the real removed range rather than
+        the net one. The goldens pin the net-shift behaviour that results
+- [x] Jumplist semantics measured off real Vim:
+      - jumps are `G gg { } ( ) %` and the two mark jumps. `w`, `j`, `$` and
+        `x` are **not** jumps. A jump records its origin even when it lands
+        where it started (`3G` on line three still pushes) and even with an
+        operator pending (`d}` pushes)
+      - the first `<C-o>` after a jump APPENDS the present position before
+        stepping back, which is the only reason `<C-i>` has anywhere to return
+        to — and it is why one `<C-o>` grows the list by one
+      - duplicate entries are removed by LINE, keeping the last occurrence,
+        on the way out rather than on push. Columns are not compared
+      - `<C-o>`/`<C-i>` are commands, not motions: an operator pending makes
+        them beep rather than jump. `<C-i>` and `<Tab>` are the same key
+- [ ] Marks, the jumplist and the previous-context mark are **not serialized**
+      in `EngineSnapshot`, alongside the undo tree / insert session / `lastFind`
+      already listed below. Same deferral, same revisit point
 
 **Wave 4 — automation** `[ ]`
 
 - [ ] Macros `q @ @@` with halt-on-error
 - [ ] Search `/ ? n N * #`, and the `/` register (the comparator currently skips
-      it — re-enable when this lands)
+      it — re-enable when this lands). All six are **jump commands** and must
+      call `recordJump`, and all six set `forcesNumbered` — `MotionResult`
+      already carries both flags, so this is a matter of setting them
 - [ ] Command-line mode, ranges
 - [ ] `:s` with `g`/`c` flags and capture groups
 - [ ] `:g` / `:v`

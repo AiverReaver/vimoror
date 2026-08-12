@@ -32,6 +32,16 @@ export type MotionContext = {
   readonly desiredCol: number;
   /** True while an operator is waiting — enables the `dw` end-of-line wart. */
   readonly operatorPending: boolean;
+  /**
+   * Vim's `one_more`: the cursor may rest ON the end-of-line NUL. True in
+   * visual mode with 'selection' inclusive.
+   *
+   * Only `$` actually produces such a position — `l` refuses to step onto the
+   * NUL without 'virtualedit', which is exactly why `v$d` joins the next line
+   * up while `vlld` over the same characters leaves an empty one behind.
+   * `j`/`k` inherit it through the remembered column.
+   */
+  readonly oneMore?: boolean;
   /** The character argument for `f F t T` and friends. */
   readonly arg?: string;
   readonly lastFind?: { readonly cmd: 'f' | 'F' | 't' | 'T'; readonly ch: string };
@@ -100,7 +110,8 @@ export function moveLineEnd(ctx: MotionContext): MotionResult | null {
   // include — the resulting zero-character region is still a real region,
   // which is why `C` on an empty line writes (empty) registers while a failed
   // motion like `cl` there touches none.
-  return charwise({ line, col: Math.max(0, len - 1) }, true);
+  const col = ctx.oneMore === true ? len : Math.max(0, len - 1);
+  return charwise({ line, col }, true);
 }
 
 // --- vertical ---------------------------------------------------------------
@@ -118,20 +129,21 @@ export function moveUp(ctx: MotionContext): MotionResult | null {
 
 function linewiseKeepingCol(ctx: MotionContext, line: number): MotionResult {
   const len = lineAt(ctx.lines, line).length;
-  const col = Math.min(ctx.desiredCol, Math.max(0, len - 1));
+  const max = ctx.oneMore === true ? len : Math.max(0, len - 1);
+  const col = Math.min(ctx.desiredCol, max);
   return { target: { line, col }, kind: 'linewise', inclusive: false, keepDesiredCol: true };
 }
 
 /** `G`, and `{n}G`. Without a count, the last line. */
 export function moveGotoLine(ctx: MotionContext): MotionResult {
   const line = ctx.hasCount ? Math.min(ctx.count - 1, lastLine(ctx.lines)) : lastLine(ctx.lines);
-  return linewise({ line, col: firstNonBlank(ctx.lines, line) });
+  return { ...linewise({ line, col: firstNonBlank(ctx.lines, line) }), isJump: true };
 }
 
 /** `gg`, and `{n}gg`. Without a count, the first line. */
 export function moveGotoFirstLine(ctx: MotionContext): MotionResult {
   const line = ctx.hasCount ? Math.min(ctx.count - 1, lastLine(ctx.lines)) : 0;
-  return linewise({ line, col: firstNonBlank(ctx.lines, line) });
+  return { ...linewise({ line, col: firstNonBlank(ctx.lines, line) }), isJump: true };
 }
 
 /** `+` / `<CR>` — first non-blank of the next line. */
@@ -386,6 +398,228 @@ export function moveWordEndBackward(ctx: MotionContext): MotionResult | null {
   return charwise(cur, true);
 }
 
+/** Vim's `incl()` — `inc()` that additionally skips the NUL ending a non-empty line. */
+function inclPos(lines: Lines, p: Pos): { readonly pos: Pos; readonly ret: number } {
+  const s = incPos(lines, p);
+  if (s.ret >= 1 && s.pos.col !== 0) return incPos(lines, s.pos);
+  return s;
+}
+
+/** Vim's `decl()` — `dec()` that additionally skips the NUL ending a non-empty line. */
+function declPos(lines: Lines, p: Pos): { readonly pos: Pos; readonly ret: number } {
+  const s = decPos(lines, p);
+  if (s.ret === 1 && s.pos.col !== 0) return decPos(lines, s.pos);
+  return s;
+}
+
+/** Vim's `gchar_pos`: the character at a position, or NUL at an end-of-line. */
+function charOrNul(lines: Lines, p: Pos): string {
+  return lineAt(lines, p.line)[p.col] ?? '';
+}
+
+// --- paragraphs and sentences -----------------------------------------------
+
+/**
+ * Vim's `startPS` with `para = NUL`: a paragraph boundary is a genuinely EMPTY
+ * line or a line beginning with a form feed. A line of SPACES is not one — `}`
+ * walks straight past `"   "`, which is the wart that makes "blank line" the
+ * wrong mental model.
+ *
+ * Vim also honours nroff macros from 'paragraphs'/'sections' here. Those are
+ * deliberately not modelled: the option is not implemented, no stage will set
+ * it, and pretending to support it would be worse than not.
+ */
+function isParagraphBoundary(lines: Lines, line: number): boolean {
+  const text = lineAt(lines, line);
+  return text.length === 0 || text.startsWith('\f');
+}
+
+/**
+ * `{` and `}` — a port of Vim's `findpar` (search.c).
+ *
+ * `did_skip` is the mechanism people get wrong: the walk refuses to accept a
+ * boundary until it has passed at least one NON-EMPTY line, which is why `}`
+ * from inside a run of blank lines jumps clear of the whole run instead of
+ * stopping on the next one.
+ *
+ * Failure is likewise counter-intuitive. Running off the end of the buffer is
+ * only a failure while counts REMAIN: a bare `}` at the end of the buffer (and
+ * `{` at the start) succeeds and simply does not move, so `d}` there runs over
+ * a degenerate region and mints an undo node, while `d2}` aborts and mints
+ * nothing. Both measured.
+ */
+export function moveParagraph(ctx: MotionContext, forward: boolean): MotionResult | null {
+  const dir = forward ? 1 : -1;
+  const last = lastLine(ctx.lines);
+  let curr = ctx.cursor.line;
+  let remaining = ctx.count;
+
+  while (remaining > 0) {
+    remaining -= 1;
+    let didSkip = false;
+    for (let first = true; ; first = false) {
+      if (lineAt(ctx.lines, curr).length !== 0) didSkip = true;
+      if (!first && didSkip && isParagraphBoundary(ctx.lines, curr)) break;
+
+      curr += dir;
+      if (curr < 0 || curr > last) {
+        // Vim tests the count AFTER decrementing, so this is "counts left".
+        if (remaining > 0) return null;
+        curr -= dir;
+        break;
+      }
+    }
+  }
+
+  // findpar's tail: landing on the LAST line puts the cursor on that line's
+  // last character and makes the motion INCLUSIVE, so `d}` at the end of the
+  // buffer takes the final character rather than stopping short of it. An
+  // empty last line has no character to land on and stays exclusive at
+  // column zero.
+  //
+  // Measured: this applies only going FORWARD. `{` on a one-line buffer also
+  // "lands on the last line", and it goes to column zero exclusive — `d{`
+  // there deletes back to the start of the line, it does not become inclusive.
+  if (forward && curr === last) {
+    const len = lineAt(ctx.lines, curr).length;
+    if (len !== 0) {
+      return charwise({ line: curr, col: len - 1 }, true, { forcesNumbered: true, isJump: true });
+    }
+  }
+  return charwise({ line: curr, col: 0 }, false, { forcesNumbered: true, isJump: true });
+}
+
+const SENTENCE_ENDERS = '.!?';
+const SENTENCE_CLOSERS = ')]"\'';
+
+/**
+ * `(` and `)` — a port of Vim's `findsent` (search.c).
+ *
+ * A sentence ends at `.`, `!` or `?`, followed by any number of `)]"'`, then a
+ * space, tab or end of line. `a.b.c` is therefore one sentence: the dots have
+ * no whitespace after them. An empty line is also a sentence boundary, and `)`
+ * lands ON it rather than stepping over it.
+ *
+ * `(` from the middle of a sentence goes to that sentence's own start; from
+ * the exact first character it goes to the previous sentence instead. That
+ * asymmetry is the whole job of the "walk back over trailing punctuation"
+ * loop, and it is why the port is worth having over a regex.
+ */
+export function moveSentence(ctx: MotionContext, forward: boolean): MotionResult | null {
+  const lines = ctx.lines;
+  const advance = (p: Pos): { readonly pos: Pos; readonly ret: number } =>
+    forward ? inclPos(lines, p) : declPos(lines, p);
+
+  let pos = ctx.cursor;
+  let noskip = false;
+  let remaining = ctx.count;
+
+  while (remaining > 0) {
+    remaining -= 1;
+    let found = false;
+
+    if (charOrNul(lines, pos) === '') {
+      // On an empty line: skip to a non-empty one. Going forward that IS the
+      // answer, so the sentence scan below is skipped entirely.
+      for (;;) {
+        const s = advance(pos);
+        if (s.ret === -1) break;
+        pos = s.pos;
+        if (charOrNul(lines, pos) !== '') break;
+      }
+      if (forward) found = true;
+    } else if (forward && pos.col === 0 && isParagraphBoundary(lines, pos.line)) {
+      if (pos.line >= lastLine(lines)) return null;
+      pos = { line: pos.line + 1, col: pos.col };
+      found = true;
+    } else if (!forward) {
+      pos = declPos(lines, pos).pos;
+    }
+
+    if (!found) {
+      // Walk back over whitespace and trailing sentence punctuation, so a
+      // backward search starting just after a full stop does not immediately
+      // re-find the sentence it is already in.
+      let foundDot = false;
+      for (;;) {
+        const c = charOrNul(lines, pos);
+        if (c !== ' ' && c !== '\t' && !SENTENCE_ENDERS.includes(c) && !(c !== '' && SENTENCE_CLOSERS.includes(c))) {
+          break;
+        }
+        if (c === '') break;
+
+        const back = declPos(lines, pos);
+        if (back.ret === -1 || (forward && lineAt(lines, back.pos.line).length === 0)) break;
+        if (foundDot) break;
+        if (SENTENCE_ENDERS.includes(c)) foundDot = true;
+        if (SENTENCE_CLOSERS.includes(c)) {
+          const prev = charOrNul(lines, back.pos);
+          if (prev === '' || !(SENTENCE_ENDERS + SENTENCE_CLOSERS).includes(prev)) break;
+        }
+        pos = declPos(lines, pos).pos;
+      }
+
+      // Find the end of the sentence.
+      const startLine = pos.line;
+      for (;;) {
+        const c = charOrNul(lines, pos);
+        if (c === '' || (pos.col === 0 && isParagraphBoundary(lines, pos.line))) {
+          if (!forward && pos.line !== startLine) pos = { line: pos.line + 1, col: pos.col };
+          break;
+        }
+
+        if (SENTENCE_ENDERS.includes(c)) {
+          // Step past the ender and any closing brackets or quotes; whitespace
+          // or an end of line after them means this really was a sentence end.
+          let tpos = pos;
+          let after = '';
+          for (;;) {
+            const s = incPos(lines, tpos);
+            if (s.ret === -1) {
+              after = '￿'; // Vim's c == -1: ran out of buffer.
+              break;
+            }
+            tpos = s.pos;
+            after = charOrNul(lines, tpos);
+            if (!(after !== '' && SENTENCE_CLOSERS.includes(after))) break;
+          }
+          if (after === '￿' || after === ' ' || after === '\t' || after === '') {
+            pos = tpos;
+            if (charOrNul(lines, pos) === '') pos = incPos(lines, pos).pos;
+            break;
+          }
+        }
+
+        const s = advance(pos);
+        if (s.ret === -1) {
+          if (remaining > 0) return null;
+          noskip = true;
+          break;
+        }
+        pos = s.pos;
+      }
+    }
+
+    // Skip whitespace — always FORWARD, whichever way the motion ran.
+    while (!noskip) {
+      const c = charOrNul(lines, pos);
+      if (c !== ' ' && c !== '\t') break;
+      const s = inclPos(lines, pos);
+      if (s.ret === -1) break;
+      pos = s.pos;
+    }
+  }
+
+  // `nv_brace`'s adjust_cursor: the cursor may not rest on the NUL past the end
+  // of a line, so it steps back one and the motion becomes INCLUSIVE — the same
+  // rule that makes `dw` on the last word of a line take the word but not the
+  // newline.
+  if (pos.col > 0 && charOrNul(lines, pos) === '') {
+    return charwise({ line: pos.line, col: pos.col - 1 }, true, { forcesNumbered: true, isJump: true });
+  }
+  return charwise(pos, false, { forcesNumbered: true, isJump: true });
+}
+
 // --- find within line -------------------------------------------------------
 
 export function moveFind(
@@ -466,7 +700,7 @@ export function moveMatchingBracket(ctx: MotionContext): MotionResult | null {
       depth -= 1;
       // `%` is on Vim's short list of motions (with `( ) / ? n N { }`) whose
       // deletes always shift into the numbered registers, even within a line.
-      if (depth === 0) return charwise({ line, col: c }, true, { forcesNumbered: true });
+      if (depth === 0) return charwise({ line, col: c }, true, { forcesNumbered: true, isJump: true });
     }
 
     if (pair.forward) {

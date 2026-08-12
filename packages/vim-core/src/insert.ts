@@ -49,12 +49,37 @@ export type InsertSession = {
    */
   readonly replaced: readonly (string | null)[];
   /**
-   * A blockwise insert (`<C-v>c`, and later `I`/`A`): typing happens on the
+   * A blockwise insert (`<C-v>c`, `<C-v>I`, `<C-v>A`): typing happens on the
    * first row only, and on `<Esc>` the typed text is replicated down the other
-   * rows at the same column. Rows too short to reach that column are skipped,
-   * exactly as Vim skips them.
+   * rows at the same column.
+   *
+   * Rows too short to reach that column are SKIPPED — except for `A`, which
+   * pads them out with spaces first. That one flag is the whole difference
+   * between `<C-v>I` and `<C-v>A` on a ragged block.
    */
-  readonly blockRows: { readonly firstLine: number; readonly lastLine: number; readonly col: number } | undefined;
+  readonly blockRows:
+    | {
+        readonly firstLine: number;
+        readonly lastLine: number;
+        readonly col: number;
+        /** `A` pads a short row out to the column; `I` and `c` skip it. */
+        readonly pad?: boolean;
+        /** `<C-v>$A` — append at each row's OWN end of line, however ragged. */
+        readonly toEndOfLine?: boolean;
+        /**
+         * Where the cursor lands once the session ends — the BLOCK's own start
+         * column, which for `A` is nowhere near where the typing happened.
+         *
+         * Set for `<C-v>I` and `<C-v>A` and deliberately NOT for `<C-v>c`,
+         * which keeps the ordinary insert-exit rule. Measured: `<C-v>lcXY` ends
+         * on the last typed character while `<C-v>lAXY` ends on the block's
+         * left edge. It applies only when replication actually ran, so a
+         * session that typed nothing — or typed a line break, which abandons
+         * replication — falls back to the ordinary rule too.
+         */
+        readonly landCol?: number;
+      }
+    | undefined;
 };
 
 export type InsertStep = {

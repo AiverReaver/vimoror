@@ -1,0 +1,227 @@
+# `.` — repeat the last change. Wave 3e.
+#
+# `.` does not repeat what you TYPED, it repeats the last *change*, and the
+# gap between those two is the whole difficulty:
+#
+#   f,x   repeats only the `x` — the `f,` was navigation
+#   df,   repeats the whole delete, re-running the search for `,`
+#   yw    is not a change, so `.` still repeats whatever came before it
+#   u     likewise: `dw u .` re-does the delete rather than repeating the undo
+#
+# A count typed on the `.` REPLACES the recorded one outright rather than
+# multiplying it, and then sticks for the next `.`.
+#
+# Harness note: each `.` is its own command, so multi-change cases are written
+# as groups (detail 7). The redo state survives between groups because
+# `s:RunAndCapture` is a single function frame (detail 6) — splitting it would
+# silently reset `.` and every case here would look plausible and be wrong.
+
+cases:
+  # --- what counts as "the last change" ------------------------------------
+  - id: dot/repeats-dw
+    buffer: 'one two three four'
+    cursor: [1, 1]
+    keys: ['dw', '.', '.']
+
+  - id: dot/find-then-x-repeats-only-the-x
+    note: the `f,` was navigation — `.` repeats the `x` alone
+    buffer: 'a,b,c,d'
+    cursor: [1, 1]
+    keys: ['f,x', '.']
+
+  - id: dot/df-repeats-the-whole-delete
+    note: >
+      …but `df,` IS the change, so `.` re-runs it including a fresh search for
+      the next comma. This case and the one above are the pair that make
+      "record the resolved command, not the keystrokes" the only workable design
+    buffer: 'a,b,c,d,e'
+    cursor: [1, 1]
+    keys: ['df,', '.']
+
+  - id: dot/yank-is-not-a-change
+    note: '`yw` leaves the buffer alone, so `.` still repeats the earlier `x`'
+    buffer: 'one two three'
+    cursor: [1, 1]
+    keys: ['x', 'yw', '.']
+
+  - id: dot/undo-is-not-a-change
+    note: '`.` after `u` re-does the delete rather than repeating the undo'
+    buffer: 'one two three four'
+    cursor: [1, 1]
+    keys: ['dw', 'u', '.']
+
+  - id: dot/nothing-recorded-is-a-no-op
+    buffer: 'abc'
+    cursor: [1, 1]
+    keys: '.'
+
+  - id: dot/motion-between-repeats
+    buffer: ['one two', 'three four']
+    cursor: [1, 1]
+    keys: ['dw', 'j0', '.']
+
+  # --- counts ---------------------------------------------------------------
+  - id: dot/reuses-the-original-count
+    buffer: 'a1 a2 a3 a4 a5 a6'
+    cursor: [1, 1]
+    keys: ['2dw', '.']
+
+  - id: dot/new-count-replaces-operator-count
+    note: '`d2w` then `3.` deletes THREE words, not six and not two'
+    buffer: 'a1 a2 a3 a4 a5 a6 a7 a8 a9'
+    cursor: [1, 1]
+    keys: ['d2w', '3.']
+
+  - id: dot/new-count-replaces-both-counts
+    note: >
+      `2d3w` deletes six; `2.` after it deletes TWO. The new count replaces the
+      whole effective count rather than either half of it — which is why the
+      record keeps the count apart from the keys instead of embedded in them
+    buffer: 'a1 a2 a3 a4 a5 a6 a7 a8 a9 b1 b2 b3'
+    cursor: [1, 1]
+    keys: ['2d3w', '2.']
+
+  - id: dot/new-count-sticks-for-the-next-dot
+    buffer: 'a1 a2 a3 a4 a5 a6 a7 a8'
+    cursor: [1, 1]
+    keys: ['dw', '3.', '.']
+
+  - id: dot/count-on-x
+    buffer: 'abcdefgh'
+    cursor: [1, 1]
+    keys: ['x', '3.']
+
+  - id: dot/count-with-text-object
+    buffer: 'one two three'
+    cursor: [1, 1]
+    keys: ['ciwX<Esc>', 'w', '2.']
+
+  # --- the insert half is raw-key replay -----------------------------------
+  - id: dot/ciw-replays-the-typing
+    buffer: 'one two three'
+    cursor: [1, 1]
+    keys: ['ciwX<Esc>', 'w', '.']
+
+  - id: dot/insert-replays-backspace
+    note: >
+      the insert half genuinely IS keystroke replay — the `<BS>` is replayed
+      too, not the net text it produced
+    buffer: 'one two'
+    cursor: [1, 1]
+    keys: ['iabc<BS>Z<Esc>', 'w', '.']
+
+  - id: dot/counted-insert
+    buffer: 'xy'
+    cursor: [1, 1]
+    keys: ['3iA<Esc>', '$', '.']
+
+  - id: dot/append
+    buffer: ['a1', 'a2', 'a3']
+    cursor: [1, 1]
+    keys: ['A!<Esc>', 'j', '.']
+
+  - id: dot/open-line
+    buffer: ['a1', 'a2']
+    cursor: [1, 1]
+    keys: ['oX<Esc>', '.']
+
+  - id: dot/change-line
+    buffer: ['a1', 'a2', 'a3']
+    cursor: [1, 1]
+    keys: ['ccX<Esc>', 'j', '.']
+
+  - id: dot/substitute-char
+    buffer: 'abcdef'
+    cursor: [1, 1]
+    keys: ['sZ<Esc>', 'l', '.']
+
+  - id: dot/D-shortcut
+    buffer: ['abc def', 'ghi jkl']
+    cursor: [1, 4]
+    keys: ['D', 'j', '.']
+
+  # --- other repeatable changes --------------------------------------------
+  - id: dot/put
+    buffer: ['ab', 'cd']
+    cursor: [1, 1]
+    keys: ['yy', 'p', '.']
+
+  - id: dot/put-before
+    buffer: ['ab', 'cd']
+    cursor: [1, 1]
+    keys: ['yy', 'P', '.']
+
+  - id: dot/replace-char
+    buffer: 'abcdef'
+    cursor: [1, 1]
+    keys: ['rZ', 'l', '.']
+
+  - id: dot/tilde
+    buffer: 'abcdef'
+    cursor: [1, 1]
+    keys: ['~', '.']
+
+  - id: dot/shift
+    buffer: ['a1', 'a2', 'a3']
+    cursor: [1, 1]
+    keys: ['>>', '.']
+
+  - id: dot/case-operator
+    buffer: 'one two three'
+    cursor: [1, 1]
+    keys: ['gUw', 'w', '.']
+
+  - id: dot/explicit-register-is-repeated
+    note: the register spec is part of the change, so the repeat writes "a again
+    buffer: ['a1', 'a2', 'a3']
+    cursor: [1, 1]
+    keys: ['"add', '.']
+
+  # --- repeating a visual-mode change --------------------------------------
+  - id: dot/visual-repeats-by-size
+    note: >
+      a visual change repeats the same SIZE of selection at the new cursor, not
+      the same position
+    buffer: ['abcdefgh', 'ijklmnop']
+    cursor: [1, 1]
+    keys: ['vlld', 'j0', '.']
+
+  - id: dot/visual-multiline-uses-absolute-end-column
+    note: >
+      a MULTI-line charwise repeat ends at the column the original ended on,
+      not that many columns past the new cursor — a single-line one is relative.
+      Vim splits these two cases in `redo_VIsual` and so must we
+    buffer: ['abcd', 'efgh', 'ijkl', 'mnop']
+    cursor: [1, 1]
+    keys: ['vjld', '.']
+
+  - id: dot/visual-line-repeats-line-count
+    buffer: ['a1', 'a2', 'a3', 'a4', 'a5']
+    cursor: [1, 1]
+    keys: ['Vjd', '.']
+
+  - id: dot/visual-block-repeats-rectangle
+    buffer: ['abcd', 'efgh', 'ijkl', 'mnop']
+    cursor: [1, 1]
+    keys: ['<C-v>jld', '3G0', '.']
+
+  - id: dot/visual-change-repeats
+    buffer: ['abcdef', 'ghijkl']
+    cursor: [1, 1]
+    keys: ['vlcZ<Esc>', 'j0', '.']
+
+  - id: dot/visual-replace-repeats
+    buffer: ['abcdef', 'ghijkl']
+    cursor: [1, 1]
+    keys: ['vlrZ', 'j0', '.']
+
+  # --- undo granularity -----------------------------------------------------
+  - id: dot/each-repeat-is-its-own-undo-block
+    buffer: 'one two three four'
+    cursor: [1, 1]
+    keys: ['dw', '.', 'u']
+
+  - id: dot/undo-twice-after-two-repeats
+    buffer: 'one two three four five'
+    cursor: [1, 1]
+    keys: ['dw', '.', '.', 'u', 'u']

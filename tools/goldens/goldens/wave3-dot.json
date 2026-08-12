@@ -1,0 +1,1356 @@
+[
+  {
+    "id": "dot/repeats-dw",
+    "buffer": [
+      "one two three four"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "dw..",
+    "groups": [
+      "dw",
+      ".",
+      "."
+    ],
+    "encodedKeys": "dw..",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "three "
+        },
+        "-": {
+          "type": "v",
+          "text": "three "
+        }
+      },
+      "buffer": [
+        "four"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "dot/find-then-x-repeats-only-the-x",
+    "buffer": [
+      "a,b,c,d"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "f,x.",
+    "groups": [
+      "f,x",
+      "."
+    ],
+    "note": "the `f,` was navigation — `.` repeats the `x` alone",
+    "encodedKeys": "f,x.",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "b"
+        },
+        "-": {
+          "type": "v",
+          "text": "b"
+        }
+      },
+      "buffer": [
+        "a,c,d"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "dot/df-repeats-the-whole-delete",
+    "buffer": [
+      "a,b,c,d,e"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "df,.",
+    "groups": [
+      "df,",
+      "."
+    ],
+    "note": "…but `df,` IS the change, so `.` re-runs it including a fresh search for the next comma. This case and the one above are the pair that make \"record the resolved command, not the keystrokes\" the only workable design\n",
+    "encodedKeys": "df,.",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "b,"
+        },
+        "-": {
+          "type": "v",
+          "text": "b,"
+        }
+      },
+      "buffer": [
+        "c,d,e"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "dot/yank-is-not-a-change",
+    "buffer": [
+      "one two three"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "xyw.",
+    "groups": [
+      "x",
+      "yw",
+      "."
+    ],
+    "note": "`yw` leaves the buffer alone, so `.` still repeats the earlier `x`",
+    "encodedKeys": "xyw.",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "ne "
+        },
+        "\"": {
+          "type": "v",
+          "text": "n"
+        },
+        "-": {
+          "type": "v",
+          "text": "n"
+        }
+      },
+      "buffer": [
+        "e two three"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "dot/undo-is-not-a-change",
+    "buffer": [
+      "one two three four"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "dwu.",
+    "groups": [
+      "dw",
+      "u",
+      "."
+    ],
+    "note": "`.` after `u` re-does the delete rather than repeating the undo",
+    "encodedKeys": "dwu.",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "one "
+        },
+        "-": {
+          "type": "v",
+          "text": "one "
+        }
+      },
+      "buffer": [
+        "two three four"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "dot/nothing-recorded-is-a-no-op",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ".",
+    "groups": [
+      "."
+    ],
+    "encodedKeys": ".",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "abc"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "dot/motion-between-repeats",
+    "buffer": [
+      "one two",
+      "three four"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "dwj0.",
+    "groups": [
+      "dw",
+      "j0",
+      "."
+    ],
+    "encodedKeys": "dwj0.",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "three "
+        },
+        "-": {
+          "type": "v",
+          "text": "three "
+        }
+      },
+      "buffer": [
+        "two",
+        "four"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "dot/reuses-the-original-count",
+    "buffer": [
+      "a1 a2 a3 a4 a5 a6"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "2dw.",
+    "groups": [
+      "2dw",
+      "."
+    ],
+    "encodedKeys": "2dw.",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a3 a4 "
+        },
+        "-": {
+          "type": "v",
+          "text": "a3 a4 "
+        }
+      },
+      "buffer": [
+        "a5 a6"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "dot/new-count-replaces-operator-count",
+    "buffer": [
+      "a1 a2 a3 a4 a5 a6 a7 a8 a9"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "d2w3.",
+    "groups": [
+      "d2w",
+      "3."
+    ],
+    "note": "`d2w` then `3.` deletes THREE words, not six and not two",
+    "encodedKeys": "d2w3.",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a3 a4 a5 "
+        },
+        "-": {
+          "type": "v",
+          "text": "a3 a4 a5 "
+        }
+      },
+      "buffer": [
+        "a6 a7 a8 a9"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "dot/new-count-replaces-both-counts",
+    "buffer": [
+      "a1 a2 a3 a4 a5 a6 a7 a8 a9 b1 b2 b3"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "2d3w2.",
+    "groups": [
+      "2d3w",
+      "2."
+    ],
+    "note": "`2d3w` deletes six; `2.` after it deletes TWO. The new count replaces the whole effective count rather than either half of it — which is why the record keeps the count apart from the keys instead of embedded in them\n",
+    "encodedKeys": "2d3w2.",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a7 a8 "
+        },
+        "-": {
+          "type": "v",
+          "text": "a7 a8 "
+        }
+      },
+      "buffer": [
+        "a9 b1 b2 b3"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "dot/new-count-sticks-for-the-next-dot",
+    "buffer": [
+      "a1 a2 a3 a4 a5 a6 a7 a8"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "dw3..",
+    "groups": [
+      "dw",
+      "3.",
+      "."
+    ],
+    "encodedKeys": "dw3..",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a5 a6 a7 "
+        },
+        "-": {
+          "type": "v",
+          "text": "a5 a6 a7 "
+        }
+      },
+      "buffer": [
+        "a8"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "dot/count-on-x",
+    "buffer": [
+      "abcdefgh"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "x3.",
+    "groups": [
+      "x",
+      "3."
+    ],
+    "encodedKeys": "x3.",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "bcd"
+        },
+        "-": {
+          "type": "v",
+          "text": "bcd"
+        }
+      },
+      "buffer": [
+        "efgh"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "dot/count-with-text-object",
+    "buffer": [
+      "one two three"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "ciwX<Esc>w2.",
+    "groups": [
+      "ciwX<Esc>",
+      "w",
+      "2."
+    ],
+    "encodedKeys": "ciwX\u001bw2.",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "two "
+        },
+        "-": {
+          "type": "v",
+          "text": "two "
+        }
+      },
+      "buffer": [
+        "X Xthree"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "dot/ciw-replays-the-typing",
+    "buffer": [
+      "one two three"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "ciwX<Esc>w.",
+    "groups": [
+      "ciwX<Esc>",
+      "w",
+      "."
+    ],
+    "encodedKeys": "ciwX\u001bw.",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "two"
+        },
+        "-": {
+          "type": "v",
+          "text": "two"
+        }
+      },
+      "buffer": [
+        "X X three"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "dot/insert-replays-backspace",
+    "buffer": [
+      "one two"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "iabc<BS>Z<Esc>w.",
+    "groups": [
+      "iabc<BS>Z<Esc>",
+      "w",
+      "."
+    ],
+    "note": "the insert half genuinely IS keystroke replay — the `<BS>` is replayed too, not the net text it produced\n",
+    "encodedKeys": "iabc\bZ\u001bw.",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "abZone abZtwo"
+      ],
+      "cursor": [
+        1,
+        10
+      ],
+      "error": "",
+      "curswant": 10
+    }
+  },
+  {
+    "id": "dot/counted-insert",
+    "buffer": [
+      "xy"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "3iA<Esc>$.",
+    "groups": [
+      "3iA<Esc>",
+      "$",
+      "."
+    ],
+    "encodedKeys": "3iA\u001b$.",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "AAAxAAAy"
+      ],
+      "cursor": [
+        1,
+        7
+      ],
+      "error": "",
+      "curswant": 7
+    }
+  },
+  {
+    "id": "dot/append",
+    "buffer": [
+      "a1",
+      "a2",
+      "a3"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "A!<Esc>j.",
+    "groups": [
+      "A!<Esc>",
+      "j",
+      "."
+    ],
+    "encodedKeys": "A!\u001bj.",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "a1!",
+        "a2!",
+        "a3"
+      ],
+      "cursor": [
+        2,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "dot/open-line",
+    "buffer": [
+      "a1",
+      "a2"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "oX<Esc>.",
+    "groups": [
+      "oX<Esc>",
+      "."
+    ],
+    "encodedKeys": "oX\u001b.",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "a1",
+        "X",
+        "X",
+        "a2"
+      ],
+      "cursor": [
+        3,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "dot/change-line",
+    "buffer": [
+      "a1",
+      "a2",
+      "a3"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "ccX<Esc>j.",
+    "groups": [
+      "ccX<Esc>",
+      "j",
+      "."
+    ],
+    "encodedKeys": "ccX\u001bj.",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "a2\n"
+        },
+        "2": {
+          "type": "V",
+          "text": "a1\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "a2\n"
+        }
+      },
+      "buffer": [
+        "X",
+        "X",
+        "a3"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "dot/substitute-char",
+    "buffer": [
+      "abcdef"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "sZ<Esc>l.",
+    "groups": [
+      "sZ<Esc>",
+      "l",
+      "."
+    ],
+    "encodedKeys": "sZ\u001bl.",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "b"
+        },
+        "-": {
+          "type": "v",
+          "text": "b"
+        }
+      },
+      "buffer": [
+        "ZZcdef"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "dot/D-shortcut",
+    "buffer": [
+      "abc def",
+      "ghi jkl"
+    ],
+    "cursor": [
+      1,
+      4
+    ],
+    "keys": "Dj.",
+    "groups": [
+      "D",
+      "j",
+      "."
+    ],
+    "encodedKeys": "Dj.",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "i jkl"
+        },
+        "-": {
+          "type": "v",
+          "text": "i jkl"
+        }
+      },
+      "buffer": [
+        "abc",
+        "gh"
+      ],
+      "cursor": [
+        2,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "dot/put",
+    "buffer": [
+      "ab",
+      "cd"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "yyp.",
+    "groups": [
+      "yy",
+      "p",
+      "."
+    ],
+    "encodedKeys": "yyp.",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "ab\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "ab\n"
+        }
+      },
+      "buffer": [
+        "ab",
+        "ab",
+        "ab",
+        "cd"
+      ],
+      "cursor": [
+        3,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "dot/put-before",
+    "buffer": [
+      "ab",
+      "cd"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "yyP.",
+    "groups": [
+      "yy",
+      "P",
+      "."
+    ],
+    "encodedKeys": "yyP.",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "ab\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "ab\n"
+        }
+      },
+      "buffer": [
+        "ab",
+        "ab",
+        "ab",
+        "cd"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "dot/replace-char",
+    "buffer": [
+      "abcdef"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "rZl.",
+    "groups": [
+      "rZ",
+      "l",
+      "."
+    ],
+    "encodedKeys": "rZl.",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "ZZcdef"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "dot/tilde",
+    "buffer": [
+      "abcdef"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "~.",
+    "groups": [
+      "~",
+      "."
+    ],
+    "encodedKeys": "~.",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "ABcdef"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "dot/shift",
+    "buffer": [
+      "a1",
+      "a2",
+      "a3"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ">>.",
+    "groups": [
+      ">>",
+      "."
+    ],
+    "encodedKeys": ">>.",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "        a1",
+        "a2",
+        "a3"
+      ],
+      "cursor": [
+        1,
+        9
+      ],
+      "error": "",
+      "curswant": 9
+    }
+  },
+  {
+    "id": "dot/case-operator",
+    "buffer": [
+      "one two three"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "gUww.",
+    "groups": [
+      "gUw",
+      "w",
+      "."
+    ],
+    "encodedKeys": "gUww.",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "ONE TWO three"
+      ],
+      "cursor": [
+        1,
+        5
+      ],
+      "error": "",
+      "curswant": 5
+    }
+  },
+  {
+    "id": "dot/explicit-register-is-repeated",
+    "buffer": [
+      "a1",
+      "a2",
+      "a3"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "\"add.",
+    "groups": [
+      "\"add",
+      "."
+    ],
+    "note": "the register spec is part of the change, so the repeat writes \"a again",
+    "encodedKeys": "\"add.",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "a2\n"
+        },
+        "2": {
+          "type": "V",
+          "text": "a1\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "a2\n"
+        },
+        "a": {
+          "type": "V",
+          "text": "a2\n"
+        }
+      },
+      "buffer": [
+        "a3"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "dot/visual-repeats-by-size",
+    "buffer": [
+      "abcdefgh",
+      "ijklmnop"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "vlldj0.",
+    "groups": [
+      "vlld",
+      "j0",
+      "."
+    ],
+    "note": "a visual change repeats the same SIZE of selection at the new cursor, not the same position\n",
+    "encodedKeys": "vlldj0.",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "ijk"
+        },
+        "-": {
+          "type": "v",
+          "text": "ijk"
+        }
+      },
+      "buffer": [
+        "defgh",
+        "lmnop"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "dot/visual-multiline-uses-absolute-end-column",
+    "buffer": [
+      "abcd",
+      "efgh",
+      "ijkl",
+      "mnop"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "vjld.",
+    "groups": [
+      "vjld",
+      "."
+    ],
+    "note": "a MULTI-line charwise repeat ends at the column the original ended on, not that many columns past the new cursor — a single-line one is relative. Vim splits these two cases in `redo_VIsual` and so must we\n",
+    "encodedKeys": "vjld.",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "v",
+          "text": "gh\nij"
+        },
+        "2": {
+          "type": "v",
+          "text": "abcd\nef"
+        },
+        "\"": {
+          "type": "v",
+          "text": "gh\nij"
+        }
+      },
+      "buffer": [
+        "kl",
+        "mnop"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "dot/visual-line-repeats-line-count",
+    "buffer": [
+      "a1",
+      "a2",
+      "a3",
+      "a4",
+      "a5"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "Vjd.",
+    "groups": [
+      "Vjd",
+      "."
+    ],
+    "encodedKeys": "Vjd.",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "a3\na4\n"
+        },
+        "2": {
+          "type": "V",
+          "text": "a1\na2\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "a3\na4\n"
+        }
+      },
+      "buffer": [
+        "a5"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "dot/visual-block-repeats-rectangle",
+    "buffer": [
+      "abcd",
+      "efgh",
+      "ijkl",
+      "mnop"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "<C-v>jld3G0.",
+    "groups": [
+      "<C-v>jld",
+      "3G0",
+      "."
+    ],
+    "encodedKeys": "\u0016jld3G0.",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "\u00162",
+          "text": "ij\nmn"
+        },
+        "2": {
+          "type": "\u00162",
+          "text": "ab\nef"
+        },
+        "\"": {
+          "type": "\u00162",
+          "text": "ij\nmn"
+        }
+      },
+      "buffer": [
+        "cd",
+        "gh",
+        "kl",
+        "op"
+      ],
+      "cursor": [
+        3,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "dot/visual-change-repeats",
+    "buffer": [
+      "abcdef",
+      "ghijkl"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "vlcZ<Esc>j0.",
+    "groups": [
+      "vlcZ<Esc>",
+      "j0",
+      "."
+    ],
+    "encodedKeys": "vlcZ\u001bj0.",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "gh"
+        },
+        "-": {
+          "type": "v",
+          "text": "gh"
+        }
+      },
+      "buffer": [
+        "Zcdef",
+        "Zijkl"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "dot/visual-replace-repeats",
+    "buffer": [
+      "abcdef",
+      "ghijkl"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "vlrZj0.",
+    "groups": [
+      "vlrZ",
+      "j0",
+      "."
+    ],
+    "encodedKeys": "vlrZj0.",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "ZZcdef",
+        "ZZijkl"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "dot/each-repeat-is-its-own-undo-block",
+    "buffer": [
+      "one two three four"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "dw.u",
+    "groups": [
+      "dw",
+      ".",
+      "u"
+    ],
+    "encodedKeys": "dw.u",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "two "
+        },
+        "-": {
+          "type": "v",
+          "text": "two "
+        }
+      },
+      "buffer": [
+        "two three four"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "dot/undo-twice-after-two-repeats",
+    "buffer": [
+      "one two three four five"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "dw..uu",
+    "groups": [
+      "dw",
+      ".",
+      ".",
+      "u",
+      "u"
+    ],
+    "encodedKeys": "dw..uu",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "three "
+        },
+        "-": {
+          "type": "v",
+          "text": "three "
+        }
+      },
+      "buffer": [
+        "two three four five"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  }
+]

@@ -12,7 +12,9 @@
  */
 
 import { applyEdit, clamp, comparePos, firstNonBlank, lastLine, lineAt, type Lines } from './buffer.ts';
+import * as D from './dot.ts';
 import * as I from './insert.ts';
+import * as K from './marks.ts';
 import * as M from './motions.ts';
 import * as O from './operators.ts';
 import * as P from './put.ts';
@@ -43,7 +45,25 @@ export type Pending = {
   readonly operator: O.OperatorName | undefined;
   readonly operatorCount: string;
   readonly keyBuffer: readonly KeyToken[];
-  readonly awaiting: 'find' | 'replace' | 'register' | 'g' | 'textobject' | undefined;
+  /**
+   * The same keys as `keyBuffer` but with COUNT digits omitted — this is what
+   * `.` records, so that a count typed on the `.` can replace the original
+   * outright rather than being concatenated with it.
+   */
+  readonly dotKeys: readonly KeyToken[];
+  readonly awaiting:
+    | 'find'
+    | 'replace'
+    | 'register'
+    | 'g'
+    | 'textobject'
+    /** `m` — waiting for the letter to record. */
+    | 'mark'
+    /** `` ` `` — waiting for the letter to jump to, exactly. */
+    | 'mark-exact'
+    /** `'` — waiting for the letter to jump to, linewise. */
+    | 'mark-line'
+    | undefined;
   readonly findCmd: 'f' | 'F' | 't' | 'T' | undefined;
   /** `i` or `a`, while waiting for the object character in `di(`, `caw`. */
   readonly textObjectKind: T.ObjectKind | undefined;
@@ -55,6 +75,7 @@ export const EMPTY_PENDING: Pending = {
   operator: undefined,
   operatorCount: '',
   keyBuffer: [],
+  dotKeys: [],
   awaiting: undefined,
   findCmd: undefined,
   textObjectKind: undefined,
@@ -78,6 +99,30 @@ export type EditorState = {
    * cursor, which is why every motion works in visual mode for free.
    */
   readonly visualStart: Pos | undefined;
+  /**
+   * The selection `gv` restores. Recorded on every exit from visual mode,
+   * whether by `<Esc>` or by running an operator, which is why `gv` works
+   * equally well after `y` as after a cancelled selection.
+   */
+  readonly lastVisual: { readonly mode: Mode; readonly start: Pos; readonly end: Pos } | undefined;
+  /** The last change, for `.`. */
+  readonly dot: D.DotRecord | undefined;
+  /**
+   * The command half of a record whose insert session has not closed yet. `.`
+   * cannot repeat a half-finished change, so this is deliberately separate
+   * from `dot` until `<Esc>` arrives.
+   */
+  readonly dotPending: Omit<D.DotRecord, 'insertKeys'> | undefined;
+  /** True while `.` is feeding recorded keys, so the replay records nothing. */
+  readonly replaying: boolean;
+  readonly marks: K.Marks;
+  readonly jumps: K.JumpList;
+  /**
+   * Vim's `w_pcmark` — the previous-context mark that `` `` `` and `''` return
+   * to. Every jump command overwrites it, which is why it is separate from the
+   * jumplist index: `<C-o>` walks the list without disturbing this.
+   */
+  readonly pcmark: Pos | undefined;
 };
 
 export function initState(
@@ -100,6 +145,13 @@ export function initState(
     options,
     insert: undefined,
     visualStart: undefined,
+    lastVisual: undefined,
+    dot: undefined,
+    dotPending: undefined,
+    replaying: false,
+    marks: {},
+    jumps: K.EMPTY_JUMPS,
+    pcmark: undefined,
   };
 }
 
@@ -170,7 +222,7 @@ function commit(
 ): EditorState {
   const clamped = clamp(lines, cursor, false);
   return {
-    ...state,
+    ...withShiftedMarks(state, lines),
     lines,
     cursor: clamped,
     desiredCol: clamped.col,
@@ -180,10 +232,33 @@ function commit(
   };
 }
 
-/** Change the buffer WITHOUT closing an undo block — used inside insert mode. */
+/**
+ * Move every stored position to keep up with an edit that added or removed
+ * lines. Marks on a deleted line are destroyed; jumplist entries there clamp
+ * instead. An edit that leaves the line count alone moves nothing at all.
+ */
+function withShiftedMarks(state: EditorState, lines: Lines): EditorState {
+  const shift = K.lineShift(state.lines, lines);
+  if (shift === null) return state;
+  return {
+    ...state,
+    marks: K.adjustMarks(state.marks, shift),
+    jumps: K.adjustJumps(state.jumps, shift),
+    pcmark: state.pcmark === undefined ? undefined : K.adjustPos(state.pcmark, shift),
+  };
+}
+
+/**
+ * Change the buffer WITHOUT closing an undo block — used inside insert mode.
+ *
+ * Marks shift here too, not only at `commit`. `o`/`O` open their line through
+ * this path long before `<Esc>` arrives, so a shift deferred to `finishInsert`
+ * would compare two buffers that already both contain the new line and
+ * conclude nothing had moved.
+ */
 function mutate(state: EditorState, lines: Lines, cursor: Pos, allowEol: boolean): EditorState {
   const clamped = clamp(lines, cursor, allowEol);
-  return { ...state, lines, cursor: clamped, desiredCol: clamped.col };
+  return { ...withShiftedMarks(state, lines), lines, cursor: clamped, desiredCol: clamped.col };
 }
 
 function bufferChanged(from: number, to: number): EngineEvent {
@@ -207,6 +282,7 @@ function changedSpan(before: Lines, after: Lines, from: number, to?: number): En
 const MOTION_KEYS = new Set([
   'h', 'l', '0', '^', '$', 'j', 'k', 'G', '+', '-', '_',
   'w', 'W', 'b', 'B', 'e', 'E', '%', ';', ',', '<BS>', '<Space>', '<CR>',
+  '{', '}', '(', ')',
 ]);
 
 const OPERATORS: Record<string, O.OperatorName> = { d: 'd', c: 'c', y: 'y', '>': '>', '<': '<' };
@@ -219,7 +295,13 @@ function doublingKey(op: O.OperatorName): string {
   return op;
 }
 
-function motionCtx(state: EditorState, count: number, hasCount: boolean, operatorPending: boolean): M.MotionContext {
+function motionCtx(
+  state: EditorState,
+  count: number,
+  hasCount: boolean,
+  operatorPending: boolean,
+  oneMore = false,
+): M.MotionContext {
   return {
     lines: state.lines,
     cursor: state.cursor,
@@ -227,6 +309,7 @@ function motionCtx(state: EditorState, count: number, hasCount: boolean, operato
     hasCount,
     desiredCol: state.desiredCol,
     operatorPending,
+    oneMore,
     ...(state.lastFind ? { lastFind: state.lastFind } : {}),
   };
 }
@@ -237,8 +320,9 @@ function resolveMotion(
   operatorPending: boolean,
   count: number,
   hasCount: boolean,
+  oneMore = false,
 ): MotionResult | null {
-  const ctx = motionCtx(state, count, hasCount, operatorPending);
+  const ctx = motionCtx(state, count, hasCount, operatorPending, oneMore);
 
   switch (key) {
     case 'h':
@@ -280,6 +364,14 @@ function resolveMotion(
       return M.moveWordEnd({ ...ctx, arg: 'E' });
     case '%':
       return M.moveMatchingBracket(ctx);
+    case '{':
+      return M.moveParagraph(ctx, false);
+    case '}':
+      return M.moveParagraph(ctx, true);
+    case '(':
+      return M.moveSentence(ctx, false);
+    case ')':
+      return M.moveSentence(ctx, true);
     case ';':
       return M.moveFindRepeat(ctx, false);
     case ',':
@@ -315,16 +407,93 @@ function changeWordMotion(state: EditorState, big: boolean, count: number): Moti
 
 export function step(state: EditorState, key: KeyToken): StepResult {
   if (!isPolicyAllowed(state.keyPolicy, key)) return reject(state, key, 'key-locked');
+  const result = dispatch(state, key);
+  // The `.` record is maintained OUTSIDE the reducer proper: it watches what a
+  // key did rather than asking each command to declare itself, so no future
+  // command can be added and silently forget to be repeatable.
+  if (state.replaying) return result;
+  return { ...result, state: recordChange(state, key, result.state) };
+}
+
+function dispatch(state: EditorState, key: KeyToken): StepResult {
   if (state.mode === 'insert' || state.mode === 'replace') return stepInsert(state, key);
   if (isVisual(state.mode)) return stepVisual(state, key);
   if (state.mode === 'normal' || state.mode === 'operator-pending') return stepNormal(state, key);
   return reject(state, key, 'not-in-mode');
 }
 
+/** Keys that change the buffer but are emphatically NOT changes to repeat. */
+const NEVER_RECORDED = new Set<KeyToken>(['u', '<C-r>', '.']);
+
+/** The selection's shape, captured before the operator consumed it. */
+function shapeOfSelection(before: EditorState): D.VisualShape {
+  const anchor = before.visualStart ?? before.cursor;
+  const backwards = comparePos(before.cursor, anchor) < 0;
+  const from = backwards ? before.cursor : anchor;
+  const to = backwards ? anchor : before.cursor;
+  return {
+    mode: before.mode,
+    lines: to.line - from.line,
+    cols: Math.abs(to.col - from.col) + 1,
+    endCol: to.col,
+  };
+}
+
+/**
+ * Decide whether the key just fed completed a change, and if so record it.
+ *
+ * The three cases are genuinely different and collapsing them loses `.`:
+ *  - a command that OPENED insert mode is only half a change; its record waits
+ *    in `dotPending` until `<Esc>` supplies the typed half;
+ *  - a command that CLOSED insert mode completes that record;
+ *  - anything else is a change exactly when it altered the buffer.
+ */
+function recordChange(before: EditorState, key: KeyToken, after: EditorState): EditorState {
+  const wasInsert = before.mode === 'insert' || before.mode === 'replace';
+  const nowInsert = after.mode === 'insert' || after.mode === 'replace';
+
+  if (wasInsert && nowInsert) return after;
+
+  if (wasInsert && !nowInsert) {
+    const pending = before.dotPending;
+    if (pending === undefined) return after;
+    // The insert half IS raw-key replay — `<BS>` included, exactly as Vim's
+    // redo buffer replays it.
+    return { ...after, dot: { ...pending, insertKeys: [...(before.insert?.keys ?? []), key] }, dotPending: undefined };
+  }
+
+  const visual = isVisual(before.mode) ? shapeOfSelection(before) : undefined;
+  const keys = [...before.pending.dotKeys, key];
+  const { count } = countOf(before.pending);
+  const typedCount = before.pending.count !== '' || before.pending.operatorCount !== '' ? count : 0;
+
+  if (!wasInsert && nowInsert) {
+    return { ...after, dotPending: { keys, count: typedCount, visual } };
+  }
+
+  if (NEVER_RECORDED.has(key)) return after;
+  // A change is a change exactly when the buffer moved. A yank leaves it
+  // alone, which is why `x yw .` still repeats the `x`.
+  if (before.lines === after.lines) return after;
+  return { ...after, dot: { keys, count: typedCount, insertKeys: [], visual } };
+}
+
 function stepNormal(state: EditorState, key: KeyToken): StepResult {
   const p = state.pending;
   const keys = [...p.keyBuffer, key];
-  const bump = (patch: Partial<Pending>): Pending => ({ ...p, ...patch, keyBuffer: keys });
+  const bump = (patch: Partial<Pending>): Pending => ({
+    ...p,
+    ...patch,
+    keyBuffer: keys,
+    dotKeys: [...p.dotKeys, key],
+  });
+  /** Same, but for a key consumed as a COUNT digit — `.` records those apart. */
+  const bumpCount = (patch: Partial<Pending>): Pending => ({
+    ...p,
+    ...patch,
+    keyBuffer: keys,
+    dotKeys: p.dotKeys,
+  });
   const opPending = p.operator !== undefined;
 
   // --- awaiting a character argument ---------------------------------------
@@ -355,7 +524,7 @@ function stepNormal(state: EditorState, key: KeyToken): StepResult {
     // An object names its region outright, so the operated text starts at the
     // region's own start — column ZERO for a linewise object, which is why
     // `yip` lands on column one while `yy` keeps the column it had.
-    return runOperator(state, p.operator!, range, O.rangeStart(range), false, true);
+    return runOperator(state, p.operator!, range, O.rangeStart(range), { fromObject: true });
   }
 
   if (p.awaiting === 'replace') {
@@ -364,13 +533,28 @@ function stepNormal(state: EditorState, key: KeyToken): StepResult {
     return doReplaceChar(state, key, countOf(p).count);
   }
 
+  if (p.awaiting === 'mark') {
+    if (!K.isMarkName(key)) return invalid(state, keys.join(''), 'unknown-key');
+    // Setting a mark is not a jump and not a change: no undo node, no
+    // jumplist entry, nothing but the recorded position.
+    return {
+      state: { ...state, marks: { ...state.marks, [key]: state.cursor }, pending: EMPTY_PENDING },
+      events: [],
+    };
+  }
+
+  if (p.awaiting === 'mark-exact' || p.awaiting === 'mark-line') {
+    return doMarkJump(state, key, p.awaiting === 'mark-line', keys.join(''));
+  }
+
   if (p.awaiting === 'g') {
     const { count, hasCount } = countOf(p);
     switch (key) {
       case 'g': {
         const r = M.moveGotoFirstLine(motionCtx(state, count, hasCount, opPending));
-        if (opPending) return applyOperator(state, p.operator!, r, keys.join(''));
-        return withCursor(state, r.target);
+        const jumped = recordJump(state);
+        if (opPending) return applyOperator(jumped, p.operator!, r, keys.join(''));
+        return withCursor(jumped, r.target);
       }
       case 'e':
       case 'E': {
@@ -391,6 +575,9 @@ function stepNormal(state: EditorState, key: KeyToken): StepResult {
         if (opPending) return invalid(state, keys.join(''), 'no-such-motion');
         return pendingOnly(state, bump({ operator: op, awaiting: undefined }));
       }
+      case 'v':
+        if (opPending) return invalid(state, keys.join(''), 'no-such-motion');
+        return reselect(state, undefined);
       default:
         return invalid(state, keys.join(''), 'no-such-motion');
     }
@@ -401,7 +588,7 @@ function stepNormal(state: EditorState, key: KeyToken): StepResult {
   // `0` is a motion, not a count digit, unless a count is already building.
   const countBuf = opPending ? p.operatorCount : p.count;
   if (/^[1-9]$/.test(key) || (key === '0' && countBuf !== '')) {
-    return pendingOnly(state, bump(opPending ? { operatorCount: countBuf + key } : { count: countBuf + key }));
+    return pendingOnly(state, bumpCount(opPending ? { operatorCount: countBuf + key } : { count: countBuf + key }));
   }
 
   if (key === '"') return pendingOnly(state, bump({ awaiting: 'register' }));
@@ -413,6 +600,23 @@ function stepNormal(state: EditorState, key: KeyToken): StepResult {
 
   if (key === 'f' || key === 'F' || key === 't' || key === 'T') {
     return pendingOnly(state, bump({ awaiting: 'find', findCmd: key }));
+  }
+
+  // `` ` `` and `'` are motions, so they compose with operators. `m` is not —
+  // `dm` is nonsense, and Vim beeps rather than swallowing the next key.
+  if (key === '`') return pendingOnly(state, bump({ awaiting: 'mark-exact' }));
+  if (key === "'") return pendingOnly(state, bump({ awaiting: 'mark-line' }));
+  if (key === 'm') {
+    if (opPending) return invalid(state, keys.join(''), 'no-such-motion');
+    return pendingOnly(state, bump({ awaiting: 'mark' }));
+  }
+
+  // `<C-o>`/`<C-i>` are commands, not motions — Vim's `checkclearopq` beeps
+  // when an operator is pending rather than jumping. `<C-i>` and `<Tab>` are
+  // the same key at the terminal, so both must work.
+  if (key === '<C-o>' || key === '<C-i>' || key === '<Tab>') {
+    if (opPending) return invalid(state, keys.join(''), 'no-such-motion');
+    return doJumpList(state, key === '<C-o>' ? -count : count);
   }
 
   // --- operators ------------------------------------------------------------
@@ -442,11 +646,16 @@ function stepNormal(state: EditorState, key: KeyToken): StepResult {
         : resolveMotion(state, key, opPending, count, hasCount);
 
     if (motion === null) return invalid(state, keys.join(''), 'motion-failed');
-    if (opPending) return applyOperator(state, p.operator!, motion, keys.join(''));
+    // A jump records its origin even when it lands where it started (`3G` on
+    // line three still pushes) and even with an operator pending (`d}` pushes)
+    // — but only once the motion has SUCCEEDED, since Vim's setpcmark sits
+    // after the walk.
+    const jumped = motion.isJump === true ? recordJump(state) : state;
+    if (opPending) return applyOperator(jumped, p.operator!, motion, keys.join(''));
 
     const desired = key === '$' ? MAX_COL : undefined;
     const keep = motion.keepDesiredCol === true ? state.desiredCol : desired;
-    return withCursor(state, motion.target, keep);
+    return withCursor(jumped, motion.target, keep);
   }
 
   // Anything below is a complete command, so an operator still pending means
@@ -468,6 +677,8 @@ function stepNormal(state: EditorState, key: KeyToken): StepResult {
       return doUndo(state);
     case '<C-r>':
       return doRedo(state);
+    case '.':
+      return doRepeat(state, hasCount ? count : 0);
     case 'p':
       return doPut(state, count, true);
     case 'P':
@@ -555,7 +766,7 @@ function applyOperator(
   // Where the operated text starts, as a position — several operators put the
   // cursor exactly here rather than on a first-non-blank.
   const opStart = comparePos(motion.target, state.cursor) < 0 ? motion.target : state.cursor;
-  return runOperator(state, op, range, opStart, motion.forcesNumbered === true);
+  return runOperator(state, op, range, opStart, { forcesNumbered: motion.forcesNumbered === true });
 }
 
 /**
@@ -576,24 +787,44 @@ function applyLinewise(state: EditorState, op: O.OperatorName, count: number, ke
   };
   const opStart = comparePos(target, state.cursor) < 0 ? target : state.cursor;
   const range: O.OperatorRange = { kind: 'linewise', firstLine: state.cursor.line, lastLine: landed };
-  return runOperator(state, op, range, opStart, false);
+  return runOperator(state, op, range, opStart);
 }
+
+type RunOperator = {
+  /** A delete over this region always shifts into `"1` (`% { } ( )` and marks). */
+  readonly forcesNumbered?: boolean;
+  /** The region came from a text object rather than from a motion. */
+  readonly fromObject?: boolean;
+  /**
+   * The region came from a VISUAL selection. Vim carries this as
+   * `oap->is_VIsual` and branches on it in more places than one would guess —
+   * `op_delete`'s linewise promotion is skipped, and the region's start column
+   * is real the way an object's is.
+   */
+  readonly fromVisual?: boolean;
+  /**
+   * How many times to apply a SHIFT. In visual mode a count before `>` means
+   * "shift this much", so `2>` moves two shiftwidths — unlike normal mode's
+   * `2>>`, where the count means two LINES.
+   */
+  readonly shiftCount?: number;
+};
 
 function runOperator(
   state: EditorState,
   op: O.OperatorName,
   range: O.OperatorRange,
   opStart: Pos,
-  forcesNumbered: boolean,
-  /** The region came from a text object rather than from a motion. */
-  fromObject = false,
-  /**
-   * How many times to apply a SHIFT. In visual mode a count before `>` means
-   * "shift this much", so `2>` moves two shiftwidths — unlike normal mode's
-   * `2>>`, where the count means two LINES.
-   */
-  shiftCount = 1,
+  opts: RunOperator = {},
 ): StepResult {
+  const forcesNumbered = opts.forcesNumbered === true;
+  const fromVisual = opts.fromVisual === true;
+  // A visual selection names its own region, so its start column is real in
+  // exactly the way a text object's is — both pull a linewise yank's cursor to
+  // column one, where a linewise MOTION leaves the column alone.
+  const fromObject = opts.fromObject === true || fromVisual;
+  const shiftCount = opts.shiftCount ?? 1;
+
   const explicit = state.pending.register;
   const { first: firstLine, last: lastRangeLine } = O.rangeLines(range);
 
@@ -668,7 +899,9 @@ function runOperator(
   }
 
   const r =
-    op === 'd' ? O.applyDelete(state.lines, range) : O.applyChange(state.lines, range, state.options);
+    op === 'd'
+      ? O.applyDelete(state.lines, range, !fromVisual)
+      : O.applyChange(state.lines, range, state.options);
 
   // A real but zero-character delete region — `D`/`d$` on an empty line, where
   // `$` is inclusive so the region is not `oap->empty` — runs the full delete
@@ -733,7 +966,14 @@ function enterVisual(state: EditorState, mode: Mode): StepResult {
 }
 
 function leaveVisual(state: EditorState): EditorState {
-  return { ...state, mode: 'normal', visualStart: undefined, pending: EMPTY_PENDING };
+  return {
+    ...state,
+    mode: 'normal',
+    visualStart: undefined,
+    // Remember it for `gv`, whichever way we are leaving.
+    lastVisual: { mode: state.mode, start: state.visualStart ?? state.cursor, end: state.cursor },
+    pending: EMPTY_PENDING,
+  };
 }
 
 /**
@@ -755,15 +995,33 @@ function selectionRange(state: EditorState, anchor: Pos): O.OperatorRange {
     // A block's columns are independent of which corner the cursor is in, so
     // they are the min and max of the two — dragging left-and-down still
     // selects a rectangle.
+    //
+    // …unless `$` set the remembered column to MAXCOL, in which case the right
+    // edge is each row's own end of line and the block is ragged by design.
     return {
       kind: 'blockwise',
       firstLine: from.line,
       lastLine: to.line,
       startCol: Math.min(anchor.col, cursor.col),
       endCol: Math.max(anchor.col, cursor.col),
+      ...(state.desiredCol === MAX_COL ? { toEndOfLine: true } : {}),
     };
   }
-  return { kind: 'charwise', start: from, end: { line: to.line, col: to.col + 1 } };
+  // An inclusive end that lands PAST the end of its line takes the line break
+  // with it. Two selections that look nothing alike hit this rule:
+  //
+  //  - an EMPTY line, where column zero already IS the end-of-line position, so
+  //    `v` alone there yields a register holding `"\n"`;
+  //  - `v$`, the only motion that parks the cursor on the end-of-line NUL, which
+  //    is why `v$d` joins the next line up while `vlld` over the same three
+  //    characters leaves an empty one behind.
+  //
+  // On the last line there is no break to take, so the end clamps instead.
+  const len = lineAt(state.lines, to.line).length;
+  if (to.col + 1 > len && to.line < lastLine(state.lines)) {
+    return { kind: 'charwise', start: from, end: { line: to.line + 1, col: 0 } };
+  }
+  return { kind: 'charwise', start: from, end: { line: to.line, col: Math.min(to.col + 1, len) } };
 }
 
 /** In visual mode these keys mean an operator over the selection, nothing else. */
@@ -781,15 +1039,30 @@ const VISUAL_LINEWISE_OPERATORS: Record<string, O.OperatorName> = {
 function stepVisual(state: EditorState, key: KeyToken): StepResult {
   const p = state.pending;
   const keys = [...p.keyBuffer, key];
-  const bump = (patch: Partial<Pending>): Pending => ({ ...p, ...patch, keyBuffer: keys });
+  const bump = (patch: Partial<Pending>): Pending => ({
+    ...p,
+    ...patch,
+    keyBuffer: keys,
+    dotKeys: [...p.dotKeys, key],
+  });
+  const bumpCount = (patch: Partial<Pending>): Pending => ({
+    ...p,
+    ...patch,
+    keyBuffer: keys,
+    dotKeys: p.dotKeys,
+  });
   const anchor = state.visualStart ?? state.cursor;
   const { count, hasCount } = countOf(p);
 
-  const ctx = (): M.MotionContext => motionCtx(state, count, hasCount, false);
+  const ctx = (): M.MotionContext => motionCtx(state, count, hasCount, false, true);
 
-  /** Move the cursor, keeping the anchor — this is all "extending" ever is. */
+  /**
+   * Move the cursor, keeping the anchor — this is all "extending" ever is.
+   * The clamp allows the end-of-line position, because visual mode's cursor
+   * may rest on the NUL. Only `$` ever puts it there.
+   */
   const extendTo = (to: Pos, desiredCol?: number): StepResult => {
-    const cursor = clamp(state.lines, to, false);
+    const cursor = clamp(state.lines, to, true);
     return {
       state: { ...state, cursor, desiredCol: desiredCol ?? cursor.col, pending: EMPTY_PENDING },
       events: [{ type: 'CursorMoved', to: cursor }],
@@ -813,7 +1086,10 @@ function stepVisual(state: EditorState, key: KeyToken): StepResult {
       ...leaveVisual(state),
       pending: { ...EMPTY_PENDING, register: p.register },
     };
-    const result = runOperator(normal, op, range, O.rangeStart(range), false, true, count);
+    const result = runOperator(normal, op, range, O.rangeStart(range), {
+      fromVisual: true,
+      shiftCount: count,
+    });
     return {
       state: { ...result.state, mode: result.state.insert === undefined ? 'normal' : result.state.mode },
       events: [{ type: 'ModeChanged', from: state.mode, to: result.state.mode }, ...result.events],
@@ -859,6 +1135,49 @@ function stepVisual(state: EditorState, key: KeyToken): StepResult {
     };
   }
 
+  if (p.awaiting === 'replace') {
+    // `<Esc>` here cancels the `r` AND leaves visual mode, without changing
+    // anything — the selection is simply dropped.
+    if (key === '<Esc>') {
+      return { state: leaveVisual(state), events: [{ type: 'ModeChanged', from: state.mode, to: 'normal' }] };
+    }
+    if (key.length !== 1) return invalid(state, keys.join(''), 'unknown-key');
+    return visualReplace(state, anchor, key);
+  }
+
+  if (p.awaiting === 'mark') {
+    if (!K.isMarkName(key)) return invalid(state, keys.join(''), 'unknown-key');
+    return {
+      state: { ...state, marks: { ...state.marks, [key]: state.cursor }, pending: EMPTY_PENDING },
+      events: [],
+    };
+  }
+
+  if (p.awaiting === 'mark-exact' || p.awaiting === 'mark-line') {
+    if (key === '<Esc>') return { state: { ...state, pending: EMPTY_PENDING }, events: [] };
+    const target = K.isPreviousContext(key)
+      ? state.pcmark
+      : K.isMarkName(key)
+        ? state.marks[key]
+        : undefined;
+    if (!K.isPreviousContext(key) && !K.isMarkName(key)) return invalid(state, keys.join(''), 'unknown-key');
+    if (target === undefined) return invalid(state, keys.join(''), 'mark-not-set');
+    const at = clamp(state.lines, target, false);
+    // `'a` extends to the first non-blank of the mark's line; `` `a `` to the
+    // exact column. The selection's KIND is unchanged either way — that is
+    // decided by `v` versus `V`, not by which mark key was used.
+    const to =
+      p.awaiting === 'mark-line' ? { line: at.line, col: firstNonBlank(state.lines, at.line) } : at;
+    // Push the position we are LEAVING, then move — so `<C-o>` after the
+    // selection returns to where the selection started growing from.
+    const jumped = recordJump(state);
+    const cursor = clamp(state.lines, to, false);
+    return {
+      state: { ...jumped, cursor, desiredCol: cursor.col, pending: EMPTY_PENDING },
+      events: [{ type: 'CursorMoved', to: cursor }],
+    };
+  }
+
   if (p.awaiting === 'g') {
     switch (key) {
       case 'g':
@@ -875,6 +1194,10 @@ function stepVisual(state: EditorState, key: KeyToken): StepResult {
         return runOverSelection('gU', false);
       case '~':
         return runOverSelection('g~', false);
+      case 'v':
+        // `gv` from inside visual mode SWAPS: the stored selection becomes
+        // current and the current one becomes stored.
+        return reselect(state, { mode: state.mode, start: anchor, end: state.cursor });
       default:
         return invalid(state, keys.join(''), 'no-such-motion');
     }
@@ -883,7 +1206,7 @@ function stepVisual(state: EditorState, key: KeyToken): StepResult {
   // --- prefixes -------------------------------------------------------------
 
   if (/^[1-9]$/.test(key) || (key === '0' && p.count !== '')) {
-    return pendingOnly(state, bump({ count: p.count + key }));
+    return pendingOnly(state, bumpCount({ count: p.count + key }));
   }
   if (key === '"') return pendingOnly(state, bump({ awaiting: 'register' }));
   if (key === 'g') return pendingOnly(state, bump({ awaiting: 'g' }));
@@ -893,6 +1216,9 @@ function stepVisual(state: EditorState, key: KeyToken): StepResult {
   if (key === 'i' || key === 'a') {
     return pendingOnly(state, bump({ awaiting: 'textobject', textObjectKind: key }));
   }
+  if (key === 'm') return pendingOnly(state, bump({ awaiting: 'mark' }));
+  if (key === '`') return pendingOnly(state, bump({ awaiting: 'mark-exact' }));
+  if (key === "'") return pendingOnly(state, bump({ awaiting: 'mark-line' }));
 
   // --- leaving, and switching between the three visual modes ----------------
 
@@ -924,6 +1250,18 @@ function stepVisual(state: EditorState, key: KeyToken): StepResult {
 
   // --- operators over the selection ----------------------------------------
 
+  // `r` over a selection replaces every character it covers. It takes its
+  // argument next, so it has to be checked before the operator tables — and
+  // before `R`, which is a linewise change.
+  if (key === 'r') return pendingOnly(state, bump({ awaiting: 'replace' }));
+
+  // `I` and `A` open an insert session rather than running an operator.
+  if (key === 'I' || key === 'A') return visualInsert(state, anchor, key === 'A');
+
+  // `p`/`P` REPLACE the selection with a register. `P` is the one that does
+  // not clobber the unnamed register with what it just removed.
+  if (key === 'p' || key === 'P') return visualPut(state, anchor, key === 'p');
+
   const lineOp = VISUAL_LINEWISE_OPERATORS[key];
   if (lineOp !== undefined) return runOverSelection(lineOp, true);
 
@@ -933,14 +1271,216 @@ function stepVisual(state: EditorState, key: KeyToken): StepResult {
   // --- motions --------------------------------------------------------------
 
   if (MOTION_KEYS.has(key)) {
-    const motion = resolveMotion(state, key, false, count, hasCount);
+    const motion = resolveMotion(state, key, false, count, hasCount, true);
     if (motion === null) return invalid(state, keys.join(''), 'motion-failed');
     const desired = key === '$' ? MAX_COL : undefined;
     const keep = motion.keepDesiredCol === true ? state.desiredCol : desired;
-    return extendTo(motion.target, keep);
+    const moved = extendTo(motion.target, keep);
+    return motion.isJump === true
+      ? { ...moved, state: { ...moved.state, jumps: K.pushJump(state.jumps, state.cursor), pcmark: state.cursor } }
+      : moved;
   }
 
   return reject(state, key, 'unknown-key');
+}
+
+/**
+ * `gv` — restore the last selection. `swapWith` is the selection to store in
+ * its place, which is what makes `gv` from inside visual mode a swap rather
+ * than a replacement.
+ */
+function reselect(
+  state: EditorState,
+  swapWith: { readonly mode: Mode; readonly start: Pos; readonly end: Pos } | undefined,
+): StepResult {
+  const last = state.lastVisual;
+  if (last === undefined) return invalid(state, 'gv', 'no-such-motion');
+  const start = clamp(state.lines, last.start, true);
+  const cursor = clamp(state.lines, last.end, true);
+  return {
+    state: {
+      ...state,
+      mode: last.mode,
+      visualStart: start,
+      cursor,
+      desiredCol: cursor.col,
+      lastVisual: swapWith,
+      pending: EMPTY_PENDING,
+    },
+    events: [{ type: 'ModeChanged', from: state.mode, to: last.mode }, { type: 'CursorMoved', to: cursor }],
+  };
+}
+
+/**
+ * `I` and `A` from visual mode.
+ *
+ * Blockwise is the interesting one: typing happens on the first row and is
+ * replicated down the block on `<Esc>`. The two keys disagree about ragged
+ * edges, and the difference is not cosmetic —
+ *
+ *  - `I` SKIPS a row too short to reach the column,
+ *  - `A` PADS it out with spaces first.
+ *
+ * Which is why `<C-v>$A` is the idiom for appending to every line: with `$`
+ * the column is each row's own end, so nothing is short and nothing is padded.
+ *
+ * Charwise and linewise selections do not replicate at all: `I` inserts at
+ * column zero of the first selected line (NOT its first non-blank, unlike
+ * normal-mode `I`), and `A` appends after the selection's far end.
+ */
+function visualInsert(state: EditorState, anchor: Pos, append: boolean): StepResult {
+  const range = selectionRange(state, anchor);
+  const normal = leaveVisual(state);
+
+  if (range.kind !== 'blockwise') {
+    const { first, last } = O.rangeLines(range);
+    const at: Pos = append
+      ? range.kind === 'linewise'
+        ? { line: last, col: Math.max(anchor.col, state.cursor.col) + 1 }
+        : { line: range.end.line, col: range.end.col }
+      : { line: first, col: 0 };
+    return enterInsert(normal, { at, count: 1, changeStart: at });
+  }
+
+  const col = append
+    ? range.toEndOfLine === true
+      ? lineAt(state.lines, range.firstLine).length
+      : range.endCol + 1
+    : range.startCol;
+  const at: Pos = { line: range.firstLine, col };
+  return enterInsert(normal, {
+    at,
+    count: 1,
+    changeStart: at,
+    blockRows: {
+      firstLine: range.firstLine,
+      lastLine: range.lastLine,
+      col,
+      pad: append,
+      landCol: range.startCol,
+      ...(range.toEndOfLine === true ? { toEndOfLine: true } : {}),
+    },
+  });
+}
+
+/**
+ * `p` / `P` over a selection: remove it, then put the register in its place.
+ *
+ * The register is read BEFORE the delete, or `p` would paste whatever it just
+ * removed. `p` then overwrites the unnamed register with the removed text and
+ * `P` leaves it alone — that asymmetry is the entire reason `P` exists here,
+ * and it is what makes `viwP` repeatable over several words.
+ */
+function visualPut(state: EditorState, anchor: Pos, clobber: boolean): StepResult {
+  const name = state.pending.register ?? UNNAMED;
+  const value = name === BLACKHOLE ? EMPTY_VALUE : readRegister(state.registers, name);
+  const range = selectionRange(state, anchor);
+  const normal = leaveVisual(state);
+
+  if (value === undefined) {
+    return {
+      state: commit(normal, state.lines, state.cursor, undefined, state.cursor),
+      events: [{ type: 'InvalidCommand', keys: `"${name}p`, reason: 'empty-register' }],
+    };
+  }
+
+  // Replacing whole LINES is a line splice, not a delete followed by a put:
+  // the register's body simply takes the selected lines' place, whatever
+  // shape the register has.
+  if (range.kind === 'linewise') {
+    const body = value.type === 'linewise' ? value.text.replace(/\n$/, '').split('\n') : value.text.split('\n');
+    const removed = `${state.lines.slice(range.firstLine, range.lastLine + 1).join('\n')}\n`;
+    const lines = [...state.lines.slice(0, range.firstLine), ...body, ...state.lines.slice(range.lastLine + 1)];
+    const at = { line: range.firstLine, col: firstNonBlank(lines, range.firstLine) };
+    const registers = clobber
+      ? recordWrite(state.registers, { isYank: false, type: 'linewise', text: removed, multiline: true })
+      : state.registers;
+    return {
+      state: commit(normal, lines, at, registers, at),
+      events: [changedSpan(state.lines, lines, range.firstLine)],
+    };
+  }
+
+  const deleted = O.applyDelete(state.lines, range, false);
+  const registers =
+    clobber && deleted.captured!.text !== ''
+      ? recordWrite(state.registers, {
+          isYank: false,
+          type: deleted.captured!.type,
+          text: deleted.captured!.text,
+          multiline: deleted.captured!.multiline,
+        })
+      : state.registers;
+
+  const at = deleted.cursor;
+
+  // A LINEWISE register put into a charwise hole splits the line open at the
+  // hole and drops the register's lines in between — the head and tail of the
+  // original line become lines of their own.
+  if (value.type === 'linewise') {
+    const text = lineAt(deleted.lines, at.line);
+    const body = value.text.replace(/\n$/, '').split('\n');
+    const lines = [
+      ...deleted.lines.slice(0, at.line),
+      text.slice(0, at.col),
+      ...body,
+      text.slice(at.col),
+      ...deleted.lines.slice(at.line + 1),
+    ];
+    const landed = { line: at.line + 1, col: firstNonBlank(lines, at.line + 1) };
+    return {
+      state: commit(normal, lines, landed, registers, landed),
+      events: [changedSpan(state.lines, lines, at.line)],
+    };
+  }
+
+  // Otherwise put BEFORE the hole — the cursor is already where the removed
+  // text started, so there is nothing to step over.
+  const r = P.applyPut(deleted.lines, at, value, false, 1);
+  return {
+    state: commit(normal, r.lines, r.cursor, registers, at),
+    events: [changedSpan(state.lines, r.lines, r.firstLine)],
+  };
+}
+
+/**
+ * `r` over a selection: every character it covers becomes `ch`. Line breaks
+ * are never replaced, so a charwise selection spanning lines keeps its shape,
+ * and a block leaves rows too short to reach it alone.
+ */
+function visualReplace(state: EditorState, anchor: Pos, ch: string): StepResult {
+  const range = selectionRange(state, anchor);
+  const normal = leaveVisual(state);
+  const next = [...state.lines];
+
+  const overwrite = (line: number, from: number, to: number): void => {
+    const text = lineAt(state.lines, line);
+    const start = Math.min(from, text.length);
+    const end = Math.min(Math.max(to, start), text.length);
+    next[line] = text.slice(0, start) + ch.repeat(end - start) + text.slice(end);
+  };
+
+  if (range.kind === 'linewise') {
+    for (let l = range.firstLine; l <= range.lastLine; l += 1) overwrite(l, 0, lineAt(state.lines, l).length);
+  } else if (range.kind === 'blockwise') {
+    for (let l = range.firstLine; l <= range.lastLine; l += 1) {
+      if (lineAt(state.lines, l).length <= range.startCol) continue;
+      overwrite(l, range.startCol, O.blockRowEnd(state.lines, range, l) + 1);
+    }
+  } else {
+    for (let l = range.start.line; l <= range.end.line; l += 1) {
+      const from = l === range.start.line ? range.start.col : 0;
+      const to = l === range.end.line ? range.end.col : lineAt(state.lines, l).length;
+      overwrite(l, from, to);
+    }
+  }
+
+  const at = O.rangeStart(range);
+  const { first, last } = O.rangeLines(range);
+  return {
+    state: commit(normal, next, at, undefined, at),
+    events: [changedSpan(state.lines, next, first, last)],
+  };
 }
 
 // --- insert mode ------------------------------------------------------------
@@ -961,7 +1501,7 @@ type EnterInsert = {
   /** Where the whole change began, for the undo entry (Vim's `uh_cursor`). */
   readonly changeStart: Pos;
   /** A blockwise change replicates what is typed down the rest of the block. */
-  readonly blockRows?: { readonly firstLine: number; readonly lastLine: number; readonly col: number };
+  readonly blockRows?: NonNullable<I.InsertSession['blockRows']>;
 };
 
 function enterInsert(state: EditorState, opts: EnterInsert): StepResult {
@@ -1118,21 +1658,32 @@ function finishInsert(state: EditorState, session: I.InsertSession): StepResult 
   // are skipped rather than padded — that is Vim's rule, and it is why a block
   // insert down a ragged edge silently misses the short lines.
   const block = session.blockRows;
+  let landAt: Pos | undefined;
   if (block !== undefined) {
     const typed = lineAt(lines, block.firstLine).slice(block.col, cursor.col);
+    // A typed line break abandons replication entirely — only the first row
+    // gets it, which is why `<C-v>I` with a `<CR>` in it looks like it broke.
     if (typed !== '' && !typed.includes('\n')) {
+      if (block.landCol !== undefined) landAt = { line: block.firstLine, col: block.landCol };
       const next = [...lines];
       for (let l = block.firstLine + 1; l <= Math.min(block.lastLine, lastLine(next)); l += 1) {
         const text = next[l]!;
-        if (text.length < block.col) continue;
-        next[l] = text.slice(0, block.col) + typed + text.slice(block.col);
+        const col = block.toEndOfLine === true ? text.length : block.col;
+        if (text.length < col) {
+          // Too short to reach the block. `A` pads; everything else skips.
+          if (block.pad !== true) continue;
+          next[l] = text + ' '.repeat(col - text.length) + typed;
+          continue;
+        }
+        next[l] = text.slice(0, col) + typed + text.slice(col);
       }
       lines = next;
     }
   }
 
-  // Leaving insert mode steps the cursor left — the classic off-by-one.
-  const landed = clamp(lines, { line: cursor.line, col: Math.max(0, cursor.col - 1) }, false);
+  // Leaving insert mode steps the cursor left — the classic off-by-one. A
+  // blockwise `I`/`A` overrides that and returns to the block's left edge.
+  const landed = clamp(lines, landAt ?? { line: cursor.line, col: Math.max(0, cursor.col - 1) }, false);
 
   // A session that changed nothing (`i<Esc>`, `R<Esc>`) must NOT mint an undo
   // node, or Esc-mashing would silently eat the player's real undo steps. The
@@ -1146,7 +1697,9 @@ function finishInsert(state: EditorState, session: I.InsertSession): StepResult 
 
   return {
     state: {
-      ...state,
+      // An insert session that opened or joined lines shifts marks too — `o`
+      // above a mark pushes it down exactly as `p` does.
+      ...withShiftedMarks(state, lines),
       lines,
       cursor: landed,
       desiredCol: landed.col,
@@ -1251,6 +1804,119 @@ function doPut(state: EditorState, count: number, forward: boolean): StepResult 
   return {
     state: commit(state, r.lines, r.cursor, undefined, state.cursor),
     events: [changedSpan(state.lines, r.lines, r.firstLine)],
+  };
+}
+
+/**
+ * Every jump records where it left from, in both places Vim keeps it: the
+ * jumplist that `<C-o>` walks, and the single previous-context mark that
+ * `` `` `` and `''` return to.
+ */
+function recordJump(state: EditorState): EditorState {
+  return { ...state, jumps: K.pushJump(state.jumps, state.cursor), pcmark: state.cursor };
+}
+
+/**
+ * `` `x `` and `'x`. The two keys differ only in the shape of the motion they
+ * produce — exact-and-charwise-exclusive versus first-non-blank-and-linewise —
+ * which is why they are one function and why `` d`a `` and `d'a` take
+ * different amounts of text.
+ *
+ * `` ` `` and `'` name the previous-context mark instead of a letter, so
+ * `` `` `` returns to exactly where the last jump started and `''` returns to
+ * that line's first non-blank.
+ */
+function doMarkJump(state: EditorState, key: KeyToken, linewise: boolean, keys: string): StepResult {
+  if (key === '<Esc>') return { state: { ...state, pending: EMPTY_PENDING }, events: [] };
+
+  const target = K.isPreviousContext(key)
+    ? state.pcmark
+    : K.isMarkName(key)
+      ? state.marks[key]
+      : undefined;
+
+  if (!K.isPreviousContext(key) && !K.isMarkName(key)) return invalid(state, keys, 'unknown-key');
+  // A mark whose line was deleted is GONE, not relocated, so this is the same
+  // E20 as a mark that was never set. The game layer can tell the player the
+  // place they meant to return to no longer exists.
+  if (target === undefined) return invalid(state, keys, 'mark-not-set');
+
+  const at = clamp(state.lines, target, false);
+  const motion: MotionResult = linewise
+    ? {
+        target: { line: at.line, col: firstNonBlank(state.lines, at.line) },
+        kind: 'linewise',
+        inclusive: false,
+        isJump: true,
+      }
+    : { target: at, kind: 'charwise', inclusive: false, forcesNumbered: true, isJump: true };
+
+  const jumped = recordJump(state);
+  const operator = state.pending.operator;
+  if (operator !== undefined) return applyOperator(jumped, operator, motion, keys);
+  return withCursor(jumped, motion.target);
+}
+
+/** `<C-o>` (count negative) and `<C-i>` (positive). */
+function doJumpList(state: EditorState, count: number): StepResult {
+  const step = K.moveJump(state.jumps, state.cursor, count);
+  if (step === null) return invalid(state, count < 0 ? '<C-o>' : '<C-i>', 'no-jump');
+  const cursor = clamp(state.lines, step.to, false);
+  return {
+    state: {
+      ...state,
+      jumps: step.jumps,
+      ...(step.recorded ? { pcmark: state.cursor } : {}),
+      cursor,
+      desiredCol: cursor.col,
+      pending: EMPTY_PENDING,
+    },
+    events: [{ type: 'CursorMoved', to: cursor }],
+  };
+}
+
+/**
+ * `.` — replay the recorded change at the cursor.
+ *
+ * The replay runs through `step` itself rather than through a parallel
+ * implementation, so a repeated command cannot drift from the typed one. The
+ * `replaying` flag stops the replay from re-recording, and a count typed on
+ * the `.` sticks for the NEXT `.` too — measured: `dw` `3.` `.` deletes one,
+ * then three, then three again.
+ */
+function doRepeat(state: EditorState, newCount: number): StepResult {
+  const record = state.dot;
+  if (record === undefined) return invalid(state, '.', 'nothing-to-repeat');
+
+  let s: EditorState = { ...state, replaying: true, pending: EMPTY_PENDING };
+  const events: EngineEvent[] = [];
+
+  // A visual change repeats by SHAPE: the same size of selection is rebuilt
+  // wherever the cursor now is, and the recorded operator runs over that.
+  if (record.visual !== undefined) {
+    const [anchor, end] = D.replaySelection(record.visual, state.cursor);
+    s = {
+      ...s,
+      mode: record.visual.mode,
+      visualStart: clamp(state.lines, anchor, true),
+      cursor: clamp(state.lines, end, true),
+    };
+  }
+
+  for (const k of D.replayKeys(record, newCount)) {
+    const r = step(s, k);
+    s = r.state;
+    events.push(...r.events);
+  }
+
+  return {
+    state: {
+      ...s,
+      replaying: false,
+      dot: D.withCount(record, newCount),
+      pending: EMPTY_PENDING,
+    },
+    events,
   };
 }
 

@@ -1,0 +1,281 @@
+# Marks and the jumplist — Wave 3d.
+#
+# The set-and-jump half is easy and is not where engines go wrong. The half
+# that matters is ADJUSTMENT: a mark is a position in a buffer that keeps
+# changing underneath it.
+#
+#   - insert a line above a mark and the mark moves DOWN
+#   - delete a line above it and the mark moves UP
+#   - delete the mark's OWN line and the mark is DESTROYED, not relocated —
+#     a later jump raises E20 exactly as an unset mark does
+#   - an edit that does not change the line count moves nothing, so deleting a
+#     character before a mark leaves its column alone
+#
+# E20 raises a catchable exception out of feedkeys rather than beeping (harness
+# detail 10), so every case that means to fail declares `expectError: true` and
+# puts its follow-up keys in a separate group (detail 9).
+
+cases:
+  # --- set and jump ---------------------------------------------------------
+  - id: marks/backtick-restores-exact-column
+    buffer: ['alpha', 'beta', 'gamma']
+    cursor: [1, 1]
+    keys: ['3Gllma', 'gg', '`a']
+
+  - id: marks/quote-goes-to-first-non-blank
+    note: "'a lands on the first non-blank of the mark's line, not its column"
+    buffer: ['alpha', 'beta', '    gamma here']
+    cursor: [1, 1]
+    keys: ['3G$ma', 'gg', "'a"]
+
+  - id: marks/backtick-keeps-that-column
+    note: the same mark, the other key — this is the whole difference
+    buffer: ['alpha', 'beta', '    gamma here']
+    cursor: [1, 1]
+    keys: ['3G$ma', 'gg', '`a']
+
+  - id: marks/uppercase-mark
+    buffer: ['alpha', 'beta']
+    cursor: [2, 2]
+    keys: ['mA', 'gg', '`A']
+
+  - id: marks/unset-mark-fails
+    note: E20, and the cursor does not move
+    buffer: ['alpha', 'beta']
+    cursor: [1, 1]
+    keys: '`z'
+    expectError: true
+
+  - id: marks/unset-mark-then-more-keys
+    note: the follow-up keys need their own group, or the abort swallows them
+    buffer: ['alpha', 'beta']
+    cursor: [1, 1]
+    keys: ['`z', 'x']
+    expectError: true
+
+  - id: marks/m-mints-no-undo-node
+    note: >
+      setting a mark is neither a change nor a jump. The `u` must burn on the
+      `x`, not on a node the `ma` left behind — which is why the x has to be
+      here at all: a bare `ma`+`u` on an unmodified buffer proves nothing
+    buffer: ['alpha', 'beta', 'gamma']
+    cursor: [2, 2]
+    keys: ['x', 'ma', 'u']
+
+  # --- adjustment: the part worth having goldens for ------------------------
+  - id: marks/shift-down-on-insert-above
+    buffer: ['alpha', 'beta', 'gamma']
+    cursor: [3, 1]
+    keys: ['ma', 'gg', 'Onew<Esc>', '`a']
+
+  - id: marks/shift-up-on-delete-above
+    buffer: ['alpha', 'beta', 'gamma', 'delta']
+    cursor: [4, 1]
+    keys: ['ma', 'gg', 'dd', '`a']
+
+  - id: marks/shift-up-on-multi-delete-above
+    buffer: ['a1', 'a2', 'a3', 'a4', 'a5', 'a6']
+    cursor: [5, 1]
+    keys: ['ma', 'gg', '2dd', '`a']
+
+  - id: marks/shift-down-on-linewise-put
+    buffer: ['alpha', 'beta', 'gamma']
+    cursor: [3, 1]
+    keys: ['ma', 'gg', 'yy', 'p', '`a']
+
+  - id: marks/shift-down-on-counted-put
+    buffer: ['a1', 'a2', 'a3']
+    cursor: [3, 1]
+    keys: ['ma', 'gg', 'yy', '2p', '`a']
+
+  - id: marks/net-shift-on-change
+    note: 2cc removes two lines and opens one, so the net shift is minus one
+    buffer: ['a1', 'a2', 'a3', 'a4']
+    cursor: [4, 1]
+    keys: ['ma', 'gg', '2ccz<Esc>', '`a']
+
+  - id: marks/column-survives-same-line-edit
+    note: an edit that does not change the LINE COUNT never moves a mark
+    buffer: ['alpha beta', 'x']
+    cursor: [1, 7]
+    keys: ['ma', '0', 'x', '`a']
+
+  - id: marks/destroyed-when-own-line-deleted
+    note: >
+      THE case. The mark is not relocated to a neighbour — it is gone, and the
+      jump raises E20. Anything that merely shifts marks passes every other
+      case in this file and fails this one
+    buffer: ['alpha', 'beta', 'gamma']
+    cursor: [2, 3]
+    keys: ['ma', 'dd', '`a']
+    expectError: true
+
+  - id: marks/destroyed-by-multi-line-delete
+    buffer: ['a1', 'a2', 'a3', 'a4']
+    cursor: [2, 2]
+    keys: ['ma', 'gg', '3dd', '`a']
+    expectError: true
+
+  - id: marks/survives-delete-below
+    buffer: ['a1', 'a2', 'a3', 'a4']
+    cursor: [2, 2]
+    keys: ['ma', 'G', 'dd', '`a']
+
+  # --- marks as operator motions -------------------------------------------
+  - id: marks/d-backtick-exclusive-and-numbered
+    note: >
+      backtick is on Vim's use_reg_one list, so this small single-line delete
+      lands in BOTH "1 and "- — same rule as % { } ( )
+    buffer: 'alpha beta gamma'
+    cursor: [1, 12]
+    keys: ['ma', '0', 'd`a']
+
+  - id: marks/d-quote-is-linewise
+    buffer: ['alpha', 'beta', 'gamma']
+    cursor: [3, 1]
+    keys: ['ma', 'gg', "d'a"]
+
+  - id: marks/y-backtick-exclusive
+    buffer: 'alpha beta'
+    cursor: [1, 7]
+    keys: ['ma', '0', 'y`a']
+
+  - id: marks/c-backtick
+    buffer: 'alpha beta gamma'
+    cursor: [1, 12]
+    keys: ['ma', '0', 'c`aX<Esc>']
+
+  - id: marks/d-backtick-backwards
+    note: the mark is BEFORE the cursor, so the region runs the other way
+    buffer: 'alpha beta gamma'
+    cursor: [1, 1]
+    keys: ['ma', '$', 'd`a']
+
+  - id: marks/gU-quote
+    buffer: ['alpha', 'beta', 'gamma']
+    cursor: [1, 1]
+    keys: ['ma', 'G', "gU'a"]
+
+  # --- previous context: `` and '' -----------------------------------------
+  - id: marks/backtick-backtick-returns-exactly
+    buffer: ['alpha', 'beta', 'gamma', 'delta']
+    cursor: [1, 3]
+    keys: ['G', '``']
+
+  - id: marks/quote-quote-is-linewise
+    note: same jump, but landing on the first non-blank rather than the column
+    buffer: ['alpha', 'beta', '  gamma', 'delta']
+    cursor: [3, 5]
+    keys: ['G', "''"]
+
+  - id: marks/backtick-backtick-toggles
+    note: the second one returns to where the first one left
+    buffer: ['alpha', 'beta', 'gamma', 'delta']
+    cursor: [1, 3]
+    keys: ['G', '``', '``']
+
+  - id: marks/brace-sets-previous-context
+    note: '} is a jump, so it records where it left from'
+    buffer: ['alpha', 'beta', '', 'gamma']
+    cursor: [1, 3]
+    keys: ['}', '``']
+
+  - id: marks/percent-sets-previous-context
+    buffer: ['a (b c) d', 'next']
+    cursor: [1, 3]
+    keys: ['%', '``']
+
+  - id: marks/word-motion-is-not-a-jump
+    note: >
+      w does NOT record a jump, so `` still refers to whatever the last real
+      jump was — here the G, not the w
+    buffer: ['one two three', 'a2', 'a3']
+    cursor: [1, 1]
+    keys: ['G', 'gg', 'ww', '``']
+
+  # --- the jumplist ---------------------------------------------------------
+  - id: marks/ctrl-o-returns
+    buffer: ['a1', 'a2', 'a3', 'a4', 'a5']
+    cursor: [2, 2]
+    keys: ['G', '<C-o>']
+
+  - id: marks/ctrl-o-then-ctrl-i
+    buffer: ['a1', 'a2', 'a3', 'a4', 'a5']
+    cursor: [2, 2]
+    keys: ['G', '<C-o>', '<C-i>']
+
+  - id: marks/ctrl-o-twice
+    buffer: ['a1', 'a2', 'a3', 'a4', 'a5']
+    cursor: [1, 1]
+    keys: ['3G', '5G', '<C-o>', '<C-o>']
+
+  - id: marks/ctrl-o-past-oldest-stops
+    buffer: ['a1', 'a2', 'a3', 'a4', 'a5']
+    cursor: [1, 1]
+    keys: ['3G', '<C-o>', '<C-o>']
+
+  - id: marks/ctrl-i-at-newest-stops
+    buffer: ['a1', 'a2', 'a3', 'a4', 'a5']
+    cursor: [1, 1]
+    keys: ['3G', '<C-i>']
+
+  - id: marks/ctrl-o-with-count
+    buffer: ['a1', 'a2', 'a3', 'a4', 'a5']
+    cursor: [1, 1]
+    keys: ['2G', '3G', '4G', '2<C-o>']
+
+  - id: marks/ctrl-o-after-duplicate-jump
+    note: >
+      the jumplist drops an entry whose LINE appears again later, keeping the
+      last — so revisiting a line does not leave two stops on the way back
+    buffer: ['a1', 'a2', 'a3', 'a4', 'a5']
+    cursor: [1, 1]
+    keys: ['3G', 'gg', '3G', '<C-o>']
+
+  - id: marks/ctrl-o-entry-shifts-with-delete
+    note: jumplist entries are adjusted by edits just as marks are
+    buffer: ['a1', 'a2', 'a3', 'a4', 'a5']
+    cursor: [1, 1]
+    keys: ['3G', 'gg', 'dd', '<C-o>']
+
+  - id: marks/ctrl-o-entry-shifts-with-insert
+    buffer: ['a1', 'a2', 'a3', 'a4', 'a5']
+    cursor: [1, 1]
+    keys: ['3G', 'gg', 'Oz<Esc>', '<C-o>']
+
+  - id: marks/brace-pushes-jumplist
+    buffer: ['a1', '', 'a3', '', 'a5']
+    cursor: [3, 1]
+    keys: ['}', '<C-o>']
+
+  - id: marks/sentence-pushes-jumplist
+    buffer: ['a1', 'a2', 'One. Two.', 'a4']
+    cursor: [3, 1]
+    keys: [')', '<C-o>']
+
+  - id: marks/backtick-jump-pushes-jumplist
+    buffer: ['a1', 'a2', 'a3', 'a4', 'a5']
+    cursor: [3, 1]
+    keys: ['ma', 'gg', '`a', '<C-o>']
+
+  - id: marks/ctrl-o-is-not-a-motion
+    note: an operator pending makes <C-o> beep rather than jump
+    buffer: ['a1', 'a2', 'a3']
+    cursor: [1, 1]
+    keys: ['G', 'd<C-o>']
+
+  # --- visual mode ----------------------------------------------------------
+  - id: marks/visual-backtick-extends
+    buffer: 'alpha beta gamma'
+    cursor: [1, 12]
+    keys: ['ma', '0', 'v`ad']
+
+  - id: marks/visual-quote-extends-linewise
+    buffer: ['alpha', 'beta', 'gamma']
+    cursor: [3, 1]
+    keys: ['ma', 'gg', "V'ad"]
+
+  - id: marks/visual-set-mark
+    buffer: ['alpha', 'beta', 'gamma']
+    cursor: [2, 2]
+    keys: ['vma<Esc>', 'gg', '`a']

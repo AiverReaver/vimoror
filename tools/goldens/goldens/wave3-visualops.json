@@ -1,0 +1,1806 @@
+[
+  {
+    "id": "visualops/block-I-basic",
+    "buffer": [
+      "abc",
+      "def",
+      "ghi"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "<C-v>jjIX<Esc>",
+    "groups": [
+      "<C-v>jjIX<Esc>"
+    ],
+    "encodedKeys": "\u0016jjIX\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "aXbc",
+        "dXef",
+        "gXhi"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "visualops/block-I-skips-short-rows",
+    "buffer": [
+      "abcd",
+      "e",
+      "fghi"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "<C-v>jjIX<Esc>",
+    "groups": [
+      "<C-v>jjIX<Esc>"
+    ],
+    "note": "the short row is SKIPPED, not padded — contrast block-A-pads-short-rows",
+    "encodedKeys": "\u0016jjIX\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "abXcd",
+        "e",
+        "fgXhi"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "visualops/block-I-skips-empty-line",
+    "buffer": [
+      "abc",
+      "",
+      "ghi"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "<C-v>jjIX<Esc>",
+    "groups": [
+      "<C-v>jjIX<Esc>"
+    ],
+    "encodedKeys": "\u0016jjIX\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "aXbc",
+        "",
+        "gXhi"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "visualops/block-I-multichar",
+    "buffer": [
+      "abc",
+      "def"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "<C-v>jIXY<Esc>",
+    "groups": [
+      "<C-v>jIXY<Esc>"
+    ],
+    "encodedKeys": "\u0016jIXY\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "aXYbc",
+        "dXYef"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "visualops/block-I-newline-abandons-replication",
+    "buffer": [
+      "abc",
+      "def"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "<C-v>jIX<CR>Y<Esc>",
+    "groups": [
+      "<C-v>jIX<CR>Y<Esc>"
+    ],
+    "note": "a typed line break stops replication dead — only the first row gets the text, which is why <C-v>I with a <CR> in it looks like it silently broke\n",
+    "encodedKeys": "\u0016jIX\rY\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "aX",
+        "Ybc",
+        "def"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "visualops/block-I-backwards-block",
+    "buffer": [
+      "abcd",
+      "efgh",
+      "ijkl"
+    ],
+    "cursor": [
+      3,
+      3
+    ],
+    "keys": "<C-v>kkhIX<Esc>",
+    "groups": [
+      "<C-v>kkhIX<Esc>"
+    ],
+    "note": "dragging up-and-left still selects the same rectangle",
+    "encodedKeys": "\u0016kkhIX\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "aXbcd",
+        "eXfgh",
+        "iXjkl"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "visualops/block-A-basic",
+    "buffer": [
+      "abc",
+      "def",
+      "ghi"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "<C-v>jjlAX<Esc>",
+    "groups": [
+      "<C-v>jjlAX<Esc>"
+    ],
+    "encodedKeys": "\u0016jjlAX\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "abXc",
+        "deXf",
+        "ghXi"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "visualops/block-A-pads-short-rows",
+    "buffer": [
+      "abcd",
+      "e",
+      "fghi"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "<C-v>jjllAX<Esc>",
+    "groups": [
+      "<C-v>jjllAX<Esc>"
+    ],
+    "note": "THE asymmetry — A pads the short row with spaces where I skipped it",
+    "encodedKeys": "\u0016jjllAX\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "abcdX",
+        "e   X",
+        "fghiX"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "visualops/block-A-dollar-appends-at-each-eol",
+    "buffer": [
+      "abc",
+      "de",
+      "fghi"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "<C-v>jj$AX<Esc>",
+    "groups": [
+      "<C-v>jj$AX<Esc>"
+    ],
+    "note": "the `<C-v>$A` idiom. With `$` the column is each row's OWN end, so the block is ragged, nothing is short, and nothing is padded\n",
+    "encodedKeys": "\u0016jj$AX\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "abcX",
+        "deX",
+        "fghiX"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "visualops/block-A-empty-line-padded",
+    "buffer": [
+      "abc",
+      "",
+      "ghi"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "<C-v>jjAX<Esc>",
+    "groups": [
+      "<C-v>jjAX<Esc>"
+    ],
+    "encodedKeys": "\u0016jjAX\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "abXc",
+        "  X",
+        "ghXi"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "visualops/block-I-cursor-returns-to-block-start",
+    "buffer": [
+      "abc",
+      "def"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "<C-v>jlAXY<Esc>",
+    "groups": [
+      "<C-v>jlAXY<Esc>"
+    ],
+    "note": "after a block I/A the cursor goes to the BLOCK's left edge, not to the last character typed — for A that is nowhere near where the typing was\n",
+    "encodedKeys": "\u0016jlAXY\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "abcXY",
+        "defXY"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "visualops/block-c-keeps-ordinary-insert-cursor",
+    "buffer": [
+      "abcd",
+      "efgh",
+      "ijkl"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "<C-v>jjlcXY<Esc>",
+    "groups": [
+      "<C-v>jjlcXY<Esc>"
+    ],
+    "note": "…but block `c` does NOT: it ends on the last typed character like any other insert. Same block, same typing, different landing. A single-char insert hides this, which is why this case types two\n",
+    "encodedKeys": "\u0016jjlcXY\u001b",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "\u00162",
+          "text": "bc\nfg\njk"
+        },
+        "\"": {
+          "type": "\u00162",
+          "text": "bc\nfg\njk"
+        }
+      },
+      "buffer": [
+        "aXYd",
+        "eXYh",
+        "iXYl"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "visualops/block-I-nothing-typed",
+    "buffer": [
+      "abc",
+      "def"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "<C-v>jI<Esc>",
+    "groups": [
+      "<C-v>jI<Esc>"
+    ],
+    "note": "nothing typed means no replication, so the ordinary rule applies again",
+    "encodedKeys": "\u0016jI\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "abc",
+        "def"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "visualops/charwise-I-goes-to-column-zero",
+    "buffer": [
+      "  abc"
+    ],
+    "cursor": [
+      1,
+      4
+    ],
+    "keys": "vlIX<Esc>",
+    "groups": [
+      "vlIX<Esc>"
+    ],
+    "note": "column ZERO of the first selected line, not its first non-blank — this is NOT normal-mode `I`, even though the key is the same\n",
+    "encodedKeys": "vlIX\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "X  abc"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "visualops/charwise-I-multiline",
+    "buffer": [
+      "abc",
+      "def"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "vjIX<Esc>",
+    "groups": [
+      "vjIX<Esc>"
+    ],
+    "encodedKeys": "vjIX\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "Xabc",
+        "def"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "visualops/charwise-A-after-selection-end",
+    "buffer": [
+      "  abc"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "vlAX<Esc>",
+    "groups": [
+      "vlAX<Esc>"
+    ],
+    "encodedKeys": "vlAX\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "  abXc"
+      ],
+      "cursor": [
+        1,
+        5
+      ],
+      "error": "",
+      "curswant": 5
+    }
+  },
+  {
+    "id": "visualops/charwise-A-multiline",
+    "buffer": [
+      "abc",
+      "def"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "vjAX<Esc>",
+    "groups": [
+      "vjAX<Esc>"
+    ],
+    "encodedKeys": "vjAX\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "abc",
+        "deXf"
+      ],
+      "cursor": [
+        2,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "visualops/linewise-I-column-zero",
+    "buffer": [
+      "  abc",
+      "  def"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "VjIX<Esc>",
+    "groups": [
+      "VjIX<Esc>"
+    ],
+    "encodedKeys": "VjIX\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "X  abc",
+        "  def"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "visualops/linewise-A-after-cursor",
+    "buffer": [
+      "  abc",
+      "  def"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "VjAX<Esc>",
+    "groups": [
+      "VjAX<Esc>"
+    ],
+    "encodedKeys": "VjAX\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "  abc",
+        "  dXef"
+      ],
+      "cursor": [
+        2,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "visualops/v-dollar-eats-the-newline",
+    "buffer": [
+      "abc",
+      "d"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "v$d",
+    "groups": [
+      "v$d"
+    ],
+    "note": "`$` is the only motion that parks the cursor on the end-of-line NUL, so the inclusive selection reaches past the line and takes the break\n",
+    "encodedKeys": "v$d",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "v",
+          "text": "abc\n"
+        },
+        "\"": {
+          "type": "v",
+          "text": "abc\n"
+        }
+      },
+      "buffer": [
+        "d"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "visualops/v-ll-does-not",
+    "buffer": [
+      "abc",
+      "d"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "vlld",
+    "groups": [
+      "vlld"
+    ],
+    "note": "the same three characters selected without `$` — no newline taken",
+    "encodedKeys": "vlld",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "abc"
+        },
+        "-": {
+          "type": "v",
+          "text": "abc"
+        }
+      },
+      "buffer": [
+        "",
+        "d"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "visualops/v-dollar-yank-type",
+    "buffer": [
+      "abc",
+      "d"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "v$y",
+    "groups": [
+      "v$y"
+    ],
+    "encodedKeys": "v$y",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "abc\n"
+        },
+        "\"": {
+          "type": "v",
+          "text": "abc\n"
+        }
+      },
+      "buffer": [
+        "abc",
+        "d"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "visualops/v-dollar-last-line-has-no-newline",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "v$d",
+    "groups": [
+      "v$d"
+    ],
+    "encodedKeys": "v$d",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "abc"
+        },
+        "-": {
+          "type": "v",
+          "text": "abc"
+        }
+      },
+      "buffer": [
+        ""
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "visualops/v-dollar-then-h",
+    "buffer": [
+      "abcd",
+      "e"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "v$hd",
+    "groups": [
+      "v$hd"
+    ],
+    "encodedKeys": "v$hd",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "abcd"
+        },
+        "-": {
+          "type": "v",
+          "text": "abcd"
+        }
+      },
+      "buffer": [
+        "",
+        "e"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "visualops/v-dollar-maxcol-persists-down",
+    "buffer": [
+      "abc",
+      "de",
+      "fgh"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "v$jd",
+    "groups": [
+      "v$jd"
+    ],
+    "note": "MAXCOL survives a `j`, so the selection ends at the NEXT line's end too",
+    "encodedKeys": "v$jd",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "v",
+          "text": "abc\nde\n"
+        },
+        "\"": {
+          "type": "v",
+          "text": "abc\nde\n"
+        }
+      },
+      "buffer": [
+        "fgh"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "visualops/v-dollar-reset-by-zero",
+    "buffer": [
+      "abc",
+      "d"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "v$0d",
+    "groups": [
+      "v$0d"
+    ],
+    "encodedKeys": "v$0d",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a"
+        },
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "bc",
+        "d"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "visualops/v-empty-line-selects-newline",
+    "buffer": [
+      "a",
+      "",
+      "b"
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": "vy",
+    "groups": [
+      "vy"
+    ],
+    "note": "an empty line's column zero already IS its end-of-line position, so `v` alone there yields a register holding a bare newline\n",
+    "encodedKeys": "vy",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "\n"
+        },
+        "\"": {
+          "type": "v",
+          "text": "\n"
+        }
+      },
+      "buffer": [
+        "a",
+        "",
+        "b"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "visualops/block-dollar-delete",
+    "buffer": [
+      "abc",
+      "de",
+      "fghi"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "<C-v>jj$d",
+    "groups": [
+      "<C-v>jj$d"
+    ],
+    "encodedKeys": "\u0016jj$d",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "\u00164",
+          "text": "abc\nde\nfghi"
+        },
+        "\"": {
+          "type": "\u00164",
+          "text": "abc\nde\nfghi"
+        }
+      },
+      "buffer": [
+        "",
+        "",
+        ""
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "visualops/block-dollar-yank",
+    "buffer": [
+      "abc",
+      "de",
+      "fghi"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "<C-v>jj$y",
+    "groups": [
+      "<C-v>jj$y"
+    ],
+    "encodedKeys": "\u0016jj$y",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "\u00164",
+          "text": "abc\nde\nfghi"
+        },
+        "\"": {
+          "type": "\u00164",
+          "text": "abc\nde\nfghi"
+        }
+      },
+      "buffer": [
+        "abc",
+        "de",
+        "fghi"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "visualops/block-dollar-change",
+    "buffer": [
+      "abc",
+      "de",
+      "fghi"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "<C-v>jj$cX<Esc>",
+    "groups": [
+      "<C-v>jj$cX<Esc>"
+    ],
+    "encodedKeys": "\u0016jj$cX\u001b",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "\u00164",
+          "text": "abc\nde\nfghi"
+        },
+        "\"": {
+          "type": "\u00164",
+          "text": "abc\nde\nfghi"
+        }
+      },
+      "buffer": [
+        "X",
+        "X",
+        "X"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "visualops/visual-p-charwise",
+    "buffer": [
+      "abc def",
+      "xyz"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "yiwwviwp",
+    "groups": [
+      "yiw",
+      "w",
+      "viwp"
+    ],
+    "note": "the register is read BEFORE the delete, or p would paste what it removed",
+    "encodedKeys": "yiwwviwp",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "abc"
+        },
+        "\"": {
+          "type": "v",
+          "text": "def"
+        },
+        "-": {
+          "type": "v",
+          "text": "def"
+        }
+      },
+      "buffer": [
+        "abc abc",
+        "xyz"
+      ],
+      "cursor": [
+        1,
+        7
+      ],
+      "error": "",
+      "curswant": 7
+    }
+  },
+  {
+    "id": "visualops/visual-P-does-not-clobber-unnamed",
+    "buffer": [
+      "abc def",
+      "xyz"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "yiwwviwP",
+    "groups": [
+      "yiw",
+      "w",
+      "viwP"
+    ],
+    "note": "identical buffer result, but `p` leaves the REMOVED text in the unnamed register and `P` leaves the register untouched — which is what makes `viwP` repeatable over several words\n",
+    "encodedKeys": "yiwwviwP",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "abc"
+        },
+        "\"": {
+          "type": "v",
+          "text": "abc"
+        }
+      },
+      "buffer": [
+        "abc abc",
+        "xyz"
+      ],
+      "cursor": [
+        1,
+        7
+      ],
+      "error": "",
+      "curswant": 7
+    }
+  },
+  {
+    "id": "visualops/visual-p-linewise-into-linewise",
+    "buffer": [
+      "abc",
+      "def",
+      "ghi"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "yyjVp",
+    "groups": [
+      "yy",
+      "jVp"
+    ],
+    "encodedKeys": "yyjVp",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "abc\n"
+        },
+        "1": {
+          "type": "V",
+          "text": "def\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "def\n"
+        }
+      },
+      "buffer": [
+        "abc",
+        "abc",
+        "ghi"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "visualops/visual-p-linewise-reg-into-charwise",
+    "buffer": [
+      "abc def",
+      "xyz"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "yywviwp",
+    "groups": [
+      "yy",
+      "w",
+      "viwp"
+    ],
+    "note": "a linewise register put into a charwise hole SPLITS the line open — the head and tail become lines of their own around the register's content\n",
+    "encodedKeys": "yywviwp",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "V",
+          "text": "abc def\n"
+        },
+        "\"": {
+          "type": "v",
+          "text": "def"
+        },
+        "-": {
+          "type": "v",
+          "text": "def"
+        }
+      },
+      "buffer": [
+        "abc ",
+        "abc def",
+        "",
+        "xyz"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "visualops/visual-p-charwise-reg-into-linewise",
+    "buffer": [
+      "abc def",
+      "xyz"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "yiwjVp",
+    "groups": [
+      "yiw",
+      "j",
+      "Vp"
+    ],
+    "encodedKeys": "yiwjVp",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "abc"
+        },
+        "1": {
+          "type": "V",
+          "text": "xyz\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "xyz\n"
+        }
+      },
+      "buffer": [
+        "abc def",
+        "abc"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "visualops/visual-p-block-reg",
+    "buffer": [
+      "ab",
+      "cd",
+      "wxyz"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "<C-v>jly3Gvlp",
+    "groups": [
+      "<C-v>jly",
+      "3G",
+      "vlp"
+    ],
+    "encodedKeys": "\u0016jly3Gvlp",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "\u00162",
+          "text": "ab\ncd"
+        },
+        "\"": {
+          "type": "v",
+          "text": "wx"
+        },
+        "-": {
+          "type": "v",
+          "text": "wx"
+        }
+      },
+      "buffer": [
+        "ab",
+        "cd",
+        "abyz",
+        "cd"
+      ],
+      "cursor": [
+        3,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "visualops/visual-p-empty-selection-last-line",
+    "buffer": [
+      "abc",
+      ""
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "yiw2Gvp",
+    "groups": [
+      "yiw",
+      "2G",
+      "vp"
+    ],
+    "note": "nothing is removed, so the unnamed register is not clobbered either",
+    "encodedKeys": "yiw2Gvp",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "abc"
+        },
+        "\"": {
+          "type": "v",
+          "text": "abc"
+        }
+      },
+      "buffer": [
+        "abc",
+        "abc"
+      ],
+      "cursor": [
+        2,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "visualops/visual-p-named-register",
+    "buffer": [
+      "abc def",
+      "xyz"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "\"ayiwwv iw\"ap",
+    "groups": [
+      "\"ayiw",
+      "w",
+      "v iw\"ap"
+    ],
+    "encodedKeys": "\"ayiwwv iw\"ap",
+    "expect": {
+      "registers": {
+        "a": {
+          "type": "v",
+          "text": "abc"
+        },
+        "\"": {
+          "type": "v",
+          "text": "def"
+        },
+        "-": {
+          "type": "v",
+          "text": "def"
+        }
+      },
+      "buffer": [
+        "abc abc",
+        "xyz"
+      ],
+      "cursor": [
+        1,
+        7
+      ],
+      "error": "",
+      "curswant": 7
+    }
+  },
+  {
+    "id": "visualops/visual-r-charwise",
+    "buffer": [
+      "abcdef"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "vllrZ",
+    "groups": [
+      "vllrZ"
+    ],
+    "encodedKeys": "vllrZ",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "aZZZef"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "visualops/visual-r-across-lines-keeps-breaks",
+    "buffer": [
+      "abc",
+      "def"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "vjrZ",
+    "groups": [
+      "vjrZ"
+    ],
+    "encodedKeys": "vjrZ",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "aZZ",
+        "ZZf"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "visualops/visual-r-linewise",
+    "buffer": [
+      "abc",
+      "def"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "VjrZ",
+    "groups": [
+      "VjrZ"
+    ],
+    "encodedKeys": "VjrZ",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "ZZZ",
+        "ZZZ"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "visualops/visual-r-block",
+    "buffer": [
+      "abcd",
+      "efgh",
+      "ijkl"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "<C-v>jjlrZ",
+    "groups": [
+      "<C-v>jjlrZ"
+    ],
+    "encodedKeys": "\u0016jjlrZ",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "aZZd",
+        "eZZh",
+        "iZZl"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "visualops/visual-r-block-skips-short-row",
+    "buffer": [
+      "abcd",
+      "e",
+      "ijkl"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "<C-v>jjlrZ",
+    "groups": [
+      "<C-v>jjlrZ"
+    ],
+    "encodedKeys": "\u0016jjlrZ",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "aZZd",
+        "e",
+        "iZZl"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "visualops/visual-r-esc-cancels",
+    "buffer": [
+      "abcdef"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "vlr<Esc>",
+    "groups": [
+      "vlr<Esc>"
+    ],
+    "note": "<Esc> after the r abandons the replace AND the selection",
+    "encodedKeys": "vlr\u001b",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "abcdef"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "visualops/visual-r-count-is-ignored",
+    "buffer": [
+      "abcdef"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "vl2rZ",
+    "groups": [
+      "vl2rZ"
+    ],
+    "encodedKeys": "vl2rZ",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "ZZcdef"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "visualops/gv-reselects-after-esc",
+    "buffer": [
+      "abcdef"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "vll<Esc>gvd",
+    "groups": [
+      "vll<Esc>",
+      "gvd"
+    ],
+    "encodedKeys": "vll\u001bgvd",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "bcd"
+        },
+        "-": {
+          "type": "v",
+          "text": "bcd"
+        }
+      },
+      "buffer": [
+        "aef"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "visualops/gv-reselects-after-operator",
+    "buffer": [
+      "abcdef",
+      "ghijkl"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": "vllygvd",
+    "groups": [
+      "vlly",
+      "gvd"
+    ],
+    "note": "the selection survives the operator that consumed it",
+    "encodedKeys": "vllygvd",
+    "expect": {
+      "registers": {
+        "0": {
+          "type": "v",
+          "text": "bcd"
+        },
+        "\"": {
+          "type": "v",
+          "text": "bcd"
+        },
+        "-": {
+          "type": "v",
+          "text": "bcd"
+        }
+      },
+      "buffer": [
+        "aef",
+        "ghijkl"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "visualops/gv-keeps-blockwise-kind",
+    "buffer": [
+      "abcd",
+      "efgh"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "<C-v>jl<Esc>gvd",
+    "groups": [
+      "<C-v>jl<Esc>",
+      "gvd"
+    ],
+    "encodedKeys": "\u0016jl\u001bgvd",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "\u00162",
+          "text": "ab\nef"
+        },
+        "\"": {
+          "type": "\u00162",
+          "text": "ab\nef"
+        }
+      },
+      "buffer": [
+        "cd",
+        "gh"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "visualops/gv-restores-most-recent",
+    "buffer": [
+      "abcdef"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "vl<Esc>lllvl<Esc>gvd",
+    "groups": [
+      "vl<Esc>",
+      "lll",
+      "vl<Esc>",
+      "gvd"
+    ],
+    "encodedKeys": "vl\u001blllvl\u001bgvd",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "ef"
+        },
+        "-": {
+          "type": "v",
+          "text": "ef"
+        }
+      },
+      "buffer": [
+        "abcd"
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "visualops/gv-in-visual-mode-swaps",
+    "buffer": [
+      "abcdef"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "vll<Esc>$vgvd",
+    "groups": [
+      "vll<Esc>",
+      "$",
+      "vgvd"
+    ],
+    "note": "from inside visual mode gv swaps to the stored selection",
+    "encodedKeys": "vll\u001b$vgvd",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "abc"
+        },
+        "-": {
+          "type": "v",
+          "text": "abc"
+        }
+      },
+      "buffer": [
+        "def"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "visualops/gv-linewise",
+    "buffer": [
+      "abc",
+      "def",
+      "ghi"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "Vj<Esc>gvd",
+    "groups": [
+      "Vj<Esc>",
+      "gvd"
+    ],
+    "encodedKeys": "Vj\u001bgvd",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "abc\ndef\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "abc\ndef\n"
+        }
+      },
+      "buffer": [
+        "ghi"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  }
+]

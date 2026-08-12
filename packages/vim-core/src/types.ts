@@ -34,10 +34,18 @@ export type MotionResult = {
   /** Motions like `j`/`k` preserve the remembered column across short lines. */
   readonly keepDesiredCol?: boolean;
   /**
-   * True for `%` (and later `( ) / ? n N { }`): a delete over this motion
-   * always shifts into `"1`, even when it removes less than a line.
+   * True for `% ( ) { }` and `` ` `` (and later `/ ? n N`): a delete over this
+   * motion always shifts into `"1`, even when it removes less than a line —
+   * and it sets `"-` as well, rather than instead.
    */
   readonly forcesNumbered?: boolean;
+  /**
+   * True for a JUMP: the position before the motion is pushed onto the
+   * jumplist and becomes the previous-context mark. Vim's `setpcmark()`. Note
+   * `w`, `j` and `$` are NOT jumps — only the motions that can carry you
+   * somewhere you would want `<C-o>` to undo.
+   */
+  readonly isJump?: boolean;
 };
 
 export type RegisterType = 'charwise' | 'linewise' | 'blockwise';
@@ -58,7 +66,13 @@ export type InvalidReason =
   | 'key-locked'
   | 'nothing-to-undo'
   | 'nothing-to-redo'
-  | 'empty-register';
+  | 'empty-register'
+  /** `` `z `` with nothing recorded at `z`, or a mark whose line was deleted. */
+  | 'mark-not-set'
+  /** `<C-o>`/`<C-i>` with nowhere left to go in the jumplist. */
+  | 'no-jump'
+  /** `.` with no change recorded yet. */
+  | 'nothing-to-repeat';
 
 export type ResolvedCommand = {
   /** The literal keys as typed, e.g. "d2w". */

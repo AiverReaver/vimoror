@@ -13,6 +13,7 @@
 
 import { applyEdit, clamp, type Lines } from './buffer.ts';
 import { render, tokenize } from './keys.ts';
+import { adjustJumps, adjustMarks, adjustPos, lineShift } from './marks.ts';
 import { DEFAULT_OPTIONS, type EditorOptions } from './operators.ts';
 import { pushUndo } from './undo.ts';
 import { EMPTY_PENDING, initState, step, type EditorState, type Pending } from './state.ts';
@@ -128,8 +129,20 @@ export class VimEngine {
     injectEdit: (edit: Edit): void => {
       const lines = applyEdit(this.#state.lines, edit);
       const cursor = clamp(lines, this.#state.cursor, false);
+      // An injected edit shifts marks exactly as a typed one does — otherwise
+      // the horror layer could silently desynchronise the player's own marks
+      // from the buffer, and replay would stop being reproducible.
+      const shift = lineShift(this.#state.lines, lines);
       this.#state = {
         ...this.#state,
+        ...(shift === null
+          ? {}
+          : {
+              marks: adjustMarks(this.#state.marks, shift),
+              jumps: adjustJumps(this.#state.jumps, shift),
+              pcmark:
+                this.#state.pcmark === undefined ? undefined : adjustPos(this.#state.pcmark, shift),
+            }),
         lines,
         cursor,
         undoState: pushUndo(this.#state.undoState, lines, cursor, edit.start),

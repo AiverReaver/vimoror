@@ -23,6 +23,10 @@ const FAMILIES = [
   'wave3-paste',
   'wave3-textobj',
   'wave3-visual',
+  'wave3-motions',
+  'wave3-marks',
+  'wave3-visualops',
+  'wave3-dot',
 ];
 
 for (const family of FAMILIES) {
