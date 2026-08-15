@@ -78,6 +78,37 @@ export function redo(state: UndoState): UndoStep | null {
   return { undo: { ...state, current: child.id }, lines: child.lines, cursor: child.changeStart };
 }
 
+/**
+ * `g-`/`g+` (and `{count}g-`/`{count}g+`): jump straight to the node whose id
+ * is `state.current ± count` — ids are already assigned as a global creation
+ * sequence by `pushUndo`, exactly matching Vim's undo sequence numbers, so no
+ * separate counter is needed.
+ *
+ * This is NOT a parent/child hop: crossing into a sibling branch is normal
+ * (undo to a common point, then edit again elsewhere). Measured against real
+ * Vim 9.1: the cursor follows whichever of `undo()`/`redo()`'s rules the
+ * FINAL hop of the real tree-walk would use, even though we jump there
+ * directly rather than stepping through it. If the target is an ancestor of
+ * the current node, the walk's last hop is an undo, so the cursor is the
+ * departing child's `changeStart` (same rule `undo()` uses). Otherwise the
+ * walk's last hop redoes INTO the target from its own parent, so the cursor
+ * is the target's own `changeStart` (same rule `redo()` uses) — this is what
+ * makes a sibling-branch jump land at that branch's own start rather than
+ * wherever the cursor happened to be on the branch you left.
+ */
+export function undoToSeq(state: UndoState, targetId: number): UndoStep | null {
+  const target = state.nodes.get(targetId);
+  if (target === undefined) return null;
+
+  let onPathFromCurrent = state.nodes.get(state.current);
+  while (onPathFromCurrent !== undefined && onPathFromCurrent.parent !== target.id) {
+    onPathFromCurrent = onPathFromCurrent.parent === null ? undefined : state.nodes.get(onPathFromCurrent.parent);
+  }
+  const cursor = onPathFromCurrent !== undefined ? onPathFromCurrent.changeStart : target.changeStart;
+
+  return { undo: { ...state, current: target.id }, lines: target.lines, cursor };
+}
+
 export function canUndo(state: UndoState): boolean {
   const node = state.nodes.get(state.current);
   return node !== undefined && node.parent !== null;

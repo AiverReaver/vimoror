@@ -1,0 +1,170 @@
+# Command-line mode, ranges, and the ex-commands that don't need substitution
+# logic — Wave 4d: `:d :m :t :normal :set`, plus the bare range as a goto.
+#
+# `:w`/`:q` deliberately have NO cases here. Neither event shows up in what the
+# comparator diffs (buffer/cursor/registers only), so a golden could not tell
+# "emitted BufferSaved" from "did nothing" — and running `:q` for real against
+# the batched harness process would actually try to quit Vim mid-run and
+# corrupt every case after it in the same file. Both are covered instead in
+# `packages/vim-core/src/semantics.test.ts`, straight against the engine.
+
+cases:
+  - id: excmd/delete-current-line-default-range
+    note: no range given — :d acts on the current line only, like dd
+    buffer: ['one', 'two', 'three']
+    cursor: [2, 1]
+    keys: ':d<CR>'
+
+  - id: excmd/delete-explicit-range
+    buffer: ['one', 'two', 'three', 'four', 'five']
+    cursor: [1, 1]
+    keys: ':2,4d<CR>'
+
+  - id: excmd/delete-percent-whole-buffer
+    note: '% is shorthand for 1,$ — deleting every line still leaves one empty line, same as dd on a 1-line buffer'
+    buffer: ['one', 'two', 'three']
+    cursor: [2, 1]
+    keys: ':%d<CR>'
+
+  - id: excmd/delete-dot-dollar-range
+    buffer: ['one', 'two', 'three', 'four']
+    cursor: [2, 1]
+    keys: ':.,$d<CR>'
+
+  - id: excmd/delete-then-undo-restores
+    note: two discrete changes (the delete, then u) — separate groups per harness detail 7
+    buffer: ['one', 'two', 'three']
+    cursor: [1, 1]
+    keys: [':2d<CR>', 'u']
+
+  - id: excmd/goto-line-number
+    note: a bare range with no command moves the cursor there, like G
+    buffer: ['one', 'two', 'three', 'four']
+    cursor: [1, 1]
+    keys: ':3<CR>'
+
+  - id: excmd/goto-with-relative-offset
+    buffer: ['one', 'two', 'three', 'four']
+    cursor: [1, 1]
+    keys: ':.+2<CR>'
+
+  - id: excmd/bare-colon-goes-to-next-line
+    note: >
+      a truly empty command line is NOT a no-op — measured against real Vim in
+      isolation (a fresh, unbatched process, to rule out a leftover-command
+      artifact): it advances one line, the classic ex convention of a bare
+      <CR> meaning "current line + 1"
+    buffer: ['one', 'two']
+    cursor: [1, 2]
+    keys: ':<CR>'
+
+  - id: excmd/move-forward-to-dollar
+    buffer: ['one', 'two', 'three', 'four']
+    cursor: [1, 1]
+    keys: ':1m$<CR>'
+
+  - id: excmd/move-backward-to-zero
+    note: destination 0 means "before line one", same as Vim's own :m0
+    buffer: ['one', 'two', 'three', 'four']
+    cursor: [1, 1]
+    keys: ':4m0<CR>'
+
+  - id: excmd/move-into-own-range-fails
+    note: E134 — destination line 2 sits inside the 2,3 range being moved
+    buffer: ['one', 'two', 'three', 'four']
+    cursor: [1, 1]
+    keys: ':2,3m2<CR>'
+    expectError: true
+
+  - id: excmd/copy-t-alias-to-line-number
+    note: "the t command is Vim's own historical synonym for :copy, not an abbreviation of it"
+    buffer: ['one', 'two', 'three']
+    cursor: [1, 1]
+    keys: ':1t2<CR>'
+
+  - id: excmd/copy-to-dot-duplicates-current-line
+    buffer: ['x', 'y']
+    cursor: [1, 1]
+    keys: ':t.<CR>'
+
+  - id: excmd/normal-no-range-simple-command
+    buffer: ['hello']
+    cursor: [1, 1]
+    keys: ':normal x<CR>'
+
+  - id: excmd/normal-no-range-auto-exits-insert
+    note: >
+      Vim exits Insert/Replace/Visual automatically at the end of :normal, "as
+      if <Esc> was typed" (:help :normal) — there is no way to embed a literal
+      <Esc> in the argument anyway, since pressing Esc at the : prompt cancels
+      the whole command line before it runs. The trailing x is the observable
+      proof: if :normal left the engine stuck in insert mode, x would insert a
+      literal "x" instead of deleting the character under the cursor.
+    buffer: ['abc']
+    cursor: [1, 1]
+    keys: ':normal Azzz<CR>x'
+
+  - id: excmd/normal-with-range-runs-per-line
+    buffer: ['aaa', 'aaa', 'aaa']
+    cursor: [1, 1]
+    keys: ':1,3normal x<CR>'
+
+  - id: excmd/normal-with-range-survives-line-count-shrinking
+    note: >
+      each dd changes the line count out from under the remaining targets —
+      this is what actually exercises the shift-adjustment, unlike the
+      char-delete case above where the line count never moves
+    buffer: ['one', 'two', 'three', 'four']
+    cursor: [1, 1]
+    keys: ':1,2normal dd<CR>'
+
+  - id: excmd/normal-with-range-can-empty-the-buffer
+    note: deleting every targeted line still leaves one empty line, the same floor :%d hits
+    buffer: ['aaa', 'bbb', 'ccc']
+    cursor: [1, 1]
+    keys: ':1,3normal dd<CR>'
+
+  - id: excmd/set-changes-shiftwidth-live
+    buffer: ['abc']
+    cursor: [1, 1]
+    keys: ':set sw=2<CR>>>'
+
+  - id: excmd/unknown-command-fails
+    buffer: ['abc']
+    cursor: [1, 1]
+    keys: ':xyz<CR>'
+    expectError: true
+
+  - id: excmd/range-out-of-bounds-fails
+    buffer: ['one', 'two', 'three']
+    cursor: [1, 1]
+    keys: ':99d<CR>'
+    expectError: true
+
+  - id: excmd/mark-range-delete
+    buffer: ['one', 'two', 'three', 'four', 'five']
+    cursor: [1, 1]
+    keys: "ma3Gmb:'a,'bd<CR>"
+
+  - id: excmd/mark-range-with-offsets
+    buffer: ['a', 'b', 'c', 'd', 'e']
+    cursor: [1, 1]
+    keys: "3Gma:'a-1,'a+1d<CR>"
+
+  - id: excmd/visual-range-delete-via-colon
+    note: >
+      pressing : from visual mode auto-fills '<,'> on the command line, exactly
+      like real Vim — the typed keys are just Vj:d<CR>, nothing types the
+      "'<,'>" text itself
+    buffer: ['one', 'two', 'three', 'four']
+    cursor: [1, 1]
+    keys: 'Vj:d<CR>'
+
+  - id: excmd/dot-repeat-is-not-contaminated-by-ex-command
+    note: >
+      regression for the recordChange guard: . after an ex command must still
+      repeat the last NORMAL-mode change (x), never the :d<CR> itself — real
+      Vim has no notion of dot-repeating an ex command at all
+    buffer: ['aaa', 'bbb']
+    cursor: [1, 1]
+    keys: ['x', ':d<CR>', '.']

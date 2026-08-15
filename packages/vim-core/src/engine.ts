@@ -26,6 +26,7 @@ export type EngineSnapshot = {
   readonly mode: Mode;
   readonly registers: Readonly<Record<string, { text: string; type: RegisterType }>>;
   readonly searchPattern: string;
+  readonly searchDirection: 'forward' | 'backward' | undefined;
   readonly options: EditorOptions;
 };
 
@@ -173,6 +174,7 @@ export class VimEngine {
       mode: this.#state.mode,
       registers: { ...this.#state.registers },
       searchPattern: this.#state.searchPattern,
+      searchDirection: this.#state.searchDirection,
       options: this.#state.options,
     };
   }
@@ -191,6 +193,7 @@ export class VimEngine {
       mode,
       registers: { ...s.registers },
       searchPattern: s.searchPattern,
+      searchDirection: s.searchDirection,
     };
     return engine;
   }

@@ -17,12 +17,15 @@ pnpm test                        # diff engine vs committed goldens
 everywhere else. Nobody writes that from memory. The oracle reproduces Vim's
 warts whether or not we know they exist — which is the entire argument.
 
-## Ten details that are load-bearing
+## Thirteen details that are load-bearing
 
 The first five were earned during the original prototype. The sixth and seventh
 were found while rebuilding the harness, the eighth and ninth while authoring
-Wave 2, the tenth while authoring Wave 3 — and all of them produce goldens that
-look entirely plausible while being wrong.
+Wave 2, the tenth while authoring Wave 3, the eleventh and twelfth while
+authoring Wave 4c's macro goldens, the thirteenth while authoring Wave 4d's
+ex-command goldens — and all of them produce goldens that look entirely
+plausible while being wrong (the thirteenth is the one exception: it produces
+no bad golden, because the case that would prove it wrong is never written).
 
 1. **`-i NONE`** — without it Vim reads viminfo and registers leak between
    cases. This silently corrupted the first prototype run.
@@ -34,10 +37,17 @@ look entirely plausible while being wrong.
    `\uXXXX` escaping is reversed by Vim's `json_decode`, so `feedkeys` gets a
    real byte. Routing through JSON escaping rather than writing raw bytes is
    also what stops a key like `<NL>` from splitting the spec file in two.
-4. **Everything goes through `feedkeys(keys, 'x')`, never `execute 'normal'`** —
+4. **Everything goes through `feedkeys(keys, 'xt')`, never `execute 'normal'`** —
    `:normal` cannot replay macros: the recording lands but `@a` never fires.
    Rather than special-casing `q`, `@` and `:g`, *all* cases take the feedkeys
-   path, so macro and non-macro goldens cannot drift apart.
+   path, so macro and non-macro goldens cannot drift apart. **The `t` flag is
+   itself load-bearing** (found in Wave 4 with a scratch probe instrumenting
+   `reg_recording()`/`getreg()` between individual keys): with plain `'x'`,
+   `q{reg}` correctly toggles `reg_recording()` on and off, but the register
+   comes back **empty** — only the recording *state* is tracked, the
+   keystrokes are never actually captured without `'t'` ("handle keys as if
+   typed"). A full regenerate with `'xt'` changed zero bytes of every
+   already-committed golden, so this was purely a silent gap, not a tradeoff.
 5. **Vim reports 1-based byte columns; the engine uses 0-based character
    indices.** Convert only in the comparator. `mode()` is meaningless under
    `-es`, so mode is captured from our engine alone — if mode goldens ever
@@ -84,6 +94,52 @@ look entirely plausible while being wrong.
     and so is a **declared** one that did not actually happen — a case written
     to pin a failure that quietly started succeeding is exactly as wrong as the
     reverse.
+11. **Detail 10's `try`/`catch` DEFEATS a real Vim macro's own abort-on-error —
+    for a genuine exception, not for a beep.** A macro (`@a`) that hits a
+    plain motion-failure beep (`l` at end-of-line) still halts everything left
+    in it, exactly as `:help @` implies. But a macro that hits a genuine Vim
+    ERROR — E353 "Nothing in register", E20 "Mark not set" — does NOT halt
+    when the `feedkeys()` call is wrapped in `:try`/`:catch`, though the
+    identical call left to fail on its own *does* halt. Confirmed as a clean
+    A/B with a scratch probe: catching the exception is what defeats whatever
+    internal check Vim's macro loop uses to stop early. Since detail 10 makes
+    that wrapping unavoidable for every group in this harness, "does not halt
+    on a genuine error" is the correct, measured ground truth for these
+    goldens — not raw interactive Vim, which is the harness's own general
+    rule, just newly visible here. `packages/vim-core/src/state.ts`'s
+    `MACRO_HALT_EXEMPT` encodes exactly the two reasons this matters for.
+12. **`reg_recording()` and `@@`'s "last register" memory are Vim globals, not
+    reset between cases.** `s:Setup()` wipes the buffer, registers and marks,
+    but has no way to force-stop a leftover recording or forget which
+    register `@@` last repeated — there is no ex command for either. A case
+    whose own keys leave a recording still open (a bare `q` that lands as a
+    failed motion instead of a stop, per detail 9's swallow-on-operator-
+    pending rule) corrupts every case after it in the same file: `q` at the
+    START of the next case's keys stops the WRONG recording instead of
+    starting a fresh one. And a case that means to test "no macro has ever
+    run" (`@@` with nothing to repeat, E748) only measures true if it runs
+    BEFORE any other case's `@` in the same file gives that memory something
+    to remember — `pnpm goldens:verify` catches exactly this (its isolated,
+    one-process-per-case run disagrees with the batched one). `wave4-macros`
+    keeps that one case first in the file for this reason.
+13. **`:q` and `ZZ`/`ZQ` must never appear in a case's `keys` — not even inside
+    a `:normal` argument.** Every other detail here is about a golden that
+    LOOKS plausible while being wrong; this one is about a case that can take
+    the whole batch down with it. Running these for real against the batched
+    harness process does not beep or error — it actually tries to quit Vim
+    mid-run, which either aborts everything after it in the same file or hangs
+    the generator waiting on a process that already exited. `:w` is safe (it
+    just rewrites the scratch temp file harmlessly) but pointless to golden:
+    neither event shows up in what the comparator diffs — buffer, cursor,
+    registers — so a golden could not tell "emitted `BufferSaved`" from "did
+    nothing" regardless. Both are covered in
+    `packages/vim-core/src/semantics.test.ts` instead, straight against the
+    engine, the same way empty-register register semantics are — this is
+    "the oracle structurally cannot express it," not "the oracle would refuse
+    to run it," but the fix is identical either way. `docs/CHECKLIST.md`'s 4g
+    already flags this same hazard for the fuzz alphabet; `:g`/`:v` in 4f will
+    need the same care, since a fuzzed or careless global command is exactly
+    the shape that could embed one of these by accident.
 
 Detail 5's other half still stands: `mode()` reports `n` even inside insert
 mode under `feedkeys`, so mode goldens remain out of reach for this oracle.

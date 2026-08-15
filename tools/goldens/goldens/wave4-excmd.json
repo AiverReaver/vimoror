@@ -1,0 +1,924 @@
+[
+  {
+    "id": "excmd/delete-current-line-default-range",
+    "buffer": [
+      "one",
+      "two",
+      "three"
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": ":d<CR>",
+    "groups": [
+      ":d<CR>"
+    ],
+    "note": "no range given — :d acts on the current line only, like dd",
+    "encodedKeys": ":d\r",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "two\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "two\n"
+        }
+      },
+      "buffer": [
+        "one",
+        "three"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "excmd/delete-explicit-range",
+    "buffer": [
+      "one",
+      "two",
+      "three",
+      "four",
+      "five"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ":2,4d<CR>",
+    "groups": [
+      ":2,4d<CR>"
+    ],
+    "encodedKeys": ":2,4d\r",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "two\nthree\nfour\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "two\nthree\nfour\n"
+        }
+      },
+      "buffer": [
+        "one",
+        "five"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "excmd/delete-percent-whole-buffer",
+    "buffer": [
+      "one",
+      "two",
+      "three"
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": ":%d<CR>",
+    "groups": [
+      ":%d<CR>"
+    ],
+    "note": "% is shorthand for 1,$ — deleting every line still leaves one empty line, same as dd on a 1-line buffer",
+    "encodedKeys": ":%d\r",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "one\ntwo\nthree\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "one\ntwo\nthree\n"
+        }
+      },
+      "buffer": [
+        ""
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "excmd/delete-dot-dollar-range",
+    "buffer": [
+      "one",
+      "two",
+      "three",
+      "four"
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": ":.,$d<CR>",
+    "groups": [
+      ":.,$d<CR>"
+    ],
+    "encodedKeys": ":.,$d\r",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "two\nthree\nfour\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "two\nthree\nfour\n"
+        }
+      },
+      "buffer": [
+        "one"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "excmd/delete-then-undo-restores",
+    "buffer": [
+      "one",
+      "two",
+      "three"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ":2d<CR>u",
+    "groups": [
+      ":2d<CR>",
+      "u"
+    ],
+    "note": "two discrete changes (the delete, then u) — separate groups per harness detail 7",
+    "encodedKeys": ":2d\ru",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "two\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "two\n"
+        }
+      },
+      "buffer": [
+        "one",
+        "two",
+        "three"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "excmd/goto-line-number",
+    "buffer": [
+      "one",
+      "two",
+      "three",
+      "four"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ":3<CR>",
+    "groups": [
+      ":3<CR>"
+    ],
+    "note": "a bare range with no command moves the cursor there, like G",
+    "encodedKeys": ":3\r",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "one",
+        "two",
+        "three",
+        "four"
+      ],
+      "cursor": [
+        3,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "excmd/goto-with-relative-offset",
+    "buffer": [
+      "one",
+      "two",
+      "three",
+      "four"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ":.+2<CR>",
+    "groups": [
+      ":.+2<CR>"
+    ],
+    "encodedKeys": ":.+2\r",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "one",
+        "two",
+        "three",
+        "four"
+      ],
+      "cursor": [
+        3,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "excmd/bare-colon-goes-to-next-line",
+    "buffer": [
+      "one",
+      "two"
+    ],
+    "cursor": [
+      1,
+      2
+    ],
+    "keys": ":<CR>",
+    "groups": [
+      ":<CR>"
+    ],
+    "note": "a truly empty command line is NOT a no-op — measured against real Vim in isolation (a fresh, unbatched process, to rule out a leftover-command artifact): it advances one line, the classic ex convention of a bare <CR> meaning \"current line + 1\"\n",
+    "encodedKeys": ":\r",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "one",
+        "two"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "excmd/move-forward-to-dollar",
+    "buffer": [
+      "one",
+      "two",
+      "three",
+      "four"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ":1m$<CR>",
+    "groups": [
+      ":1m$<CR>"
+    ],
+    "encodedKeys": ":1m$\r",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "two",
+        "three",
+        "four",
+        "one"
+      ],
+      "cursor": [
+        4,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "excmd/move-backward-to-zero",
+    "buffer": [
+      "one",
+      "two",
+      "three",
+      "four"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ":4m0<CR>",
+    "groups": [
+      ":4m0<CR>"
+    ],
+    "note": "destination 0 means \"before line one\", same as Vim's own :m0",
+    "encodedKeys": ":4m0\r",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "four",
+        "one",
+        "two",
+        "three"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "excmd/move-into-own-range-fails",
+    "buffer": [
+      "one",
+      "two",
+      "three",
+      "four"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ":2,3m2<CR>",
+    "groups": [
+      ":2,3m2<CR>"
+    ],
+    "note": "E134 — destination line 2 sits inside the 2,3 range being moved",
+    "expectError": true,
+    "encodedKeys": ":2,3m2\r",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "one",
+        "two",
+        "three",
+        "four"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "Vim(move):E134: Cannot move a range of lines into itself",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "excmd/copy-t-alias-to-line-number",
+    "buffer": [
+      "one",
+      "two",
+      "three"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ":1t2<CR>",
+    "groups": [
+      ":1t2<CR>"
+    ],
+    "note": "the t command is Vim's own historical synonym for :copy, not an abbreviation of it",
+    "encodedKeys": ":1t2\r",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "one",
+        "two",
+        "one",
+        "three"
+      ],
+      "cursor": [
+        3,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "excmd/copy-to-dot-duplicates-current-line",
+    "buffer": [
+      "x",
+      "y"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ":t.<CR>",
+    "groups": [
+      ":t.<CR>"
+    ],
+    "encodedKeys": ":t.\r",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "x",
+        "x",
+        "y"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "excmd/normal-no-range-simple-command",
+    "buffer": [
+      "hello"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ":normal x<CR>",
+    "groups": [
+      ":normal x<CR>"
+    ],
+    "encodedKeys": ":normal x\r",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "h"
+        },
+        "-": {
+          "type": "v",
+          "text": "h"
+        }
+      },
+      "buffer": [
+        "ello"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "excmd/normal-no-range-auto-exits-insert",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ":normal Azzz<CR>x",
+    "groups": [
+      ":normal Azzz<CR>x"
+    ],
+    "note": "Vim exits Insert/Replace/Visual automatically at the end of :normal, \"as if <Esc> was typed\" (:help :normal) — there is no way to embed a literal <Esc> in the argument anyway, since pressing Esc at the : prompt cancels the whole command line before it runs. The trailing x is the observable proof: if :normal left the engine stuck in insert mode, x would insert a literal \"x\" instead of deleting the character under the cursor.\n",
+    "encodedKeys": ":normal Azzz\rx",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "z"
+        },
+        "-": {
+          "type": "v",
+          "text": "z"
+        }
+      },
+      "buffer": [
+        "abczz"
+      ],
+      "cursor": [
+        1,
+        5
+      ],
+      "error": "",
+      "curswant": 5
+    }
+  },
+  {
+    "id": "excmd/normal-with-range-runs-per-line",
+    "buffer": [
+      "aaa",
+      "aaa",
+      "aaa"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ":1,3normal x<CR>",
+    "groups": [
+      ":1,3normal x<CR>"
+    ],
+    "encodedKeys": ":1,3normal x\r",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a"
+        },
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "aa",
+        "aa",
+        "aa"
+      ],
+      "cursor": [
+        3,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "excmd/normal-with-range-survives-line-count-shrinking",
+    "buffer": [
+      "one",
+      "two",
+      "three",
+      "four"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ":1,2normal dd<CR>",
+    "groups": [
+      ":1,2normal dd<CR>"
+    ],
+    "note": "each dd changes the line count out from under the remaining targets — this is what actually exercises the shift-adjustment, unlike the char-delete case above where the line count never moves\n",
+    "encodedKeys": ":1,2normal dd\r",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "three\n"
+        },
+        "2": {
+          "type": "V",
+          "text": "one\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "three\n"
+        }
+      },
+      "buffer": [
+        "two",
+        "four"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "excmd/normal-with-range-can-empty-the-buffer",
+    "buffer": [
+      "aaa",
+      "bbb",
+      "ccc"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ":1,3normal dd<CR>",
+    "groups": [
+      ":1,3normal dd<CR>"
+    ],
+    "note": "deleting every targeted line still leaves one empty line, the same floor :%d hits",
+    "encodedKeys": ":1,3normal dd\r",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "bbb\n"
+        },
+        "2": {
+          "type": "V",
+          "text": "ccc\n"
+        },
+        "3": {
+          "type": "V",
+          "text": "aaa\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "bbb\n"
+        }
+      },
+      "buffer": [
+        ""
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "excmd/set-changes-shiftwidth-live",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ":set sw=2<CR>>>",
+    "groups": [
+      ":set sw=2<CR>>>"
+    ],
+    "encodedKeys": ":set sw=2\r>>",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "  abc"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "excmd/unknown-command-fails",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ":xyz<CR>",
+    "groups": [
+      ":xyz<CR>"
+    ],
+    "expectError": true,
+    "encodedKeys": ":xyz\r",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "abc"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "Vim:E492: Not an editor command: xyz",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "excmd/range-out-of-bounds-fails",
+    "buffer": [
+      "one",
+      "two",
+      "three"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ":99d<CR>",
+    "groups": [
+      ":99d<CR>"
+    ],
+    "expectError": true,
+    "encodedKeys": ":99d\r",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "one",
+        "two",
+        "three"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "Vim(delete):E16: Invalid range",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "excmd/mark-range-delete",
+    "buffer": [
+      "one",
+      "two",
+      "three",
+      "four",
+      "five"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "ma3Gmb:'a,'bd<CR>",
+    "groups": [
+      "ma3Gmb:'a,'bd<CR>"
+    ],
+    "encodedKeys": "ma3Gmb:'a,'bd\r",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "one\ntwo\nthree\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "one\ntwo\nthree\n"
+        }
+      },
+      "buffer": [
+        "four",
+        "five"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "excmd/mark-range-with-offsets",
+    "buffer": [
+      "a",
+      "b",
+      "c",
+      "d",
+      "e"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "3Gma:'a-1,'a+1d<CR>",
+    "groups": [
+      "3Gma:'a-1,'a+1d<CR>"
+    ],
+    "encodedKeys": "3Gma:'a-1,'a+1d\r",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "b\nc\nd\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "b\nc\nd\n"
+        }
+      },
+      "buffer": [
+        "a",
+        "e"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "excmd/visual-range-delete-via-colon",
+    "buffer": [
+      "one",
+      "two",
+      "three",
+      "four"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "Vj:d<CR>",
+    "groups": [
+      "Vj:d<CR>"
+    ],
+    "note": "pressing : from visual mode auto-fills '<,'> on the command line, exactly like real Vim — the typed keys are just Vj:d<CR>, nothing types the \"'<,'>\" text itself\n",
+    "encodedKeys": "Vj:d\r",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "one\ntwo\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "one\ntwo\n"
+        }
+      },
+      "buffer": [
+        "three",
+        "four"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "excmd/dot-repeat-is-not-contaminated-by-ex-command",
+    "buffer": [
+      "aaa",
+      "bbb"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "x:d<CR>.",
+    "groups": [
+      "x",
+      ":d<CR>",
+      "."
+    ],
+    "note": "regression for the recordChange guard: . after an ex command must still repeat the last NORMAL-mode change (x), never the :d<CR> itself — real Vim has no notion of dot-repeating an ex command at all\n",
+    "encodedKeys": "x:d\r.",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "aa\n"
+        },
+        "\"": {
+          "type": "v",
+          "text": "b"
+        },
+        "-": {
+          "type": "v",
+          "text": "b"
+        }
+      },
+      "buffer": [
+        "bb"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  }
+]

@@ -1,0 +1,710 @@
+[
+  {
+    "id": "macros/at-at-with-no-prior-macro-fails",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "@@",
+    "groups": [
+      "@@"
+    ],
+    "note": "E748 \"No previously used register\" — a genuine exception here, unlike an empty @z",
+    "expectError": true,
+    "encodedKeys": "@@",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "abc"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "Vim(call):E748: No previously used register",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "macros/record-and-replay",
+    "buffer": [
+      "aaaaa"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "qaxq@a",
+    "groups": [
+      "qaxq",
+      "@a"
+    ],
+    "encodedKeys": "qaxq@a",
+    "expect": {
+      "registers": {
+        "a": {
+          "type": "v",
+          "text": "x"
+        },
+        "\"": {
+          "type": "v",
+          "text": "a"
+        },
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "aaa"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "macros/count-multiplies-replay",
+    "buffer": [
+      "aaaaa"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "qaxq2@a",
+    "groups": [
+      "qaxq",
+      "2@a"
+    ],
+    "encodedKeys": "qaxq2@a",
+    "expect": {
+      "registers": {
+        "a": {
+          "type": "v",
+          "text": "x"
+        },
+        "\"": {
+          "type": "v",
+          "text": "a"
+        },
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "aa"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "macros/at-at-repeats-last-register",
+    "buffer": [
+      "aaaaaa"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "qaxq@a@@",
+    "groups": [
+      "qaxq",
+      "@a",
+      "@@"
+    ],
+    "encodedKeys": "qaxq@a@@",
+    "expect": {
+      "registers": {
+        "a": {
+          "type": "v",
+          "text": "x"
+        },
+        "\"": {
+          "type": "v",
+          "text": "a"
+        },
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "aaa"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "macros/uppercase-register-appends",
+    "buffer": [
+      "aaa"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "qaxqqAllq",
+    "groups": [
+      "qaxq",
+      "qAllq"
+    ],
+    "note": "recording into A appends to a's existing content rather than replacing it",
+    "encodedKeys": "qaxqqAllq",
+    "expect": {
+      "registers": {
+        "a": {
+          "type": "v",
+          "text": "xll"
+        },
+        "\"": {
+          "type": "v",
+          "text": "a"
+        },
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "aa"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "macros/lowercase-register-overwrites",
+    "buffer": [
+      "aaa"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "qaxqqalq",
+    "groups": [
+      "qaxq",
+      "qalq"
+    ],
+    "encodedKeys": "qaxqqalq",
+    "expect": {
+      "registers": {
+        "a": {
+          "type": "v",
+          "text": "l"
+        },
+        "\"": {
+          "type": "v",
+          "text": "a"
+        },
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "aa"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "macros/nested-replay",
+    "buffer": [
+      "aaaaaa"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "qaxqqbx@aq@b",
+    "groups": [
+      "qaxq",
+      "qbx@aq",
+      "@b"
+    ],
+    "note": "a macro that itself invokes another register's macro mid-recording",
+    "encodedKeys": "qaxqqbx@aq@b",
+    "expect": {
+      "registers": {
+        "a": {
+          "type": "v",
+          "text": "x"
+        },
+        "\"": {
+          "type": "v",
+          "text": "a"
+        },
+        "b": {
+          "type": "v",
+          "text": "x@a"
+        },
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "a"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "macros/halt-on-error-mid-record-still-replays-past-it",
+    "buffer": [
+      "aaa",
+      "bbb"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "qa`zxq@a",
+    "groups": [
+      "qa`zxq",
+      "@a"
+    ],
+    "note": "recording never aborts, so \"a ends up holding the full `\\`zx` — but REPLAYING that content must halt at `\\`z (unset mark) and never reach x. Both groups genuinely raise E20 (an unset mark, not a mere beep), hence expectError\n",
+    "expectError": true,
+    "encodedKeys": "qa`zxq@a",
+    "expect": {
+      "registers": {
+        "a": {
+          "type": "v",
+          "text": "`zx"
+        },
+        "\"": {
+          "type": "v",
+          "text": "a"
+        },
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "a",
+        "bbb"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "Vim(call):E20: Mark not set | Vim(call):E20: Mark not set",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "macros/halt-on-plain-motion-failure",
+    "buffer": [
+      "bbb"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "qallxq@a",
+    "groups": [
+      "qallxq",
+      "@a"
+    ],
+    "note": "a beep-class failure (l at end of line), not an exception, still halts a replay",
+    "encodedKeys": "qallxq@a",
+    "expect": {
+      "registers": {
+        "a": {
+          "type": "v",
+          "text": "llx"
+        },
+        "\"": {
+          "type": "v",
+          "text": "b"
+        },
+        "-": {
+          "type": "v",
+          "text": "b"
+        }
+      },
+      "buffer": [
+        "bb"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "macros/count-replay-aborts-wholesale-on-first-failure",
+    "buffer": [
+      "aaa"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "qa`zA-<Esc>q3@a",
+    "groups": [
+      "qa`zA-<Esc>q",
+      "3@a"
+    ],
+    "note": "3@a with a failing first command must leave EVERY repeat unrun, not just the first",
+    "expectError": true,
+    "encodedKeys": "qa`zA-\u001bq3@a",
+    "expect": {
+      "registers": {
+        "a": {
+          "type": "v",
+          "text": "`zA-\u001b"
+        }
+      },
+      "buffer": [
+        "aaa----"
+      ],
+      "cursor": [
+        1,
+        7
+      ],
+      "error": "Vim(call):E20: Mark not set | Vim(call):E20: Mark not set",
+      "curswant": 7
+    }
+  },
+  {
+    "id": "macros/replay-empty-register-fails",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "@z",
+    "groups": [
+      "@z"
+    ],
+    "note": "an empty register is a beep, not a catchable exception — no expectError, same as \"u with nothing to undo\"",
+    "encodedKeys": "@z",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "abc"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "macros/q-during-operator-pending-does-not-stop",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "qayqllq",
+    "groups": [
+      "qayqllq"
+    ],
+    "note": "yq is a failed motion for y, not the stop key — recording continues through it",
+    "encodedKeys": "qayqllq",
+    "expect": {
+      "registers": {
+        "a": {
+          "type": "v",
+          "text": "yqll"
+        }
+      },
+      "buffer": [
+        "abc"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "macros/recording-crosses-into-insert-mode",
+    "buffer": [
+      "one",
+      "two"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "qaAxyz<Esc>jq@a",
+    "groups": [
+      "qaAxyz<Esc>jq",
+      "@a"
+    ],
+    "encodedKeys": "qaAxyz\u001bjq@a",
+    "expect": {
+      "registers": {
+        "a": {
+          "type": "v",
+          "text": "Axyz\u001bj"
+        }
+      },
+      "buffer": [
+        "onexyz",
+        "twoxyz"
+      ],
+      "cursor": [
+        2,
+        6
+      ],
+      "error": "",
+      "curswant": 6
+    }
+  },
+  {
+    "id": "macros/recording-crosses-into-visual-mode",
+    "buffer": [
+      "abcdefghijklmnop"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "qavllxq3@a",
+    "groups": [
+      "qavllxq",
+      "3@a"
+    ],
+    "encodedKeys": "qavllxq3@a",
+    "expect": {
+      "registers": {
+        "a": {
+          "type": "v",
+          "text": "vllx"
+        },
+        "\"": {
+          "type": "v",
+          "text": "jkl"
+        },
+        "-": {
+          "type": "v",
+          "text": "jkl"
+        }
+      },
+      "buffer": [
+        "mnop"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "macros/digit-register-record-and-replay",
+    "buffer": [
+      "aaaaa"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "q1xq@1",
+    "groups": [
+      "q1xq",
+      "@1"
+    ],
+    "encodedKeys": "q1xq@1",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "v",
+          "text": "x"
+        },
+        "\"": {
+          "type": "v",
+          "text": "a"
+        },
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "aaa"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "macros/dot-repeat-after-macro-repeats-macros-last-change",
+    "buffer": [
+      "bbbbbb"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "qaxq@a.",
+    "groups": [
+      "qaxq",
+      "@a",
+      "."
+    ],
+    "encodedKeys": "qaxq@a.",
+    "expect": {
+      "registers": {
+        "a": {
+          "type": "v",
+          "text": "x"
+        },
+        "\"": {
+          "type": "v",
+          "text": "b"
+        },
+        "-": {
+          "type": "v",
+          "text": "b"
+        }
+      },
+      "buffer": [
+        "bbb"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "macros/recorded-dot-plays-back-literally",
+    "buffer": [
+      "one two three four"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "qadw.q@a",
+    "groups": [
+      "qadw.q",
+      "@a"
+    ],
+    "note": "a `.` typed while recording must be captured as the single key `.`, not expanded into the change it repeats — replaying it re-resolves against whatever `.` means AT REPLAY TIME\n",
+    "encodedKeys": "qadw.q@a",
+    "expect": {
+      "registers": {
+        "a": {
+          "type": "v",
+          "text": "dw."
+        },
+        "\"": {
+          "type": "v",
+          "text": "four"
+        },
+        "-": {
+          "type": "v",
+          "text": "four"
+        }
+      },
+      "buffer": [
+        ""
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "macros/count-on-record-then-replay",
+    "buffer": [
+      "one two three four five six"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "qadwq3@a",
+    "groups": [
+      "qadwq",
+      "3@a"
+    ],
+    "encodedKeys": "qadwq3@a",
+    "expect": {
+      "registers": {
+        "a": {
+          "type": "v",
+          "text": "dw"
+        },
+        "\"": {
+          "type": "v",
+          "text": "four "
+        },
+        "-": {
+          "type": "v",
+          "text": "four "
+        }
+      },
+      "buffer": [
+        "five six"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  }
+]

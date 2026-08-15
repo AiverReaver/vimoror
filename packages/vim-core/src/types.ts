@@ -72,7 +72,11 @@ export type InvalidReason =
   /** `<C-o>`/`<C-i>` with nowhere left to go in the jumplist. */
   | 'no-jump'
   /** `.` with no change recorded yet. */
-  | 'nothing-to-repeat';
+  | 'nothing-to-repeat'
+  /** A range that fails to parse, is backwards past repair, or falls outside the buffer. */
+  | 'invalid-range'
+  /** An ex command name that matches nothing implemented. */
+  | 'unknown-command';
 
 export type ResolvedCommand = {
   /** The literal keys as typed, e.g. "d2w". */
@@ -89,7 +93,11 @@ export type EngineEvent =
   | { readonly type: 'CommandResolved'; readonly command: ResolvedCommand }
   | { readonly type: 'RegisterChanged'; readonly name: string }
   | { readonly type: 'KeyRejected'; readonly key: KeyToken; readonly reason: InvalidReason }
-  | { readonly type: 'InvalidCommand'; readonly keys: string; readonly reason: InvalidReason };
+  | { readonly type: 'InvalidCommand'; readonly keys: string; readonly reason: InvalidReason }
+  /** `:w` — core stays zero-I/O, so the host does the actual writing. */
+  | { readonly type: 'BufferSaved'; readonly force: boolean }
+  /** `:q` — the host decides what "quit" means (close a stage, exit the app, ...). */
+  | { readonly type: 'QuitRequested'; readonly force: boolean };
 
 /** Locked keys are rejected in fiction, never silently no-op'd. */
 export type KeyPolicy = {

@@ -1,0 +1,138 @@
+# Macros — Wave 4c: `q @ @@` with halt-on-error.
+#
+# Two rules were measured with a scratch probe (real Vim 9.1) before writing
+# any of this, because neither is obvious from `:help q`/`:help @`:
+#
+# - RECORDING never aborts on a failed command — `qa"zpxq` on an empty `"z`
+#   still records `"zpx` in full and still runs the `x`, exactly as typing it
+#   interactively would (a beep, not a stop). REPLAY is the opposite: any
+#   failed command — even a plain motion-fail beep like `l` at end-of-line,
+#   not only a genuine error — aborts everything left in that `@`, including
+#   every remaining count-repeat of `{count}@{reg}`. `feedkeys`/macro-replay
+#   abort-on-error (harness detail 9) is a real Vim macro mechanic here, not
+#   a harness artifact.
+# - A bare `q` only means "stop recording" when it would otherwise be a valid,
+#   complete new command — with an operator pending (`yq`) or another
+#   `awaiting` state open, it is swallowed as an ordinary (failing) keystroke
+#   instead, and recording continues. Measured: `qa` `yq` `llq` leaves `"a`
+#   holding `yqll`, and `reg_recording()` is still `a` right after the `yq`.
+#
+# Every case that records AND replays uses two groups (harness detail 7): the
+# recording's own internal failures must not be confused with whether the
+# REPLAY of that same content halts.
+
+cases:
+  # `@@`'s "last register" memory (and `q`'s recording flag) is a Vim GLOBAL,
+  # not reset by the harness's per-case buffer wipe — `pnpm goldens:verify`
+  # catches this directly (isolated run raises E748, batched run does not,
+  # because SOME earlier case already used `@`). There is no ex command to
+  # clear it, so this case must stay first in the file, before any other
+  # case's `@` gives it something to remember.
+  - id: macros/at-at-with-no-prior-macro-fails
+    note: E748 "No previously used register" — a genuine exception here, unlike an empty @z
+    buffer: ['abc']
+    cursor: [1, 1]
+    keys: '@@'
+    expectError: true
+
+  - id: macros/record-and-replay
+    buffer: ['aaaaa']
+    cursor: [1, 1]
+    keys: ['qaxq', '@a']
+
+  - id: macros/count-multiplies-replay
+    buffer: ['aaaaa']
+    cursor: [1, 1]
+    keys: ['qaxq', '2@a']
+
+  - id: macros/at-at-repeats-last-register
+    buffer: ['aaaaaa']
+    cursor: [1, 1]
+    keys: ['qaxq', '@a', '@@']
+
+  - id: macros/uppercase-register-appends
+    note: recording into A appends to a's existing content rather than replacing it
+    buffer: ['aaa']
+    cursor: [1, 1]
+    keys: ['qaxq', 'qAllq']
+
+  - id: macros/lowercase-register-overwrites
+    buffer: ['aaa']
+    cursor: [1, 1]
+    keys: ['qaxq', 'qalq']
+
+  - id: macros/nested-replay
+    note: a macro that itself invokes another register's macro mid-recording
+    buffer: ['aaaaaa']
+    cursor: [1, 1]
+    keys: ['qaxq', 'qbx@aq', '@b']
+
+  - id: macros/halt-on-error-mid-record-still-replays-past-it
+    note: >
+      recording never aborts, so "a ends up holding the full `\`zx` — but
+      REPLAYING that content must halt at `\`z (unset mark) and never reach x.
+      Both groups genuinely raise E20 (an unset mark, not a mere beep), hence
+      expectError
+    buffer: ['aaa', 'bbb']
+    cursor: [1, 1]
+    keys: ['qa`zxq', '@a']
+    expectError: true
+
+  - id: macros/halt-on-plain-motion-failure
+    note: a beep-class failure (l at end of line), not an exception, still halts a replay
+    buffer: ['bbb']
+    cursor: [1, 3]
+    keys: ['qallxq', '@a']
+
+  - id: macros/count-replay-aborts-wholesale-on-first-failure
+    note: 3@a with a failing first command must leave EVERY repeat unrun, not just the first
+    buffer: ['aaa']
+    cursor: [1, 1]
+    keys: ['qa`zA-<Esc>q', '3@a']
+    expectError: true
+
+  - id: macros/replay-empty-register-fails
+    note: an empty register is a beep, not a catchable exception — no expectError, same as "u with nothing to undo"
+    buffer: ['abc']
+    cursor: [1, 1]
+    keys: '@z'
+
+  - id: macros/q-during-operator-pending-does-not-stop
+    note: yq is a failed motion for y, not the stop key — recording continues through it
+    buffer: ['abc']
+    cursor: [1, 1]
+    keys: 'qayqllq'
+
+  - id: macros/recording-crosses-into-insert-mode
+    buffer: ['one', 'two']
+    cursor: [1, 1]
+    keys: ['qaAxyz<Esc>jq', '@a']
+
+  - id: macros/recording-crosses-into-visual-mode
+    buffer: ['abcdefghijklmnop']
+    cursor: [1, 1]
+    keys: ['qavllxq', '3@a']
+
+  - id: macros/digit-register-record-and-replay
+    buffer: ['aaaaa']
+    cursor: [1, 1]
+    keys: ['q1xq', '@1']
+
+  - id: macros/dot-repeat-after-macro-repeats-macros-last-change
+    buffer: ['bbbbbb']
+    cursor: [1, 1]
+    keys: ['qaxq', '@a', '.']
+
+  - id: macros/recorded-dot-plays-back-literally
+    note: >
+      a `.` typed while recording must be captured as the single key `.`, not
+      expanded into the change it repeats — replaying it re-resolves against
+      whatever `.` means AT REPLAY TIME
+    buffer: ['one two three four']
+    cursor: [1, 1]
+    keys: ['qadw.q', '@a']
+
+  - id: macros/count-on-record-then-replay
+    buffer: ['one two three four five six']
+    cursor: [1, 1]
+    keys: ['qadwq', '3@a']

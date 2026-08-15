@@ -1,0 +1,173 @@
+# Search motions — Wave 4b: `/ ? n N * #`.
+#
+# All six are jump commands (they push the jumplist and set the previous-
+# context mark) and all six force the numbered registers on a delete that
+# crosses their boundary — same flags every other jump motion already uses,
+# just newly wired up (`state.ts`'s generic `isJump`/`forcesNumbered` handling
+# needed no changes at all).
+#
+# Regex is Vim's default 'magic' level only (`vimregex.ts`): `. * [ ] ^ $`
+# are special unescaped, `( ) + ? = { } |` need a backslash to become special.
+# `\v`/`\V`/`nomagic` are not implemented.
+
+cases:
+  # --- the basics -------------------------------------------------------------
+  - id: search/forward-lands-on-match-start
+    buffer: ['alpha beta gamma']
+    cursor: [1, 1]
+    keys: '/gamma<CR>'
+
+  - id: search/forward-skips-the-match-under-cursor
+    note: search starts AFTER the cursor, so sitting on a match still advances
+    buffer: ['foo foo foo']
+    cursor: [1, 1]
+    keys: '/foo<CR>'
+
+  - id: search/backward-lands-on-match-start
+    buffer: ['alpha beta gamma']
+    cursor: [1, 17]
+    keys: '?alpha<CR>'
+
+  - id: search/register-set-after-search
+    buffer: ['alpha beta gamma']
+    cursor: [1, 1]
+    keys: '/beta<CR>'
+
+  - id: search/n-repeats-same-direction
+    buffer: ['x. one x. two x. three']
+    cursor: [1, 1]
+    keys: ['/x\.<CR>', 'n']
+
+  - id: search/big-N-reverses-direction
+    buffer: ['x one x two x three']
+    cursor: [1, 1]
+    keys: ['/x<CR>', 'n', 'N']
+
+  - id: search/empty-pattern-reuses-last
+    buffer: ['x one x two x three']
+    cursor: [1, 1]
+    keys: ['/x<CR>', '/<CR>']
+
+  # --- wraparound ---------------------------------------------------------
+  - id: search/wraps-past-end-of-buffer
+    buffer: ['gamma alpha beta']
+    cursor: [1, 8]
+    keys: '/gamma<CR>'
+
+  - id: search/wraps-onto-the-only-match
+    note: with exactly one occurrence, wrapping finds the SAME one again
+    buffer: ['only one gamma here']
+    cursor: [1, 10]
+    keys: '/gamma<CR>'
+
+  - id: search/nowrapscan-fails-past-the-end
+    buffer: ['gamma alpha beta']
+    cursor: [1, 8]
+    keys: '/gamma<CR>'
+    options: ['nowrapscan']
+    expectError: true
+
+  - id: search/pattern-not-found-anywhere
+    buffer: ['alpha beta']
+    cursor: [1, 1]
+    keys: '/zzz<CR>'
+    expectError: true
+
+  # --- * and # --------------------------------------------------------------
+  - id: search/star-searches-whole-word
+    note: '`cat` inside `concatenate` must NOT match — `*` wraps `\<...\>`'
+    buffer: ['a cat sat on concatenate']
+    cursor: [1, 3]
+    keys: '*'
+
+  - id: search/star-from-mid-word-uses-that-word
+    buffer: ['alpha beta alpha']
+    cursor: [1, 3]
+    keys: '*'
+
+  - id: search/hash-searches-backward
+    buffer: ['alpha beta alpha']
+    cursor: [1, 13]
+    keys: '#'
+
+  - id: search/star-register-is-word-bounded-pattern
+    buffer: ['cat catalog cat']
+    cursor: [1, 1]
+    keys: '*'
+
+  # --- regex specials ---------------------------------------------------------
+  - id: search/dot-matches-any-char
+    buffer: ['fooXbar fooYbar']
+    cursor: [1, 1]
+    keys: '/foo.bar<CR>'
+
+  - id: search/star-is-zero-or-more
+    buffer: ['fbar foobar fooobar']
+    cursor: [1, 1]
+    keys: '/fo*bar<CR>'
+
+  - id: search/backslash-plus-is-one-or-more
+    note: bare `+` is LITERAL in magic mode; `\+` is the quantifier
+    buffer: ['a+b aaab']
+    cursor: [1, 1]
+    keys: '/a\+b<CR>'
+
+  - id: search/bare-plus-is-literal
+    buffer: ['a+b aaab']
+    cursor: [1, 1]
+    keys: '/a+b<CR>'
+
+  - id: search/alternation-and-grouping
+    buffer: ['cat dog bird']
+    cursor: [1, 1]
+    keys: '/\(dog\|bird\)<CR>'
+
+  - id: search/character-class
+    buffer: ['x1y x9y xzy']
+    cursor: [1, 1]
+    keys: '/x[0-9]y<CR>'
+
+  # --- case sensitivity ---------------------------------------------------
+  - id: search/default-is-case-sensitive
+    buffer: ['Foo foo']
+    cursor: [1, 1]
+    keys: '/foo<CR>'
+
+  - id: search/ignorecase-option
+    buffer: ['Foo bar']
+    cursor: [1, 1]
+    keys: '/foo<CR>'
+    options: ['ignorecase']
+
+  - id: search/inline-backslash-c-forces-insensitive
+    buffer: ['Foo bar']
+    cursor: [1, 1]
+    keys: '/\cfoo<CR>'
+
+  - id: search/smartcase-with-uppercase-forces-sensitive
+    buffer: ['foo Foo']
+    cursor: [1, 1]
+    keys: '/Foo<CR>'
+    options: ['ignorecase', 'smartcase']
+
+  # --- composing with operators and counts -----------------------------------
+  - id: search/delete-through-search-is-exclusive
+    buffer: ['alpha beta gamma']
+    cursor: [1, 1]
+    keys: 'd/gamma<CR>'
+
+  - id: search/count-prefixed-n
+    buffer: ['x a x b x c x d']
+    cursor: [1, 1]
+    keys: ['/x<CR>', '2n']
+
+  - id: search/count-prefixed-star
+    buffer: ['cat one cat two cat three']
+    cursor: [1, 1]
+    keys: '2*'
+
+  # --- visual mode --------------------------------------------------------
+  - id: search/visual-mode-extends-to-match
+    buffer: ['alpha beta gamma']
+    cursor: [1, 1]
+    keys: 'v/gamma<CR>d'

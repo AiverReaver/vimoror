@@ -13,14 +13,18 @@
 
 import { applyEdit, clamp, comparePos, firstNonBlank, lastLine, lineAt, type Lines } from './buffer.ts';
 import * as D from './dot.ts';
+import * as Ex from './excmd.ts';
 import * as I from './insert.ts';
+import { tokenize } from './keys.ts';
+import * as Mac from './macros.ts';
 import * as K from './marks.ts';
 import * as M from './motions.ts';
 import * as O from './operators.ts';
 import * as P from './put.ts';
 import { BLACKHOLE, readRegister, recordWrite, UNNAMED } from './registers.ts';
+import * as S from './search.ts';
 import * as T from './textobjects.ts';
-import { canRedo, canUndo, initUndo, pushUndo, redo, undo, type UndoState } from './undo.ts';
+import { canRedo, canUndo, initUndo, pushUndo, redo, undo, undoToSeq, type UndoState } from './undo.ts';
 import type {
   EngineEvent,
   InvalidReason,
@@ -63,10 +67,23 @@ export type Pending = {
     | 'mark-exact'
     /** `'` — waiting for the letter to jump to, linewise. */
     | 'mark-line'
+    /** `/` or `?` — accumulating pattern text until `<CR>` or `<Esc>`. */
+    | 'search'
+    /** `q` — waiting for the register letter to start recording into. */
+    | 'macro-register'
+    /** `@` — waiting for the register letter to replay. */
+    | 'macro-replay'
+    /** `:` — accumulating an ex command line until `<CR>` or `<Esc>`. */
+    | 'command-line'
     | undefined;
   readonly findCmd: 'f' | 'F' | 't' | 'T' | undefined;
   /** `i` or `a`, while waiting for the object character in `di(`, `caw`. */
   readonly textObjectKind: T.ObjectKind | undefined;
+  /** `/` or `?`, while `awaiting === 'search'`. */
+  readonly searchLeader: '/' | '?' | undefined;
+  readonly searchText: string;
+  /** `:`, while `awaiting === 'command-line'`. */
+  readonly commandText: string;
 };
 
 export const EMPTY_PENDING: Pending = {
@@ -79,6 +96,9 @@ export const EMPTY_PENDING: Pending = {
   awaiting: undefined,
   findCmd: undefined,
   textObjectKind: undefined,
+  searchLeader: undefined,
+  searchText: '',
+  commandText: '',
 };
 
 export type EditorState = {
@@ -91,6 +111,12 @@ export type EditorState = {
   readonly pending: Pending;
   readonly lastFind: { readonly cmd: 'f' | 'F' | 't' | 'T'; readonly ch: string } | undefined;
   readonly searchPattern: string;
+  /**
+   * The direction `/`, `?`, `*` or `#` last searched — what `n` repeats and
+   * `N` reverses. `n`/`N` themselves never change it, so alternating them
+   * keeps flipping back and forth around the same original direction.
+   */
+  readonly searchDirection: S.SearchDirection | undefined;
   readonly keyPolicy: KeyPolicy | undefined;
   readonly options: O.EditorOptions;
   readonly insert: I.InsertSession | undefined;
@@ -115,6 +141,14 @@ export type EditorState = {
   readonly dotPending: Omit<D.DotRecord, 'insertKeys'> | undefined;
   /** True while `.` is feeding recorded keys, so the replay records nothing. */
   readonly replaying: boolean;
+  /** True while `@` is feeding a macro's keys — unlike `replaying`, `.` still updates: see `step()`. */
+  readonly macroReplaying: boolean;
+  /** The `q` recording in progress, if any. Raw keystrokes, built up key by key. */
+  readonly recording: Mac.MacroRecording | undefined;
+  /** Finished recordings, by lowercase register name — what `@{reg}` plays back. */
+  readonly macros: Mac.MacroStore;
+  /** The register `@@` repeats. */
+  readonly lastMacroReg: string | undefined;
   readonly marks: K.Marks;
   readonly jumps: K.JumpList;
   /**
@@ -141,6 +175,7 @@ export function initState(
     pending: EMPTY_PENDING,
     lastFind: undefined,
     searchPattern: '',
+    searchDirection: undefined,
     keyPolicy: undefined,
     options,
     insert: undefined,
@@ -149,6 +184,10 @@ export function initState(
     dot: undefined,
     dotPending: undefined,
     replaying: false,
+    macroReplaying: false,
+    recording: undefined,
+    macros: {},
+    lastMacroReg: undefined,
     marks: {},
     jumps: K.EMPTY_JUMPS,
     pcmark: undefined,
@@ -282,7 +321,7 @@ function changedSpan(before: Lines, after: Lines, from: number, to?: number): En
 const MOTION_KEYS = new Set([
   'h', 'l', '0', '^', '$', 'j', 'k', 'G', '+', '-', '_',
   'w', 'W', 'b', 'B', 'e', 'E', '%', ';', ',', '<BS>', '<Space>', '<CR>',
-  '{', '}', '(', ')',
+  '{', '}', '(', ')', 'n', 'N',
 ]);
 
 const OPERATORS: Record<string, O.OperatorName> = { d: 'd', c: 'c', y: 'y', '>': '>', '<': '<' };
@@ -376,9 +415,65 @@ function resolveMotion(
       return M.moveFindRepeat(ctx, false);
     case ',':
       return M.moveFindRepeat(ctx, true);
+    case 'n':
+    case 'N':
+      // `n` repeats the last search AS SEARCHED; `N` reverses it. Neither
+      // changes what `state.searchDirection` means for the NEXT `n`/`N` —
+      // that mutation belongs to `/`, `?`, `*` and `#` only, none of which
+      // go through this pure-motion path (see `resolveSearchPattern`).
+      if (state.searchDirection === undefined || state.searchPattern === '') return null;
+      return searchMotion(
+        state,
+        state.cursor,
+        state.searchPattern,
+        key === 'n' ? state.searchDirection : flipDirection(state.searchDirection),
+        count,
+      );
     default:
       return null;
   }
+}
+
+function flipDirection(dir: S.SearchDirection): S.SearchDirection {
+  return dir === 'forward' ? 'backward' : 'forward';
+}
+
+/** A resolved search as a `MotionResult`, for callers that already have a pattern in hand — `n`/`N` here, `*`/`#` and `/`/`?`'s commit elsewhere. */
+function searchMotion(
+  state: EditorState,
+  from: Pos,
+  pattern: string,
+  direction: S.SearchDirection,
+  count: number,
+): MotionResult | null {
+  const opts = { ignorecase: state.options.ignorecase, smartcase: state.options.smartcase };
+  const target = S.findMatchRepeated(state.lines, from, pattern, direction, opts, state.options.wrapscan, count);
+  if (target === null) return null;
+  return { target, kind: 'charwise', inclusive: false, forcesNumbered: true, isJump: true };
+}
+
+/**
+ * `/`, `?`, `*`, `#`: unlike `n`/`N` these WRITE the search state (pattern,
+ * direction, the `"/` register) before searching — even on a failed search,
+ * matching real Vim, so a follow-up `n` retries the same pattern rather than
+ * silently reusing whatever searched last. `from` is the cursor for `/`/`?`
+ * but the identified word's OWN start for `*`/`#` (see `wordUnderCursor`).
+ */
+function resolveSearchPattern(
+  state: EditorState,
+  from: Pos,
+  pattern: string,
+  direction: S.SearchDirection,
+  count: number,
+): { readonly state: EditorState; readonly motion: MotionResult | null } {
+  if (pattern === '') return { state, motion: null };
+  const withPattern: EditorState = {
+    ...state,
+    searchPattern: pattern,
+    searchDirection: direction,
+    registers: { ...state.registers, '/': { text: pattern, type: 'charwise' } },
+  };
+  return { state: withPattern, motion: searchMotion(withPattern, from, pattern, direction, count) };
 }
 
 /**
@@ -410,9 +505,28 @@ export function step(state: EditorState, key: KeyToken): StepResult {
   const result = dispatch(state, key);
   // The `.` record is maintained OUTSIDE the reducer proper: it watches what a
   // key did rather than asking each command to declare itself, so no future
-  // command can be added and silently forget to be repeatable.
+  // command can silently forget to be repeatable.
   if (state.replaying) return result;
-  return { ...result, state: recordChange(state, key, result.state) };
+  const dotted = recordChange(state, key, result.state);
+  // `@`'s own inner replay must still feed `.` (measured: `@a` then `.`
+  // repeats the macro's last change) but must NOT be captured into an
+  // outer `q` recording a second time — the outer `@`/register keystrokes
+  // already were. `replaying` (above) suppresses both for `.`'s own inner
+  // replay, which must not re-record itself into `dot` OR into a macro.
+  if (state.macroReplaying) return { ...result, state: dotted };
+  return { ...result, state: recordMacroKey(state, key, dotted) };
+}
+
+/**
+ * Raw-keystroke capture for `q` recording — mirrors `dot.ts`'s insert-session
+ * half: everything typed while recording is captured VERBATIM, in whatever
+ * mode it happens in. Excluded on purpose: the `q{reg}` that started the
+ * recording and the bare `q` that stops it, neither of which real Vim stores
+ * in the register (measured: `qa$xq` leaves `"a` holding exactly `$x`).
+ */
+function recordMacroKey(before: EditorState, key: KeyToken, after: EditorState): EditorState {
+  if (before.recording === undefined || after.recording === undefined) return after;
+  return { ...after, recording: { ...after.recording, keys: [...after.recording.keys, key] } };
 }
 
 function dispatch(state: EditorState, key: KeyToken): StepResult {
@@ -462,6 +576,12 @@ function recordChange(before: EditorState, key: KeyToken, after: EditorState): E
     return { ...after, dot: { ...pending, insertKeys: [...(before.insert?.keys ?? []), key] }, dotPending: undefined };
   }
 
+  // An ex command is never dot-repeatable — `.` after `:d<CR>` repeats
+  // whatever normal-mode change came before it, not the ex command. Checked
+  // on `before` so the WHOLE `:...<CR>` sequence is excluded, not just the
+  // keys typed while still accumulating.
+  if (before.pending.awaiting === 'command-line') return after;
+
   const visual = isVisual(before.mode) ? shapeOfSelection(before) : undefined;
   const keys = [...before.pending.dotKeys, key];
   const { count } = countOf(before.pending);
@@ -471,7 +591,11 @@ function recordChange(before: EditorState, key: KeyToken, after: EditorState): E
     return { ...after, dotPending: { keys, count: typedCount, visual } };
   }
 
-  if (NEVER_RECORDED.has(key)) return after;
+  // `-`/`+` are ordinary motion keys shared with `d-`/`c-` etc., so they
+  // can't go in NEVER_RECORDED by bare key — only the two-key `g-`/`g+`
+  // undo-tree jump is a non-change, exactly like `u`/`<C-r>`.
+  const joined = keys.join('');
+  if (NEVER_RECORDED.has(key) || joined === 'g-' || joined === 'g+') return after;
   // A change is a change exactly when the buffer moved. A yank leaves it
   // alone, which is why `x yw .` still repeats the `x`.
   if (before.lines === after.lines) return after;
@@ -547,6 +671,55 @@ function stepNormal(state: EditorState, key: KeyToken): StepResult {
     return doMarkJump(state, key, p.awaiting === 'mark-line', keys.join(''));
   }
 
+  if (p.awaiting === 'search') {
+    if (key === '<CR>') {
+      const { count } = countOf(p);
+      const typed = p.searchText === '' ? state.searchPattern : p.searchText;
+      const direction: S.SearchDirection = p.searchLeader === '/' ? 'forward' : 'backward';
+      const { state: withPattern, motion } = resolveSearchPattern(state, state.cursor, typed, direction, count);
+      if (motion === null) return invalid(withPattern, keys.join(''), 'motion-failed');
+      const jumped = recordJump(withPattern);
+      if (opPending) return applyOperator(jumped, p.operator!, motion, keys.join(''));
+      return withCursor(jumped, motion.target);
+    }
+    if (key === '<Esc>') return { state: { ...state, pending: EMPTY_PENDING }, events: [] };
+    if (key === '<BS>') {
+      // Backspacing past the start cancels the search, same as real Vim.
+      if (p.searchText === '') return { state: { ...state, pending: EMPTY_PENDING }, events: [] };
+      return pendingOnly(state, bump({ searchText: p.searchText.slice(0, -1) }));
+    }
+    if (key.length !== 1) return invalid(state, keys.join(''), 'unknown-key');
+    return pendingOnly(state, bump({ searchText: p.searchText + key }));
+  }
+
+  if (p.awaiting === 'command-line') {
+    if (key === '<Esc>') return { state: { ...state, pending: EMPTY_PENDING }, events: [] };
+    if (key === '<CR>') return doExCommand(state, p.commandText, keys.join(''));
+    if (key === '<BS>') {
+      // Backspacing past the start cancels the command line, same as search.
+      if (p.commandText === '') return { state: { ...state, pending: EMPTY_PENDING }, events: [] };
+      return pendingOnly(state, bump({ commandText: p.commandText.slice(0, -1) }));
+    }
+    if (key.length !== 1) return invalid(state, keys.join(''), 'unknown-key');
+    return pendingOnly(state, bump({ commandText: p.commandText + key }));
+  }
+
+  // `q`/`@` have no visual-mode meaning, so these two `awaiting` states only
+  // ever arise here — recording itself, once started, is captured by `step()`
+  // regardless of mode (see `recordMacroKey`).
+  if (p.awaiting === 'macro-register') {
+    if (!Mac.isValidRecordRegister(key)) return invalid(state, keys.join(''), 'unknown-key');
+    return {
+      state: { ...state, recording: { register: key, keys: [] }, pending: EMPTY_PENDING },
+      events: [],
+    };
+  }
+
+  if (p.awaiting === 'macro-replay') {
+    if (!Mac.isValidReplayRegister(key)) return invalid(state, keys.join(''), 'unknown-key');
+    return doMacroReplay(state, key, countOf(p).count, keys.join(''));
+  }
+
   if (p.awaiting === 'g') {
     const { count, hasCount } = countOf(p);
     switch (key) {
@@ -578,6 +751,11 @@ function stepNormal(state: EditorState, key: KeyToken): StepResult {
       case 'v':
         if (opPending) return invalid(state, keys.join(''), 'no-such-motion');
         return reselect(state, undefined);
+      case '-':
+      case '+':
+        // Not a motion, like `gv` — no operator can be pending here.
+        if (opPending) return invalid(state, keys.join(''), 'no-such-motion');
+        return doUndoSeq(state, key === '-' ? -count : count, keys.join(''));
       default:
         return invalid(state, keys.join(''), 'no-such-motion');
     }
@@ -609,6 +787,31 @@ function stepNormal(state: EditorState, key: KeyToken): StepResult {
   if (key === 'm') {
     if (opPending) return invalid(state, keys.join(''), 'no-such-motion');
     return pendingOnly(state, bump({ awaiting: 'mark' }));
+  }
+
+  if (key === '/' || key === '?') {
+    return pendingOnly(state, bump({ awaiting: 'search', searchLeader: key, searchText: '' }));
+  }
+  if (key === ':') {
+    // Unlike `/`, `:` is not a motion — there is no such thing as `d:`.
+    if (opPending) return invalid(state, keys.join(''), 'no-such-motion');
+    return pendingOnly(state, bump({ awaiting: 'command-line', commandText: '' }));
+  }
+  if (key === '*' || key === '#') {
+    const found = S.wordUnderCursor(state.lines, state.cursor);
+    if (found === null) return invalid(state, keys.join(''), 'motion-failed');
+    const direction: S.SearchDirection = key === '*' ? 'forward' : 'backward';
+    const { state: withPattern, motion } = resolveSearchPattern(
+      state,
+      found.start,
+      `\\<${found.word}\\>`,
+      direction,
+      count,
+    );
+    if (motion === null) return invalid(withPattern, keys.join(''), 'motion-failed');
+    const jumped = recordJump(withPattern);
+    if (opPending) return applyOperator(jumped, p.operator!, motion, keys.join(''));
+    return withCursor(jumped, motion.target);
   }
 
   // `<C-o>`/`<C-i>` are commands, not motions — Vim's `checkclearopq` beeps
@@ -679,6 +882,15 @@ function stepNormal(state: EditorState, key: KeyToken): StepResult {
       return doRedo(state);
     case '.':
       return doRepeat(state, hasCount ? count : 0);
+    case 'q':
+      // A bare `q` while already recording STOPS it, rather than starting a
+      // second one — real Vim never lets two recordings run at once, and this
+      // is the only way `q` can mean "stop": measured, a `q` that arrives
+      // with an operator or another `awaiting` state pending (e.g. `yq`) is
+      // swallowed as an ordinary failed key instead, and recording continues.
+      return state.recording !== undefined ? doMacroStop(state) : pendingOnly(state, bump({ awaiting: 'macro-register' }));
+    case '@':
+      return pendingOnly(state, bump({ awaiting: 'macro-replay' }));
     case 'p':
       return doPut(state, count, true);
     case 'P':
@@ -966,12 +1178,20 @@ function enterVisual(state: EditorState, mode: Mode): StepResult {
 }
 
 function leaveVisual(state: EditorState): EditorState {
+  // Real Vim sets '< and '> on every exit from visual mode, not only before
+  // `:` — sorted regardless of which end the cursor is on, unlike `lastVisual`
+  // below, which keeps the raw anchor/cursor because `gv`/redo need direction.
+  const anchor = state.visualStart ?? state.cursor;
+  const backwards = comparePos(state.cursor, anchor) < 0;
+  const from = backwards ? state.cursor : anchor;
+  const to = backwards ? anchor : state.cursor;
   return {
     ...state,
     mode: 'normal',
     visualStart: undefined,
     // Remember it for `gv`, whichever way we are leaving.
     lastVisual: { mode: state.mode, start: state.visualStart ?? state.cursor, end: state.cursor },
+    marks: { ...state.marks, '<': from, '>': to },
     pending: EMPTY_PENDING,
   };
 }
@@ -1178,6 +1398,28 @@ function stepVisual(state: EditorState, key: KeyToken): StepResult {
     };
   }
 
+  if (p.awaiting === 'search') {
+    if (key === '<CR>') {
+      const typed = p.searchText === '' ? state.searchPattern : p.searchText;
+      const direction: S.SearchDirection = p.searchLeader === '/' ? 'forward' : 'backward';
+      const { state: withPattern, motion } = resolveSearchPattern(state, state.cursor, typed, direction, count);
+      if (motion === null) return invalid(withPattern, keys.join(''), 'motion-failed');
+      const jumped = recordJump(withPattern);
+      const cursor = clamp(jumped.lines, motion.target, true);
+      return {
+        state: { ...jumped, cursor, desiredCol: cursor.col, pending: EMPTY_PENDING },
+        events: [{ type: 'CursorMoved', to: cursor }],
+      };
+    }
+    if (key === '<Esc>') return { state: { ...state, pending: EMPTY_PENDING }, events: [] };
+    if (key === '<BS>') {
+      if (p.searchText === '') return { state: { ...state, pending: EMPTY_PENDING }, events: [] };
+      return pendingOnly(state, bump({ searchText: p.searchText.slice(0, -1) }));
+    }
+    if (key.length !== 1) return invalid(state, keys.join(''), 'unknown-key');
+    return pendingOnly(state, bump({ searchText: p.searchText + key }));
+  }
+
   if (p.awaiting === 'g') {
     switch (key) {
       case 'g':
@@ -1219,6 +1461,43 @@ function stepVisual(state: EditorState, key: KeyToken): StepResult {
   if (key === 'm') return pendingOnly(state, bump({ awaiting: 'mark' }));
   if (key === '`') return pendingOnly(state, bump({ awaiting: 'mark-exact' }));
   if (key === "'") return pendingOnly(state, bump({ awaiting: 'mark-line' }));
+
+  if (key === '/' || key === '?') {
+    return pendingOnly(state, bump({ awaiting: 'search', searchLeader: key, searchText: '' }));
+  }
+  if (key === '*' || key === '#') {
+    const found = S.wordUnderCursor(state.lines, state.cursor);
+    if (found === null) return invalid(state, keys.join(''), 'motion-failed');
+    const direction: S.SearchDirection = key === '*' ? 'forward' : 'backward';
+    const { state: withPattern, motion } = resolveSearchPattern(
+      state,
+      found.start,
+      `\\<${found.word}\\>`,
+      direction,
+      count,
+    );
+    if (motion === null) return invalid(withPattern, keys.join(''), 'motion-failed');
+    const jumped = recordJump(withPattern);
+    const cursor = clamp(jumped.lines, motion.target, true);
+    return {
+      state: { ...jumped, cursor, desiredCol: cursor.col, pending: EMPTY_PENDING },
+      events: [{ type: 'CursorMoved', to: cursor }],
+    };
+  }
+
+  // `:` leaves visual mode immediately — unlike `/`, it does not extend the
+  // selection — and prefills the command line with `'<,'>`, exactly as real
+  // Vim does. `leaveVisual` has already written those two marks.
+  if (key === ':') {
+    const left = leaveVisual(state);
+    return {
+      state: {
+        ...left,
+        pending: { ...EMPTY_PENDING, awaiting: 'command-line', commandText: "'<,'>", keyBuffer: [':'], dotKeys: [':'] },
+      },
+      events: [{ type: 'ModeChanged', from: state.mode, to: 'normal' }],
+    };
+  }
 
   // --- leaving, and switching between the three visual modes ----------------
 
@@ -1920,10 +2199,240 @@ function doRepeat(state: EditorState, newCount: number): StepResult {
   };
 }
 
+/** `q` — finish a recording, merging it into the register it named. */
+function doMacroStop(state: EditorState): StepResult {
+  const rec = state.recording!;
+  const macros = Mac.storeRecording(state.macros, rec.register, rec.keys);
+  const name = rec.register.toLowerCase();
+  const registers = { ...state.registers, [name]: { text: Mac.macroText(macros[name]!), type: 'charwise' as const } };
+  return {
+    state: { ...state, recording: undefined, macros, registers, pending: EMPTY_PENDING },
+    events: [{ type: 'RegisterChanged', name }],
+  };
+}
+
+/**
+ * `@{reg}` / `@@` — replay a recording through `step()` itself, exactly as
+ * `.` does. `{count}@{reg}` repeats the whole thing `count` times.
+ *
+ * Halt-on-error, measured against real Vim: a plain motion-failure BEEP mid-
+ * replay (`ll` at EOL, no message at all) aborts everything left, including
+ * any remaining count-repeats. This is NOT how interactive Vim behaves (a
+ * beep just moves on to the next key) — it is specifically a macro-replay
+ * rule.
+ *
+ * A genuine Vim ERROR (E353 "Nothing in register", E20 "Mark not set")
+ * measures the OPPOSITE way and does NOT halt, which is surprising enough to
+ * spell out: `tools/goldens/gen.vim` must wrap every group in its own
+ * `:try`/`:catch` (harness detail 10 — some failures raise a catchable
+ * exception, and one uncaught one abandons the rest of the case). Catching
+ * that exception is what defeats Vim's own "stop the macro" check — verified
+ * with a scratch probe as a clean A/B: the identical `` `z `` (unset mark)
+ * mid-replay halts the rest of the macro when `feedkeys()` is left to fail on
+ * its own, and does NOT halt when the exact same call is wrapped in
+ * `:try`/`:catch`. Since every one of our goldens is generated through that
+ * unavoidable `:try`/`:catch`, THAT is the measured ground truth for this
+ * engine, not raw interactive Vim. `mark-not-set` and `empty-register` are
+ * the only two reasons in this engine that correspond to a genuine Vim ERROR
+ * rather than a silent beep, so those two are exempted below.
+ */
+const MACRO_HALT_EXEMPT = new Set<InvalidReason>(['empty-register', 'mark-not-set']);
+
+function doMacroReplay(state: EditorState, regKey: string, count: number, keysStr: string): StepResult {
+  const target = regKey === '@' ? state.lastMacroReg : regKey.toLowerCase();
+  if (target === undefined) return invalid(state, keysStr, 'empty-register');
+  const tokens = state.macros[target];
+  if (tokens === undefined || tokens.length === 0) return invalid(state, keysStr, 'empty-register');
+
+  let s: EditorState = { ...state, macroReplaying: true, pending: EMPTY_PENDING, lastMacroReg: target };
+  const events: EngineEvent[] = [];
+
+  replayCount: for (let i = 0; i < count; i += 1) {
+    for (const k of tokens) {
+      const r = step(s, k);
+      s = r.state;
+      events.push(...r.events);
+      for (const e of r.events) {
+        if (e.type === 'KeyRejected' || (e.type === 'InvalidCommand' && !MACRO_HALT_EXEMPT.has(e.reason))) {
+          break replayCount;
+        }
+      }
+    }
+  }
+
+  return { state: { ...s, macroReplaying: false, pending: EMPTY_PENDING }, events };
+}
+
+// --- ex commands --------------------------------------------------------------
+
+function exContext(state: EditorState): Ex.RangeContext {
+  return { cursor: state.cursor, lastLine: lastLine(state.lines), marks: state.marks };
+}
+
+/** `:d[elete]` — same numbered-register shift as a normal-mode linewise delete, reusing `applyDelete` directly. */
+function doExDelete(state: EditorState, range: Ex.ExRange): StepResult {
+  const opRange: O.OperatorRange = { kind: 'linewise', firstLine: range.first, lastLine: range.last };
+  const r = O.applyDelete(state.lines, opRange, true);
+  const registers = recordWrite(state.registers, {
+    explicit: undefined,
+    isYank: false,
+    type: r.captured!.type,
+    text: r.captured!.text,
+    multiline: r.captured!.multiline,
+  });
+  const changeStart = { line: range.first, col: 0 };
+  return {
+    state: commit(state, r.lines, r.cursor, registers, changeStart),
+    events: [changedSpan(state.lines, r.lines, range.first)],
+  };
+}
+
+function doExMove(state: EditorState, range: Ex.ExRange, argsText: string, keysStr: string): StepResult {
+  const dest = Ex.parseDestAddress(argsText, exContext(state));
+  if ('error' in dest) return invalid(state, keysStr, dest.error);
+  const r = Ex.applyMove(state.lines, range, dest.line);
+  if (r === null) return invalid(state, keysStr, 'invalid-range');
+  const changeStart = { line: Math.min(range.first, dest.line + 1), col: 0 };
+  return {
+    state: commit(state, r.lines, r.cursor, undefined, changeStart),
+    events: [changedSpan(state.lines, r.lines, changeStart.line)],
+  };
+}
+
+function doExCopy(state: EditorState, range: Ex.ExRange, argsText: string, keysStr: string): StepResult {
+  const dest = Ex.parseDestAddress(argsText, exContext(state));
+  if ('error' in dest) return invalid(state, keysStr, dest.error);
+  const r = Ex.applyCopy(state.lines, range, dest.line);
+  const changeStart = { line: dest.line + 1, col: 0 };
+  return {
+    state: commit(state, r.lines, r.cursor, undefined, changeStart),
+    events: [changedSpan(state.lines, r.lines, changeStart.line)],
+  };
+}
+
+/**
+ * `:normal` — replay `args` as normal-mode keys, either once at the cursor
+ * (no range) or once per line in the range. Feeds keys back through `step()`
+ * itself, exactly like `.` and `@`, and reuses `macroReplaying` for the same
+ * reason `@` sets it: these keystrokes are being injected programmatically,
+ * not freshly typed, so an ACTIVE outer `q` recording must not capture them a
+ * second time (the `:normal ...<CR>` that invoked it already was) — while `.`
+ * must still see whatever change they make, exactly as a real `@` replay does.
+ *
+ * Real Vim exits Insert/Replace/Visual automatically at the end, "as if <Esc>
+ * was typed" (`:help :normal`) — there is no way to embed a literal `<Esc>` in
+ * the argument anyway, since Esc typed at the `:` prompt cancels the whole
+ * command line before it ever runs.
+ *
+ * Unlike `@`, a failing command does NOT halt the rest — `:normal` runs its
+ * keys as if typed interactively, where a failure just beeps and moves on.
+ *
+ * A ranged replay does NOT track its targets the way marks/jumps shift —
+ * measured against real Vim with a case built to tell the two theories apart
+ * (`:1,2normal dd` on 4 lines): it re-clamps the same FIXED line numbers
+ * `range.first..range.last` every iteration, landing on whatever text now
+ * happens to sit there. On `['one','two','three','four']` that runs `dd` at
+ * (fixed) line 1 — deleting "one" — and then again at (fixed) line 2, which by
+ * then holds "three", not "two". A shift-adjusted read would have deleted
+ * "one" then "two" and left `['three','four']`; real Vim leaves `['two',
+ * 'four']`. `clamp()` already gives the right behaviour for a target that runs
+ * off the end once earlier iterations have shrunk the buffer.
+ */
+function doExNormal(state: EditorState, range: Ex.ExRange | undefined, argsText: string): StepResult {
+  const tokens = tokenize(argsText);
+  const events: EngineEvent[] = [];
+
+  const runAt = (s: EditorState, at: Pos | undefined): EditorState => {
+    // `s.pending` is still whatever the outer `:...<CR>` left it as — `awaiting:
+    // 'command-line'` in particular — since none of this has gone through
+    // `commit()` yet to clear it. Left alone, the FIRST replayed key would
+    // re-enter that same `awaiting` branch and get appended to the (stale)
+    // command text instead of running.
+    let cur: EditorState = {
+      ...(at === undefined ? s : { ...s, cursor: clamp(s.lines, at, false) }),
+      macroReplaying: true,
+      pending: EMPTY_PENDING,
+    };
+    for (const k of tokens) {
+      const r = step(cur, k);
+      cur = r.state;
+      events.push(...r.events);
+    }
+    if (cur.mode === 'insert' || cur.mode === 'replace' || isVisual(cur.mode)) {
+      const r = step(cur, '<Esc>');
+      cur = r.state;
+      events.push(...r.events);
+    }
+    return { ...cur, macroReplaying: s.macroReplaying };
+  };
+
+  if (range === undefined) {
+    return { state: { ...runAt(state, undefined), pending: EMPTY_PENDING }, events };
+  }
+
+  let cur = state;
+  for (let l = range.first; l <= range.last; l += 1) {
+    cur = runAt(cur, { line: l, col: 0 });
+  }
+  return { state: { ...cur, pending: EMPTY_PENDING }, events };
+}
+
+function doExCommand(state: EditorState, cmdline: string, keysStr: string): StepResult {
+  const parsed = Ex.parseCommand(cmdline, exContext(state));
+  if ('error' in parsed) return invalid(state, keysStr, parsed.error);
+
+  switch (parsed.name) {
+    case '': {
+      // A bare range with no command is a goto, like `G`. A TRULY empty
+      // command line (no range either) is not a no-op — measured against real
+      // Vim in isolation: it goes to current-line-plus-one, the classic ex
+      // convention of a bare `<CR>` advancing one line.
+      const line =
+        parsed.range === undefined ? clamp(state.lines, { line: state.cursor.line + 1, col: 0 }, false).line : parsed.range.last;
+      const jumped = recordJump(state);
+      return withCursor(jumped, { line, col: firstNonBlank(state.lines, line) });
+    }
+    case 'delete':
+      return doExDelete(state, parsed.range ?? { first: state.cursor.line, last: state.cursor.line });
+    case 'move':
+      return doExMove(state, parsed.range ?? { first: state.cursor.line, last: state.cursor.line }, parsed.args, keysStr);
+    case 'copy':
+      return doExCopy(state, parsed.range ?? { first: state.cursor.line, last: state.cursor.line }, parsed.args, keysStr);
+    case 'normal':
+      return doExNormal(state, parsed.range, parsed.args);
+    case 'set':
+      return { state: { ...state, options: Ex.applySetArgs(state.options, parsed.args), pending: EMPTY_PENDING }, events: [] };
+    case 'write':
+      return { state: { ...state, pending: EMPTY_PENDING }, events: [{ type: 'BufferSaved', force: parsed.bang }] };
+    case 'quit':
+      return { state: { ...state, pending: EMPTY_PENDING }, events: [{ type: 'QuitRequested', force: parsed.bang }] };
+    default:
+      return invalid(state, keysStr, 'unknown-command');
+  }
+}
+
 function doUndo(state: EditorState): StepResult {
   if (!canUndo(state.undoState)) return invalid(state, 'u', 'nothing-to-undo');
   const stepped = undo(state.undoState);
   if (stepped === null) return invalid(state, 'u', 'nothing-to-undo');
+  const cursor = clamp(stepped.lines, stepped.cursor, false);
+  return {
+    state: {
+      ...state,
+      lines: stepped.lines,
+      cursor,
+      desiredCol: cursor.col,
+      undoState: stepped.undo,
+      pending: EMPTY_PENDING,
+    },
+    events: [bufferChanged(0, lastLine(stepped.lines))],
+  };
+}
+
+function doUndoSeq(state: EditorState, delta: number, keysStr: string): StepResult {
+  const targetId = state.undoState.current + delta;
+  const stepped = undoToSeq(state.undoState, targetId);
+  if (stepped === null) return invalid(state, keysStr, delta < 0 ? 'nothing-to-undo' : 'nothing-to-redo');
   const cursor = clamp(stepped.lines, stepped.cursor, false);
   return {
     state: {

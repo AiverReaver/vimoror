@@ -1,4 +1,4 @@
-# HANDOFF — after Wave 3 complete (2026-08-11)
+# HANDOFF — after Wave 4d (2026-08-16)
 
 Read this first when continuing work. The plan of record is `MergedPlan.md`;
 the tracking doc is `docs/CHECKLIST.md`; the harness gospel is
@@ -14,14 +14,15 @@ reader with no context.
 
 ## Where the project stands
 
-- **Milestone:** M0. Waves 1, 2 and **3 are complete**:
-  - 3a registers end-to-end + `p`/`P` — done
-  - 3b text objects — done
-  - 3c visual modes `v V <C-v>` + blockwise — done
-  - 3d `{ } ( )` motions, marks and the jumplist — done
-  - 3e `.` dot-repeat — done
-  - 3f the open visual edges (`<C-v>I`/`A`, visual `p`/`r`, `gv`, `$` blocks) — done
-  - Wave 4 (macros / search / ex-commands) — **NOT started**
+- **Milestone:** M0. Waves 1, 2 and **3 are complete**; **Wave 4 is in
+  progress**:
+  - 3a–3f (registers, text objects, visual modes, marks/jumplist, dot-repeat,
+    the open visual edges) — done, see the Wave 3 notes below
+  - 4a `g-`/`g+` undo-tree navigation — done
+  - 4b search motions `/ ? n N * #` — done
+  - 4c macros `q @ @@` with halt-on-error — done
+  - 4d command-line mode, ranges, `:d :m :t :normal :set` — done
+  - 4e `:s` substitution, 4f `:g`/`:v`, 4g wrap-up (fuzz harness) — **not started**
 - **Oracle:** real Vim 9.1 at `/usr/bin/vim`. Goldens are generated locally and
   committed, so CI never needs Vim.
 - **Verified green**, all four commands clean:
@@ -30,7 +31,7 @@ reader with no context.
 pnpm goldens:generate && pnpm test && pnpm typecheck && pnpm goldens:verify
 ```
 
-  **1038 goldens, 1080 tests, isolation verified** (every case re-run in its own
+  **1118 goldens, 1168 tests, isolation verified** (every case re-run in its own
   Vim process and diffed). Nothing is mid-flight.
 
 ## The four things not to re-break
@@ -136,8 +137,37 @@ on an empty line yielding `"\n"`.
   linewise, and two blocks stack **ragged**. `forcesNumbered` now covers
   `% { } ( )` and `` ` `` — all of which write **both** `"1` and `"-` on a
   small single-line delete.
-- **`MotionResult.forcesNumbered` and `isJump` must both be set on
-  `/ ? n N * #` in Wave 4.** The flags exist; only the wiring is missing.
+- `search.ts` / `vimregex.ts`: `/ ? n N * #` are ordinary `MOTION_KEYS` entries
+  (`n`/`N`, pure, read `state.searchPattern`) plus a `/`/`?` accumulator shaped
+  exactly like `f`/`t`'s single-char wait, just running to `<CR>` instead of
+  one key — so both got dot-repeat and operator-pending composition for free.
+  `*`/`#` must search from the identified word's OWN start column, not the raw
+  cursor column, or a backward search mid-word re-finds the word it is
+  standing on instead of skipping past it.
+- `macros.ts`: recording is raw keystrokes, mirroring `dot.ts`'s insert-session
+  half — replaying `macroText()`'s rendered string back through `tokenize()`
+  would be lossy. `macroReplaying` (distinct from `.`'s `replaying`) suppresses
+  re-capture into an ACTIVE outer `q` recording without also suppressing `.`'s
+  own dot-record — `excmd.ts`'s `:normal` reuses this exact flag for the same
+  reason, see below.
+- `excmd.ts`: pure like `motions.ts`/`operators.ts` — a range parser, command-
+  name resolution, and pure line-splice helpers for `:m`/`:t`. `state.ts` owns
+  every side effect. `:` is `pending.awaiting: 'command-line'`, the same shape
+  `/`/`?` already use — not a new top-level mode, even though `Mode` has
+  carried an unused `'command-line'` variant since M0 (like
+  `'operator-pending'`). Two things worth knowing before touching `:normal`:
+  - it does **not** shift-adjust its ranged targets the way marks do — measured
+    against real Vim, `:1,2normal dd` runs at FIXED line numbers 1 and 2,
+    picking up whatever now sits at line 2 after line 1's removal, not the
+    original line 2. `clamp()` alone handles a target running off a shrunk
+    buffer's end.
+  - its inner keys reuse `macroReplaying` (see `macros.ts` above), and MUST
+    start from a fresh `pending` — the outer `:...<CR>` left `pending.awaiting`
+    at `'command-line'`, and without resetting it the first replayed key
+    re-enters that branch and gets appended to the command text instead of
+    running.
+  - `recordChange` excludes `before.pending.awaiting === 'command-line'`
+    outright: an ex command must never become the `.` record itself.
 
 ## Harness notes
 
@@ -158,7 +188,7 @@ on an empty line yielding `"\n"`.
 
 - **`proven` is generated but never diffed against the engine** — it is missing
   from `FAMILIES` in `engine.test.ts` because `proven/subst-g` needs `:s`. Add
-  it the moment Wave 4 lands; it is easy to assume it is already covered.
+  it the moment 4e lands; it is easy to assume it is already covered.
 - `[[ ]]` section motions are not implemented. `H M L` are **decided**: core
   stays viewport-free and they arrive at M1 fed a window height + topline.
 - `o`/`O` with `autoindent` don't copy the indent (baseline is `noautoindent`).
@@ -171,19 +201,22 @@ on an empty line yielding `"\n"`.
 
 ## What comes next
 
-**Wave 4 — automation.** Macros `q @ @@` with halt-on-error, search
-`/ ? n N * #`, command-line mode, ranges, `:s` with `g`/`c` flags and capture
-groups, `:g`/`:v`, and `g-`/`g+` undo-tree navigation.
+**4e — `:s` substitution.** Flags `g`/`c`, capture groups (`\1`–`\9` and `&`),
+reusing `vimregex.ts`'s pattern translator from 4b and empty-pattern reuse of
+`lastSearch`. This unblocks `proven/subst-g` — add `proven` to `FAMILIES` the
+moment it lands.
 
-Two things to do before authoring any Wave 4 goldens:
+**4f — `:g`/`:v`.** Depends on 4e (a global's typical body command is `:s`
+itself) and on 4d's `:` dispatch/range parsing, both now in place. Re-read
+harness detail 13 in `tools/goldens/README.md` before authoring a single
+case: `:q`/`ZZ`/`ZQ` must never appear in a `:g` body, even by accident, or
+the golden generator can take the whole batch down with it.
 
-1. **Re-read harness details 4, 6, 7, 9 and 10 in `tools/goldens/README.md`.**
-   Detail 4 (macros need `feedkeys`, never `:normal`) and detail 6 (act and
-   observe in the same function frame, or every `/ ? n N * #` golden silently
-   records an empty search register) are both specifically about Wave 4.
-2. Re-enable the `/` register in `compare.ts` — it is skipped today with a
-   comment pointing at Wave 4.
+**4g — wrap-up.** Sanitize the fuzz alphabet (no `:q :w ZZ ZQ :!`, no shell
+escapes — the same hazard detail 13 covers, now for randomly-generated
+sequences instead of hand-authored ones) and write the `pnpm test:fuzz`
+script, both blocked until now on ex-commands existing to sanitize against.
+`pnpm goldens:verify` clean across all `wave4-*` families.
 
-Also still open at M0: the fuzz harness (`pnpm test:fuzz` does not exist yet),
-the CI workflow, the scripted demo, and `docs/curriculum.md` /
-`story-bible.md` / `stage-schema.md`.
+Also still open at M0: the CI workflow, the scripted demo, and
+`docs/curriculum.md` / `story-bible.md` / `stage-schema.md`.

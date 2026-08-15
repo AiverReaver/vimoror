@@ -27,6 +27,9 @@ export type EditorOptions = {
   readonly tabstop: number;
   readonly expandtab: boolean;
   readonly autoindent: boolean;
+  readonly ignorecase: boolean;
+  readonly smartcase: boolean;
+  readonly wrapscan: boolean;
 };
 
 export const DEFAULT_OPTIONS: EditorOptions = {
@@ -34,6 +37,9 @@ export const DEFAULT_OPTIONS: EditorOptions = {
   tabstop: 8,
   expandtab: true,
   autoindent: false,
+  ignorecase: false,
+  smartcase: false,
+  wrapscan: true,
 };
 
 /** 'shiftwidth' zero means "follow 'tabstop'", exactly as in Vim. */

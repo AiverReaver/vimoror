@@ -90,10 +90,20 @@ endfunction
 "
 " Two separate hazards make this one function rather than two:
 "
-" 1. feedkeys(..., 'x') — never `execute 'normal'` — because `normal` cannot
+" 1. feedkeys(..., 'xt') — never `execute 'normal'` — because `normal` cannot
 "    replay macros: the recording lands but `@a` does not fire. Routing
 "    EVERYTHING through feedkeys keeps one code path, so macro and non-macro
 "    cases cannot drift apart.
+"
+"    The 't' flag (Wave 4, found with a scratch probe instrumenting
+"    reg_recording()/getreg() between keys) is itself load-bearing and easy
+"    to lose back to a plain 'x': with 'x' alone, `q{reg}` correctly flips
+"    `reg_recording()` on and back off, but the register itself comes back
+"    EMPTY — the keystrokes are never actually captured, only the recording
+"    STATE is. 't' ("handle keys as if typed") is what real macro recording
+"    needs, per `:help feedkeys()`. Verified to change NOTHING for every
+"    already-committed golden (`git diff` on a full regenerate is empty) —
+"    it only fixes the one thing that was silently broken.
 "
 " 2. `:help function-search-undo` — Vim restores the last search pattern (@/)
 "    and the redo command (.) when a FUNCTION RETURNS. Running the keys in one
@@ -126,8 +136,8 @@ function! s:RunAndCapture(groups) abort
   let l:errors = []
   for l:g in a:groups
     try
-      call feedkeys(l:g, 'x')
-      call feedkeys('', 'x')
+      call feedkeys(l:g, 'xt')
+      call feedkeys('', 'xt')
     catch
       call add(l:errors, v:exception)
     endtry

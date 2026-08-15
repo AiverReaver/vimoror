@@ -99,6 +99,44 @@ describe('put from a register with nothing in it', () => {
   });
 });
 
+describe(':w / :q — events the golden oracle cannot express', () => {
+  // Neither event is in the comparator's diff surface (buffer/cursor/registers
+  // only), so a golden could not tell "emitted BufferSaved" from "did nothing"
+  // either way. `:q` is worse than merely untestable there: running it for
+  // real against the batched harness process would actually try to quit Vim
+  // mid-run and corrupt every case after it, so it must never appear in a
+  // wave4-excmd.yaml case. Both are exercised here instead, straight against
+  // the engine, where core's zero-I/O contract — no filesystem write, no
+  // process exit, just an event for the host to act on — is directly visible.
+
+  it(':w emits BufferSaved and leaves the buffer untouched', () => {
+    const engine = new VimEngine(['abc'], { line: 0, col: 0 });
+    const events = engine.feedKeys(':w<CR>');
+    expect(events).toContainEqual({ type: 'BufferSaved', force: false });
+    expect(engine.lines).toEqual(['abc']);
+    expect(engine.mode).toBe('normal');
+  });
+
+  it(':w! sets force', () => {
+    const engine = new VimEngine(['abc'], { line: 0, col: 0 });
+    const events = engine.feedKeys(':w!<CR>');
+    expect(events).toContainEqual({ type: 'BufferSaved', force: true });
+  });
+
+  it(':q emits QuitRequested without touching the buffer', () => {
+    const engine = new VimEngine(['abc'], { line: 0, col: 0 });
+    const events = engine.feedKeys(':q<CR>');
+    expect(events).toContainEqual({ type: 'QuitRequested', force: false });
+    expect(engine.lines).toEqual(['abc']);
+  });
+
+  it(':q! sets force', () => {
+    const engine = new VimEngine(['abc'], { line: 0, col: 0 });
+    const events = engine.feedKeys(':q!<CR>');
+    expect(events).toContainEqual({ type: 'QuitRequested', force: true });
+  });
+});
+
 describe('snapshot/restore', () => {
   it('restoring a mid-insert snapshot yields a live normal-mode engine', () => {
     const engine = new VimEngine(['abc'], { line: 0, col: 0 });

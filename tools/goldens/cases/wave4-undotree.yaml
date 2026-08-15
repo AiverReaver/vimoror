@@ -1,0 +1,85 @@
+# g-/g+ undo-tree navigation — Wave 4a.
+#
+# `u`/`<C-r>` walk parent/child edges. `g-`/`g+` do NOT: they jump straight to
+# the node whose sequence number is current±{count}, which is a normal thing
+# to do the moment you've undone into an old branch and edited again — the
+# abandoned branch's states keep their sequence numbers and `g-` walks
+# straight back into them, sideways across the tree, not down to a shared
+# ancestor. Measured against real Vim 9.1 (see the probe transcripts in the
+# session that authored this file): the cursor rule composes `u`'s and
+# `<C-r>`'s own per-hop rules along whichever shape the real tree-walk to that
+# sequence number would take — landing at the departing node's start when the
+# target is a straight-line ancestor, landing at the target's OWN start
+# (as if redoing into it) whenever the path crosses into a different branch.
+#
+# Every case needs the multi-group `keys:` form (harness detail 7): a bare
+# feedkeys string collapses everything into ONE undo block, which would
+# collapse every branch in these cases into a single node and prove nothing.
+
+cases:
+  - id: undotree/g-minus-matches-plain-u
+    note: on a straight chain (no branching) g- must agree with plain u exactly
+    buffer: ['abcdef']
+    cursor: [1, 1]
+    keys: ['x', 'g-']
+
+  - id: undotree/g-then-g-plus-roundtrip
+    buffer: ['abcdef']
+    cursor: [1, 1]
+    keys: ['x', 'g-', 'g+']
+
+  - id: undotree/cross-branch-lands-on-sibling
+    note: >
+      branch A (append x2 at end of line 3) is undone, then branch B (append
+      x3 mid line 2) is made from the same root — a real sibling pair. g- from
+      B's tip must land on A's own state, not on the shared root.
+    buffer: ['AAA', 'BBB', 'CCC']
+    cursor: [1, 1]
+    keys:
+      - '3G$ax2<Esc>'
+      - 'u'
+      - '2Glax3<Esc>'
+      - 'g-'
+
+  - id: undotree/count-prefix-crosses-branch-and-generation
+    note: >
+      branch B continues one more edit past the branch point (3 total nodes:
+      root, branch A, branch B, branch B again). `2g-` from B's second edit
+      must skip past B's own first edit and land on branch A directly, which
+      is neither B's parent nor an ancestor of the current node at all.
+    buffer: ['AAA', 'BBB', 'CCC']
+    cursor: [1, 1]
+    keys:
+      - '3G$ax2<Esc>'
+      - 'u'
+      - '2Glax3<Esc>'
+      - 'Ay4<Esc>'
+      - '2g-'
+
+  - id: undotree/g-minus-at-oldest-is-a-no-op
+    note: a beep, not an exception — same as u with nothing to undo
+    buffer: ['abcdef']
+    cursor: [1, 1]
+    keys: ['g-']
+
+  - id: undotree/g-plus-at-newest-is-a-no-op
+    buffer: ['abcdef']
+    cursor: [1, 1]
+    keys: ['x', 'g+']
+
+  - id: undotree/g-minus-mints-no-undo-node
+    note: >
+      g-/g+ are pure navigation. The final `u` must burn on the `x`, the only
+      real change here — proving g-/g+ never pushed a node of their own.
+    buffer: ['abcdef']
+    cursor: [1, 1]
+    keys: ['x', 'g-', 'g+', 'u']
+
+  - id: undotree/dot-repeat-skips-over-g-minus
+    note: >
+      `.` after a g-/g+ round trip must still repeat the LAST REAL change
+      (`x`), not misfire on g-/g+ themselves — regression for the dot.ts
+      exclusion this wave adds alongside u/<C-r>.
+    buffer: ['abcdef']
+    cursor: [1, 1]
+    keys: ['x', 'g-', 'g+', '.']

@@ -11,6 +11,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { applySetArgs } from '../../packages/vim-core/src/excmd.ts';
 import { VimEngine } from '../../packages/vim-core/src/index.ts';
 import { tokenize } from '../../packages/vim-core/src/keys.ts';
 import { DEFAULT_OPTIONS, type EditorOptions } from '../../packages/vim-core/src/operators.ts';
@@ -56,23 +57,11 @@ export type Diff = {
  * Translate a case's `:set` overrides into engine options, so a case that runs
  * real Vim with `shiftwidth=2` runs our engine that way too. Anything the
  * engine does not model yet is ignored rather than silently mistranslated.
+ * Delegates to the same option parser the engine's own `:set` command uses
+ * (`excmd.ts`), so there is exactly one place that knows the mapping.
  */
 export function optionsFrom(args: readonly string[] | undefined): EditorOptions {
-  let opts: EditorOptions = { ...DEFAULT_OPTIONS };
-  for (const raw of args ?? []) {
-    const arg = raw.trim();
-    const num = /^(shiftwidth|sw|tabstop|ts)=(\d+)$/.exec(arg);
-    if (num) {
-      const value = Number.parseInt(num[2]!, 10);
-      opts = num[1] === 'shiftwidth' || num[1] === 'sw' ? { ...opts, shiftwidth: value } : { ...opts, tabstop: value };
-      continue;
-    }
-    if (arg === 'expandtab' || arg === 'et') opts = { ...opts, expandtab: true };
-    if (arg === 'noexpandtab' || arg === 'noet') opts = { ...opts, expandtab: false };
-    if (arg === 'autoindent' || arg === 'ai') opts = { ...opts, autoindent: true };
-    if (arg === 'noautoindent' || arg === 'noai') opts = { ...opts, autoindent: false };
-  }
-  return opts;
+  return applySetArgs(DEFAULT_OPTIONS, (args ?? []).join(' '));
 }
 
 export function runGolden(g: Golden): Diff[] {
@@ -116,7 +105,6 @@ export function runGolden(g: Golden): Diff[] {
   // against the engine's desiredCol. Tracked in docs/CHECKLIST.md.
   const actualRegs = engine.snapshot().registers;
   for (const [name, expected] of Object.entries(g.expect.registers)) {
-    if (name === '/') continue; // search register lands in Wave 4
     const actual = actualRegs[name];
     const wantType = vimRegType(expected.type);
     if (actual === undefined) {
@@ -130,7 +118,7 @@ export function runGolden(g: Golden): Diff[] {
     }
   }
   for (const [name, actual] of Object.entries(actualRegs)) {
-    if (name === '/' || actual.text === '') continue;
+    if (actual.text === '') continue;
     if (!(name in g.expect.registers)) {
       diffs.push({
         field: `register "${name}`,

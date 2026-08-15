@@ -63,11 +63,12 @@ not a bug fix.
       Vim left empty is a diff. This is what catches an engine that clamps
       where Vim fails: buffer and cursor agree either way and only the stray
       register betrays it (`yank/yh-at-col1-clears-unnamed`).
-- [x] **≥400 cases** — **1038 committed.** proven 7 · wave1 113 · wave2 492
+- [x] **≥400 cases** — **1118 committed.** proven 7 · wave1 113 · wave2 492
       across 8 families (caseops 62, change 55, delete 79, doubled 55,
       indent 59, insert 69, shortcuts 55, yank 58) · wave3 426 across 7
       families (paste 62, textobj 106, visual 66, motions 60, visualops 51,
-      marks 45, dot 36)
+      marks 45, dot 36) · wave4 80 so far (undotree 8, search 29, macros 18,
+      excmd 25)
 - [ ] **`proven` is generated but NOT diffed against the engine.** It is absent
       from `FAMILIES` in `engine.test.ts`, so `proven.test.ts` only checks the
       generated goldens against the values hand-transcribed from the plan — the
@@ -100,6 +101,18 @@ not a bug fix.
       6). The group form plus engine-side mode assertions is sufficient through
       M0. Revisit only if Wave 4's macros need it, which is the one remaining
       candidate.
+- [x] **Wave 4 macros needed a harness fix, but not the pty oracle above.**
+      `feedkeys(keys, 'x')` correctly toggles `reg_recording()` on `q{reg}`,
+      but the register comes back EMPTY — only the recording STATE is
+      tracked, the keystrokes are never actually captured. Found with the
+      scratch probe harness HANDOFF.md recommended building on day one of
+      Wave 4 (instrumenting `reg_recording()`/`getreg()` between individual
+      keys). Fix: `feedkeys(keys, 'xt')` — the `t` flag ("handle keys as if
+      typed") is what real recording needs. A full regenerate with `'xt'`
+      changed ZERO bytes of every already-committed golden (verified via
+      `git diff` before committing the change), so this was a silent gap,
+      not a tradeoff — every prior golden was already correct, macros were
+      just unreachable. `gen.vim` and `README.md` detail 4 updated.
 - [ ] **A beep is not an exception.** `u` with nothing to undo, a failed motion
       and `d<C-o>` all beep silently and report NO error, so `expectError: true`
       on them is itself flagged as a problem. Only some failures (E20, E353)
@@ -453,19 +466,190 @@ marks + the jumplist, and `.` dot-repeat all landed and green
 - [ ] Marks, the jumplist and the previous-context mark are **not serialized**
       in `EngineSnapshot`, alongside the undo tree / insert session / `lastFind`
       already listed below. Same deferral, same revisit point
+- [ ] Recorded macros (`EditorState.macros`, `recording`, `lastMacroReg`) are
+      likewise **not serialized** in `EngineSnapshot` — same deferral
 
-**Wave 4 — automation** `[ ]`
+**Wave 4 — automation** `[~]`
 
-- [ ] Macros `q @ @@` with halt-on-error
-- [ ] Search `/ ? n N * #`, and the `/` register (the comparator currently skips
-      it — re-enable when this lands). All six are **jump commands** and must
-      call `recordJump`, and all six set `forcesNumbered` — `MotionResult`
-      already carries both flags, so this is a matter of setting them
-- [ ] Command-line mode, ranges
-- [ ] `:s` with `g`/`c` flags and capture groups
-- [ ] `:g` / `:v`
-- [ ] `:d :m :t :norm :w :q :set`
-- [ ] `g-` / `g+` undo-tree navigation (the tree is an Act III story mechanic)
+Seven sub-waves, ordered by dependency. `4a`–`4c` are mutually independent
+and independent of the ex-command chain; `4d` → `4e` → `4f` build on one
+another in that order, since `:s`/`:g` need the `:` dispatcher and ranges
+first, and `:g`'s typical body command is `:s` itself. `4g` is wrap-up once
+the rest is green. New case files follow the existing
+`wave{N}-{family}.yaml` convention (`tools/goldens/cases/`); `engine.test.ts`'s
+`FAMILIES` gains one entry per family as it lands. Inventory taken against
+current code (2026-08-15): **no `macros.ts`, `excmd.ts`, or `search.ts` exist
+yet** — Wave 4 starts from zero scaffolding, not partial stubs.
+
+- [x] **4a — `g-`/`g+` undo-tree navigation.** `undoToSeq()` in `undo.ts`
+      jumps straight to the node with id `current ± count` (ids are already a
+      global creation sequence). Measured against real Vim 9.1 via a scratch
+      probe: it is NOT a parent/child hop — crossing into a sibling branch is
+      normal, and the cursor rule composes `undo()`'s/`redo()`'s own per-hop
+      rule along whichever shape the real tree-walk to that node would take
+      (departing node's `changeStart` if the target is a straight-line
+      ancestor of the current node, target's own `changeStart` otherwise,
+      since the last hop of the walk redoes into it). Confirmed on real Vim
+      across a sibling-branch jump and a count-prefixed jump that crosses both
+      a branch and a generation in one step — both landed exactly where the
+      probe predicted, first generation. `-`/`+` are shared with `d-`/`c-`
+      motions, so the dot-repeat exclusion (`state.ts` `recordChange`) checks
+      the joined `g-`/`g+` two-key sequence rather than the bare key, unlike
+      `u`/`<C-r>`'s single-key `NEVER_RECORDED` entries. 8 `wave4-undotree`
+      goldens, all green on first generation.
+- [x] **4b — Search motions `/ ? n N * #`.** `vimregex.ts` translates Vim's
+      default 'magic' regex to JS (`( ) + ? = { } |` need a backslash to be
+      special, `. * [ ] ^ $` don't; `\d \s \w`-style classes, `\<`/`\>` word
+      boundaries via `\b`, inline `\c`/`\C`, `ignorecase`/`smartcase` — `\v`
+      very-magic and lookaround are out of scope, documented in the file
+      header). `search.ts` does the actual line-by-line scan with wraparound.
+      `n`/`N` are ordinary entries in `MOTION_KEYS`/`resolveMotion` (pure,
+      read `state.searchPattern`); `/`/`?` accumulate as a new
+      `awaiting: 'search'` `Pending` state exactly like `f`/`t`'s
+      single-char wait, just running to `<CR>`/`<Esc>`/`<BS>` instead of one
+      key — this got dot-repeat, operator-pending (`d/foo<CR>`) and count
+      composing for free, and needed the same block added to **both**
+      `stepNormal` and `stepVisual` (they don't share one dispatch chain).
+      `*`/`#` write the search state like `/`/`?` do, not read-only like
+      `n`/`N`. Bug caught by goldens on first generation: `*`/`#` must search
+      from the identified word's OWN start column, not the raw cursor
+      column — mid-word, a backward search from the raw column still saw the
+      current word's start as "before" it and wrongly re-found itself.
+      Re-enabled the `/` register in `compare.ts` (both directions) and
+      added `ignorecase`/`smartcase`/`wrapscan` to `EditorOptions`. 29
+      `wave4-search` goldens, all green.
+- [x] **4c — Macros `q @ @@` with halt-on-error.** New `macros.ts`: `q{reg}`
+      recording is raw keystrokes, not resolved commands (same reasoning as
+      `dot.ts`'s insert-session half), stored in a NEW `EditorState.macros`
+      token store rather than as text — replay tokenizing the register's
+      rendered text back would be lossy (a macro that typed literal `<Foo>`
+      in insert mode would round-trip through `tokenize()` as *notation* and
+      throw, the exact trap `keys.ts` documents). `macroText()` mirrors the
+      finished recording into the actual register as plain text ONLY for
+      display, because real Vim genuinely stores a macro's keystrokes as that
+      register's content (`qa$xq` leaves `"a` holding `$x`) — this needed
+      `keys.ts`'s `literalOf` extended to round-trip `<C-x>` control tokens,
+      the one gap in an otherwise-complete inverse of `tokenize()`.
+      `@{reg}`/`@@` replay through `step()` itself, exactly like `.`; a NEW
+      `macroReplaying` flag (distinct from `replaying`) suppresses re-capture
+      into an active OUTER recording without also suppressing `.`'s own
+      dot-record — measured, `qaxq` `@a` `.` deletes a SECOND char via `.`, so
+      `.` must see the macro's inner change as a normal one.
+
+      Two rules needed a scratch probe, neither obvious from `:help q`/`:help
+      @`: **recording never aborts on a failed command** (a beep, same as
+      typing interactively) while **replay halts on ANY failure — including a
+      plain motion-fail beep, not just a genuine error**; and **a bare `q`
+      only stops recording when it would otherwise be a complete new
+      command** — with an operator pending (`yq`) it is swallowed as a failed
+      motion instead and recording continues (measured: `qa` `yq` `llq`
+      leaves `"a` holding `yqll`). Both fell out of the grammar for free: `q`
+      only reaches its `case` in `stepNormal`'s switch past the same
+      operator-pending bail-out every other simple command already goes
+      through.
+
+      Two MORE things surfaced only once real goldens were generated —
+      documented as harness details 11 and 12 in `tools/goldens/README.md`,
+      because both produce goldens that look entirely plausible while being
+      wrong:
+      - Harness detail 10's mandatory per-group `:try`/`:catch` (needed so
+        one exception doesn't abandon a whole case) DEFEATS a macro's own
+        abort-on-error, but only for a genuine Vim ERROR (E353, E20) — a
+        plain beep still halts correctly, unaffected, since that check does
+        not go through VimL's exception machinery at all. Confirmed as a
+        clean A/B: the identical failing `@a` halts when `feedkeys()` is left
+        to fail on its own and does NOT halt wrapped in `:try`/`:catch`.
+        Since every golden is generated through that unavoidable wrapping,
+        "does not halt on a genuine error" is what these goldens correctly
+        measure — `state.ts`'s `MACRO_HALT_EXEMPT` encodes exactly the two
+        `InvalidReason`s this applies to (`empty-register`, `mark-not-set`).
+      - `reg_recording()` and `@@`'s "last register" memory are Vim GLOBALS
+        that `s:Setup()` cannot reset (no ex command clears either), so they
+        leak across cases sharing one batched Vim process. A case whose own
+        keys accidentally leave a recording open (the `yq`-doesn't-stop rule
+        above, hit unintentionally) corrupts every case after it in the same
+        file — caught this exact bug in a first-draft case via `pnpm test`
+        after generating. And a case testing "no macro has ever run" only
+        measures true if it is the FIRST thing in the file to touch `@` —
+        `pnpm goldens:verify`'s isolated-vs-batched disagreement is what
+        catches this one; `wave4-macros` keeps that case first for this
+        reason.
+
+      Recording into `"` (the unnamed register) is deliberately UNSUPPORTED:
+      measured, it writes the finished text into `"0` as well as `""`, an
+      obscure register-0/unnamed-aliasing quirk specific to that one target
+      and out of scope for a curriculum that only ever records into a named
+      register. Authored through `feedkeys(keys, 'xt')` per harness detail 4
+      — `:normal` cannot replay a recording. 18 `wave4-macros` goldens, all
+      green, isolation verified.
+- [x] **4d — Command-line mode + ranges + simple ex-commands.** New
+      `excmd.ts`, pure like `motions.ts`/`operators.ts`: a hand-rolled range
+      parser (`. $ %` line numbers, marks including `'<,'>`, chained `+n`/`-n`
+      offsets, backwards ranges silently swapped rather than prompted for),
+      command-name resolution against Vim's own minimum abbreviations (`:co`
+      not `:c`, since `:c` is `:change`; `:t` is a historical synonym for
+      `:copy`, not an abbreviation of it), and pure line-splice helpers for
+      `:m`/`:t`. `state.ts` owns the actual side effects: `:` accumulates as
+      `pending.awaiting: 'command-line'`, the same shape `/`/`?` already use,
+      not a new top-level mode — `Mode` has carried an unused `'command-line'`
+      variant since M0 (like `'operator-pending'`), and the existing idiom
+      already fit. `:d` reuses `operators.ts`'s `applyDelete` directly, so it
+      gets numbered-register shifting for free. `:w`/`:q` are core-level
+      no-ops that emit `BufferSaved`/`QuitRequested` (with `force` from `!`)
+      for the host to act on — core stays zero-I/O, so `:w` never touches a
+      filesystem. 25 `wave4-excmd` goldens, all green, isolation verified.
+      Semantics measured, several by generating first and correcting the
+      hypothesis after, exactly as the harness README recommends:
+      - **a truly empty command line is not a no-op.** Verified against a
+        fresh, unbatched Vim process (to rule out a batching artifact): a bare
+        `:<CR>` advances the cursor to current-line-plus-one, the classic ex
+        convention of an empty command meaning ".+1". A range with no command
+        (`:5<CR>`) is the already-expected goto; only the fully-empty case
+        was the surprise.
+      - **`:normal` over a range does NOT shift-adjust its targets the way
+        marks do.** Built assuming it would (mirroring `marks.ts`'s
+        first-differing-line-plus-delta model) and refuted on first
+        generation: `:1,2normal dd` on 4 lines deletes the line at (fixed)
+        line 1, then the line at (fixed) line 2 — whatever now sits there —
+        rather than adjusting line 2 down to account for line 1's removal.
+        `clamp()` already gives the right behaviour once a later target runs
+        off the shrunk buffer's end, which is what lets `:1,3normal dd`
+        empty a 3-line buffer down to Vim's one-empty-line floor.
+      - **the outer `:...<CR>` must never reach `.`.** `recordChange` gained
+        a guard on `before.pending.awaiting === 'command-line'` — without it,
+        `:d<CR>` would itself become the dot record, and a later `.` would
+        replay an ex command instead of repeating whatever normal-mode change
+        came before it. Pinned by a golden that does `x`, then `:d<CR>`, then
+        `.`, and checks `.` repeated the `x`.
+      - **`:normal`'s inner keys reuse `macroReplaying`, not a third flag.**
+        The behaviour it needs — suppress capture into an ACTIVE outer `q`
+        recording (already typed once as `:normal ...<CR>`) while still
+        feeding `.` — is exactly what `@` already needed `macroReplaying`
+        for. The one bug this caught before generation: the replayed keys
+        must start from a FRESH `pending`, or the first inner key re-enters
+        the still-`awaiting: 'command-line'` branch it was called FROM and
+        gets appended to the (stale) command text instead of running as a
+        command — found because every `:normal` golden failed identically
+        (nothing happened) until `pending: EMPTY_PENDING` was added to the
+        replay's starting state.
+      - **`leaveVisual` now sets `'<`/`'>` on every exit from visual mode**,
+        not only before `:` — matching real Vim and reusing the one funnel
+        every visual-mode exit already goes through. Invisible to every
+        existing golden (marks are not part of `EngineSnapshot` or the
+        comparator), so this cannot have changed anything already pinned.
+- [ ] **4e — `:s` substitution.** Flags `g`/`c`, capture groups (`\1`–`\9`
+      and `&`), reuses 4b's pattern translator, empty-pattern reuse of
+      `lastSearch`. This unblocks `proven/subst-g` — **add `proven` to
+      `FAMILIES` in `engine.test.ts` the moment this lands** (see the open
+      item in the golden-test-harness section above). `wave4-subst` goldens.
+- [ ] **4f — `:g` / `:v`.** Depends on 4d (range/ex dispatch) and 4e (typical
+      body command). Global match + per-line command execution; `:v` is the
+      inverse-match form. `wave4-global` goldens.
+- [ ] **4g — Wrap-up.** Sanitize the fuzz alphabet (no `:q :w ZZ ZQ :!`, no
+      shell escapes) now that ex-commands exist to sanitize against, and
+      write the `pnpm test:fuzz` script — both were blocked on Wave 4 having
+      a command surface to fuzz against. `pnpm goldens:verify` clean across
+      all new `wave4-*` families.
 
 ### Testing
 

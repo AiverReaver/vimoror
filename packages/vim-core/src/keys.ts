@@ -132,7 +132,13 @@ export function isPrintable(token: KeyToken): boolean {
 /** The literal character a token produces, or undefined if it produces none. */
 export function literalOf(token: KeyToken): string | undefined {
   if (isPrintable(token)) return token;
-  return NAMED_TO_CHAR[token];
+  const named = NAMED_TO_CHAR[token];
+  if (named !== undefined) return named;
+  // The inverse of the `code < 0x20` fold above — needed to round-trip a
+  // recorded macro's `<C-r>`/`<C-o>`/... back to the control byte real Vim
+  // would store in the register.
+  const ctrl = /^<C-([a-z])>$/.exec(token);
+  return ctrl ? String.fromCharCode(ctrl[1]!.charCodeAt(0) - 96) : undefined;
 }
 
 /** Render tokens back to notation, for `ResolvedCommand.keys` and hints. */

@@ -27,6 +27,10 @@ const FAMILIES = [
   'wave3-marks',
   'wave3-visualops',
   'wave3-dot',
+  'wave4-undotree',
+  'wave4-search',
+  'wave4-macros',
+  'wave4-excmd',
 ];
 
 for (const family of FAMILIES) {

@@ -1,0 +1,294 @@
+[
+  {
+    "id": "undotree/g-minus-matches-plain-u",
+    "buffer": [
+      "abcdef"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "xg-",
+    "groups": [
+      "x",
+      "g-"
+    ],
+    "note": "on a straight chain (no branching) g- must agree with plain u exactly",
+    "encodedKeys": "xg-",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a"
+        },
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "abcdef"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "undotree/g-then-g-plus-roundtrip",
+    "buffer": [
+      "abcdef"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "xg-g+",
+    "groups": [
+      "x",
+      "g-",
+      "g+"
+    ],
+    "encodedKeys": "xg-g+",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a"
+        },
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "bcdef"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "undotree/cross-branch-lands-on-sibling",
+    "buffer": [
+      "AAA",
+      "BBB",
+      "CCC"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "3G$ax2<Esc>u2Glax3<Esc>g-",
+    "groups": [
+      "3G$ax2<Esc>",
+      "u",
+      "2Glax3<Esc>",
+      "g-"
+    ],
+    "note": "branch A (append x2 at end of line 3) is undone, then branch B (append x3 mid line 2) is made from the same root — a real sibling pair. g- from B's tip must land on A's own state, not on the shared root.\n",
+    "encodedKeys": "3G$ax2\u001bu2Glax3\u001bg-",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "AAA",
+        "BBB",
+        "CCCx2"
+      ],
+      "cursor": [
+        3,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
+    "id": "undotree/count-prefix-crosses-branch-and-generation",
+    "buffer": [
+      "AAA",
+      "BBB",
+      "CCC"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "3G$ax2<Esc>u2Glax3<Esc>Ay4<Esc>2g-",
+    "groups": [
+      "3G$ax2<Esc>",
+      "u",
+      "2Glax3<Esc>",
+      "Ay4<Esc>",
+      "2g-"
+    ],
+    "note": "branch B continues one more edit past the branch point (3 total nodes: root, branch A, branch B, branch B again). `2g-` from B's second edit must skip past B's own first edit and land on branch A directly, which is neither B's parent nor an ancestor of the current node at all.\n",
+    "encodedKeys": "3G$ax2\u001bu2Glax3\u001bAy4\u001b2g-",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "AAA",
+        "BBB",
+        "CCCx2"
+      ],
+      "cursor": [
+        3,
+        4
+      ],
+      "error": "",
+      "curswant": 7
+    }
+  },
+  {
+    "id": "undotree/g-minus-at-oldest-is-a-no-op",
+    "buffer": [
+      "abcdef"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "g-",
+    "groups": [
+      "g-"
+    ],
+    "note": "a beep, not an exception — same as u with nothing to undo",
+    "encodedKeys": "g-",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "abcdef"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "undotree/g-plus-at-newest-is-a-no-op",
+    "buffer": [
+      "abcdef"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "xg+",
+    "groups": [
+      "x",
+      "g+"
+    ],
+    "encodedKeys": "xg+",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a"
+        },
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "bcdef"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "undotree/g-minus-mints-no-undo-node",
+    "buffer": [
+      "abcdef"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "xg-g+u",
+    "groups": [
+      "x",
+      "g-",
+      "g+",
+      "u"
+    ],
+    "note": "g-/g+ are pure navigation. The final `u` must burn on the `x`, the only real change here — proving g-/g+ never pushed a node of their own.\n",
+    "encodedKeys": "xg-g+u",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a"
+        },
+        "-": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "abcdef"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "undotree/dot-repeat-skips-over-g-minus",
+    "buffer": [
+      "abcdef"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "xg-g+.",
+    "groups": [
+      "x",
+      "g-",
+      "g+",
+      "."
+    ],
+    "note": "`.` after a g-/g+ round trip must still repeat the LAST REAL change (`x`), not misfire on g-/g+ themselves — regression for the dot.ts exclusion this wave adds alongside u/<C-r>.\n",
+    "encodedKeys": "xg-g+.",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "b"
+        },
+        "-": {
+          "type": "v",
+          "text": "b"
+        }
+      },
+      "buffer": [
+        "cdef"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  }
+]

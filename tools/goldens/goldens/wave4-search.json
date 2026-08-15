@@ -1,0 +1,971 @@
+[
+  {
+    "id": "search/forward-lands-on-match-start",
+    "buffer": [
+      "alpha beta gamma"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "/gamma<CR>",
+    "groups": [
+      "/gamma<CR>"
+    ],
+    "encodedKeys": "/gamma\r",
+    "expect": {
+      "registers": {
+        "/": {
+          "type": "v",
+          "text": "gamma"
+        }
+      },
+      "buffer": [
+        "alpha beta gamma"
+      ],
+      "cursor": [
+        1,
+        12
+      ],
+      "error": "",
+      "curswant": 12
+    }
+  },
+  {
+    "id": "search/forward-skips-the-match-under-cursor",
+    "buffer": [
+      "foo foo foo"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "/foo<CR>",
+    "groups": [
+      "/foo<CR>"
+    ],
+    "note": "search starts AFTER the cursor, so sitting on a match still advances",
+    "encodedKeys": "/foo\r",
+    "expect": {
+      "registers": {
+        "/": {
+          "type": "v",
+          "text": "foo"
+        }
+      },
+      "buffer": [
+        "foo foo foo"
+      ],
+      "cursor": [
+        1,
+        5
+      ],
+      "error": "",
+      "curswant": 5
+    }
+  },
+  {
+    "id": "search/backward-lands-on-match-start",
+    "buffer": [
+      "alpha beta gamma"
+    ],
+    "cursor": [
+      1,
+      17
+    ],
+    "keys": "?alpha<CR>",
+    "groups": [
+      "?alpha<CR>"
+    ],
+    "encodedKeys": "?alpha\r",
+    "expect": {
+      "registers": {
+        "/": {
+          "type": "v",
+          "text": "alpha"
+        }
+      },
+      "buffer": [
+        "alpha beta gamma"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "search/register-set-after-search",
+    "buffer": [
+      "alpha beta gamma"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "/beta<CR>",
+    "groups": [
+      "/beta<CR>"
+    ],
+    "encodedKeys": "/beta\r",
+    "expect": {
+      "registers": {
+        "/": {
+          "type": "v",
+          "text": "beta"
+        }
+      },
+      "buffer": [
+        "alpha beta gamma"
+      ],
+      "cursor": [
+        1,
+        7
+      ],
+      "error": "",
+      "curswant": 7
+    }
+  },
+  {
+    "id": "search/n-repeats-same-direction",
+    "buffer": [
+      "x. one x. two x. three"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "/x\\.<CR>n",
+    "groups": [
+      "/x\\.<CR>",
+      "n"
+    ],
+    "encodedKeys": "/x\\.\rn",
+    "expect": {
+      "registers": {
+        "/": {
+          "type": "v",
+          "text": "x\\."
+        }
+      },
+      "buffer": [
+        "x. one x. two x. three"
+      ],
+      "cursor": [
+        1,
+        15
+      ],
+      "error": "",
+      "curswant": 15
+    }
+  },
+  {
+    "id": "search/big-N-reverses-direction",
+    "buffer": [
+      "x one x two x three"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "/x<CR>nN",
+    "groups": [
+      "/x<CR>",
+      "n",
+      "N"
+    ],
+    "encodedKeys": "/x\rnN",
+    "expect": {
+      "registers": {
+        "/": {
+          "type": "v",
+          "text": "x"
+        }
+      },
+      "buffer": [
+        "x one x two x three"
+      ],
+      "cursor": [
+        1,
+        7
+      ],
+      "error": "",
+      "curswant": 7
+    }
+  },
+  {
+    "id": "search/empty-pattern-reuses-last",
+    "buffer": [
+      "x one x two x three"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "/x<CR>/<CR>",
+    "groups": [
+      "/x<CR>",
+      "/<CR>"
+    ],
+    "encodedKeys": "/x\r/\r",
+    "expect": {
+      "registers": {
+        "/": {
+          "type": "v",
+          "text": "x"
+        }
+      },
+      "buffer": [
+        "x one x two x three"
+      ],
+      "cursor": [
+        1,
+        13
+      ],
+      "error": "",
+      "curswant": 13
+    }
+  },
+  {
+    "id": "search/wraps-past-end-of-buffer",
+    "buffer": [
+      "gamma alpha beta"
+    ],
+    "cursor": [
+      1,
+      8
+    ],
+    "keys": "/gamma<CR>",
+    "groups": [
+      "/gamma<CR>"
+    ],
+    "encodedKeys": "/gamma\r",
+    "expect": {
+      "registers": {
+        "/": {
+          "type": "v",
+          "text": "gamma"
+        }
+      },
+      "buffer": [
+        "gamma alpha beta"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "search/wraps-onto-the-only-match",
+    "buffer": [
+      "only one gamma here"
+    ],
+    "cursor": [
+      1,
+      10
+    ],
+    "keys": "/gamma<CR>",
+    "groups": [
+      "/gamma<CR>"
+    ],
+    "note": "with exactly one occurrence, wrapping finds the SAME one again",
+    "encodedKeys": "/gamma\r",
+    "expect": {
+      "registers": {
+        "/": {
+          "type": "v",
+          "text": "gamma"
+        }
+      },
+      "buffer": [
+        "only one gamma here"
+      ],
+      "cursor": [
+        1,
+        10
+      ],
+      "error": "",
+      "curswant": 10
+    }
+  },
+  {
+    "id": "search/nowrapscan-fails-past-the-end",
+    "buffer": [
+      "gamma alpha beta"
+    ],
+    "cursor": [
+      1,
+      8
+    ],
+    "keys": "/gamma<CR>",
+    "groups": [
+      "/gamma<CR>"
+    ],
+    "options": [
+      "nowrapscan"
+    ],
+    "expectError": true,
+    "encodedKeys": "/gamma\r",
+    "expect": {
+      "registers": {
+        "/": {
+          "type": "v",
+          "text": "gamma"
+        }
+      },
+      "buffer": [
+        "gamma alpha beta"
+      ],
+      "cursor": [
+        1,
+        8
+      ],
+      "error": "Vim(call):E385: Search hit BOTTOM without match for: gamma",
+      "curswant": 8
+    }
+  },
+  {
+    "id": "search/pattern-not-found-anywhere",
+    "buffer": [
+      "alpha beta"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "/zzz<CR>",
+    "groups": [
+      "/zzz<CR>"
+    ],
+    "expectError": true,
+    "encodedKeys": "/zzz\r",
+    "expect": {
+      "registers": {
+        "/": {
+          "type": "v",
+          "text": "zzz"
+        }
+      },
+      "buffer": [
+        "alpha beta"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "Vim(call):E486: Pattern not found: zzz",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "search/star-searches-whole-word",
+    "buffer": [
+      "a cat sat on concatenate"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "*",
+    "groups": [
+      "*"
+    ],
+    "note": "`cat` inside `concatenate` must NOT match — `*` wraps `\\<...\\>`",
+    "encodedKeys": "*",
+    "expect": {
+      "registers": {
+        "/": {
+          "type": "v",
+          "text": "\\<cat\\>"
+        }
+      },
+      "buffer": [
+        "a cat sat on concatenate"
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "search/star-from-mid-word-uses-that-word",
+    "buffer": [
+      "alpha beta alpha"
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "*",
+    "groups": [
+      "*"
+    ],
+    "encodedKeys": "*",
+    "expect": {
+      "registers": {
+        "/": {
+          "type": "v",
+          "text": "\\<alpha\\>"
+        }
+      },
+      "buffer": [
+        "alpha beta alpha"
+      ],
+      "cursor": [
+        1,
+        12
+      ],
+      "error": "",
+      "curswant": 12
+    }
+  },
+  {
+    "id": "search/hash-searches-backward",
+    "buffer": [
+      "alpha beta alpha"
+    ],
+    "cursor": [
+      1,
+      13
+    ],
+    "keys": "#",
+    "groups": [
+      "#"
+    ],
+    "encodedKeys": "#",
+    "expect": {
+      "registers": {
+        "/": {
+          "type": "v",
+          "text": "\\<alpha\\>"
+        }
+      },
+      "buffer": [
+        "alpha beta alpha"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "search/star-register-is-word-bounded-pattern",
+    "buffer": [
+      "cat catalog cat"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "*",
+    "groups": [
+      "*"
+    ],
+    "encodedKeys": "*",
+    "expect": {
+      "registers": {
+        "/": {
+          "type": "v",
+          "text": "\\<cat\\>"
+        }
+      },
+      "buffer": [
+        "cat catalog cat"
+      ],
+      "cursor": [
+        1,
+        13
+      ],
+      "error": "",
+      "curswant": 13
+    }
+  },
+  {
+    "id": "search/dot-matches-any-char",
+    "buffer": [
+      "fooXbar fooYbar"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "/foo.bar<CR>",
+    "groups": [
+      "/foo.bar<CR>"
+    ],
+    "encodedKeys": "/foo.bar\r",
+    "expect": {
+      "registers": {
+        "/": {
+          "type": "v",
+          "text": "foo.bar"
+        }
+      },
+      "buffer": [
+        "fooXbar fooYbar"
+      ],
+      "cursor": [
+        1,
+        9
+      ],
+      "error": "",
+      "curswant": 9
+    }
+  },
+  {
+    "id": "search/star-is-zero-or-more",
+    "buffer": [
+      "fbar foobar fooobar"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "/fo*bar<CR>",
+    "groups": [
+      "/fo*bar<CR>"
+    ],
+    "encodedKeys": "/fo*bar\r",
+    "expect": {
+      "registers": {
+        "/": {
+          "type": "v",
+          "text": "fo*bar"
+        }
+      },
+      "buffer": [
+        "fbar foobar fooobar"
+      ],
+      "cursor": [
+        1,
+        6
+      ],
+      "error": "",
+      "curswant": 6
+    }
+  },
+  {
+    "id": "search/backslash-plus-is-one-or-more",
+    "buffer": [
+      "a+b aaab"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "/a\\+b<CR>",
+    "groups": [
+      "/a\\+b<CR>"
+    ],
+    "note": "bare `+` is LITERAL in magic mode; `\\+` is the quantifier",
+    "encodedKeys": "/a\\+b\r",
+    "expect": {
+      "registers": {
+        "/": {
+          "type": "v",
+          "text": "a\\+b"
+        }
+      },
+      "buffer": [
+        "a+b aaab"
+      ],
+      "cursor": [
+        1,
+        5
+      ],
+      "error": "",
+      "curswant": 5
+    }
+  },
+  {
+    "id": "search/bare-plus-is-literal",
+    "buffer": [
+      "a+b aaab"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "/a+b<CR>",
+    "groups": [
+      "/a+b<CR>"
+    ],
+    "encodedKeys": "/a+b\r",
+    "expect": {
+      "registers": {
+        "/": {
+          "type": "v",
+          "text": "a+b"
+        }
+      },
+      "buffer": [
+        "a+b aaab"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "search/alternation-and-grouping",
+    "buffer": [
+      "cat dog bird"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "/\\(dog\\|bird\\)<CR>",
+    "groups": [
+      "/\\(dog\\|bird\\)<CR>"
+    ],
+    "encodedKeys": "/\\(dog\\|bird\\)\r",
+    "expect": {
+      "registers": {
+        "/": {
+          "type": "v",
+          "text": "\\(dog\\|bird\\)"
+        }
+      },
+      "buffer": [
+        "cat dog bird"
+      ],
+      "cursor": [
+        1,
+        5
+      ],
+      "error": "",
+      "curswant": 5
+    }
+  },
+  {
+    "id": "search/character-class",
+    "buffer": [
+      "x1y x9y xzy"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "/x[0-9]y<CR>",
+    "groups": [
+      "/x[0-9]y<CR>"
+    ],
+    "encodedKeys": "/x[0-9]y\r",
+    "expect": {
+      "registers": {
+        "/": {
+          "type": "v",
+          "text": "x[0-9]y"
+        }
+      },
+      "buffer": [
+        "x1y x9y xzy"
+      ],
+      "cursor": [
+        1,
+        5
+      ],
+      "error": "",
+      "curswant": 5
+    }
+  },
+  {
+    "id": "search/default-is-case-sensitive",
+    "buffer": [
+      "Foo foo"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "/foo<CR>",
+    "groups": [
+      "/foo<CR>"
+    ],
+    "encodedKeys": "/foo\r",
+    "expect": {
+      "registers": {
+        "/": {
+          "type": "v",
+          "text": "foo"
+        }
+      },
+      "buffer": [
+        "Foo foo"
+      ],
+      "cursor": [
+        1,
+        5
+      ],
+      "error": "",
+      "curswant": 5
+    }
+  },
+  {
+    "id": "search/ignorecase-option",
+    "buffer": [
+      "Foo bar"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "/foo<CR>",
+    "groups": [
+      "/foo<CR>"
+    ],
+    "options": [
+      "ignorecase"
+    ],
+    "encodedKeys": "/foo\r",
+    "expect": {
+      "registers": {
+        "/": {
+          "type": "v",
+          "text": "foo"
+        }
+      },
+      "buffer": [
+        "Foo bar"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "search/inline-backslash-c-forces-insensitive",
+    "buffer": [
+      "Foo bar"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "/\\cfoo<CR>",
+    "groups": [
+      "/\\cfoo<CR>"
+    ],
+    "encodedKeys": "/\\cfoo\r",
+    "expect": {
+      "registers": {
+        "/": {
+          "type": "v",
+          "text": "\\cfoo"
+        }
+      },
+      "buffer": [
+        "Foo bar"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "search/smartcase-with-uppercase-forces-sensitive",
+    "buffer": [
+      "foo Foo"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "/Foo<CR>",
+    "groups": [
+      "/Foo<CR>"
+    ],
+    "options": [
+      "ignorecase",
+      "smartcase"
+    ],
+    "encodedKeys": "/Foo\r",
+    "expect": {
+      "registers": {
+        "/": {
+          "type": "v",
+          "text": "Foo"
+        }
+      },
+      "buffer": [
+        "foo Foo"
+      ],
+      "cursor": [
+        1,
+        5
+      ],
+      "error": "",
+      "curswant": 5
+    }
+  },
+  {
+    "id": "search/delete-through-search-is-exclusive",
+    "buffer": [
+      "alpha beta gamma"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "d/gamma<CR>",
+    "groups": [
+      "d/gamma<CR>"
+    ],
+    "encodedKeys": "d/gamma\r",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "v",
+          "text": "alpha beta "
+        },
+        "\"": {
+          "type": "v",
+          "text": "alpha beta "
+        },
+        "-": {
+          "type": "v",
+          "text": "alpha beta "
+        },
+        "/": {
+          "type": "v",
+          "text": "gamma"
+        }
+      },
+      "buffer": [
+        "gamma"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "search/count-prefixed-n",
+    "buffer": [
+      "x a x b x c x d"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "/x<CR>2n",
+    "groups": [
+      "/x<CR>",
+      "2n"
+    ],
+    "encodedKeys": "/x\r2n",
+    "expect": {
+      "registers": {
+        "/": {
+          "type": "v",
+          "text": "x"
+        }
+      },
+      "buffer": [
+        "x a x b x c x d"
+      ],
+      "cursor": [
+        1,
+        13
+      ],
+      "error": "",
+      "curswant": 13
+    }
+  },
+  {
+    "id": "search/count-prefixed-star",
+    "buffer": [
+      "cat one cat two cat three"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "2*",
+    "groups": [
+      "2*"
+    ],
+    "encodedKeys": "2*",
+    "expect": {
+      "registers": {
+        "/": {
+          "type": "v",
+          "text": "\\<cat\\>"
+        }
+      },
+      "buffer": [
+        "cat one cat two cat three"
+      ],
+      "cursor": [
+        1,
+        17
+      ],
+      "error": "",
+      "curswant": 17
+    }
+  },
+  {
+    "id": "search/visual-mode-extends-to-match",
+    "buffer": [
+      "alpha beta gamma"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "v/gamma<CR>d",
+    "groups": [
+      "v/gamma<CR>d"
+    ],
+    "encodedKeys": "v/gamma\rd",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "alpha beta g"
+        },
+        "-": {
+          "type": "v",
+          "text": "alpha beta g"
+        },
+        "/": {
+          "type": "v",
+          "text": "gamma"
+        }
+      },
+      "buffer": [
+        "amma"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  }
+]
