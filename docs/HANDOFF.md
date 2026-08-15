@@ -6,6 +6,10 @@ the tracking doc is `docs/CHECKLIST.md`; the harness gospel is
 current verified state, and the engine-internals notes a newcomer would
 otherwise have to rediscover by reading `state.ts` end to end.
 
+`docs/WAVE3-REPORT.md` is the standalone handoff for Wave 3 — the two bugs it
+fixed in existing code, and the two open items below written out in full for a
+reader with no context.
+
 ---
 
 ## Where the project stands
