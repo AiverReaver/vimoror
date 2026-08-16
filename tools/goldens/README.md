@@ -17,15 +17,16 @@ pnpm test                        # diff engine vs committed goldens
 everywhere else. Nobody writes that from memory. The oracle reproduces Vim's
 warts whether or not we know they exist — which is the entire argument.
 
-## Thirteen details that are load-bearing
+## Fourteen details that are load-bearing
 
 The first five were earned during the original prototype. The sixth and seventh
 were found while rebuilding the harness, the eighth and ninth while authoring
 Wave 2, the tenth while authoring Wave 3, the eleventh and twelfth while
 authoring Wave 4c's macro goldens, the thirteenth while authoring Wave 4d's
-ex-command goldens — and all of them produce goldens that look entirely
-plausible while being wrong (the thirteenth is the one exception: it produces
-no bad golden, because the case that would prove it wrong is never written).
+ex-command goldens, the fourteenth while building Wave 4g's fuzz harness — and
+all of them produce goldens that look entirely plausible while being wrong
+(the thirteenth is the one exception: it produces no bad golden, because the
+case that would prove it wrong is never written).
 
 1. **`-i NONE`** — without it Vim reads viminfo and registers leak between
    cases. This silently corrupted the first prototype run.
@@ -140,6 +141,18 @@ no bad golden, because the case that would prove it wrong is never written).
     already flags this same hazard for the fuzz alphabet; `:g`/`:v` in 4f will
     need the same care, since a fuzzed or careless global command is exactly
     the shape that could embed one of these by accident.
+14. **`:edit!` also pushes a phantom jumplist entry onto the very first case
+    that ever touches the jumplist.** The same setup-leak shape as detail 8's
+    undo history, for a different piece of state: `getjumplist()` right after
+    `:edit!` already holds one entry, at the file's opening line, before
+    `cursor()` in `s:Setup()` ever runs. A case whose very first key is
+    `<C-o>` — with nothing of its OWN having jumped — popped that phantom
+    entry instead of correctly finding an empty jumplist. Found by Wave 4g's
+    fuzz harness, which is far more likely than a hand-authored case to
+    start cold with a bare jump command. Fixed with `silent! clearjumps`
+    right next to `delmarks!` in `s:Setup()`; a full regenerate changed zero
+    bytes of every already-committed golden, confirming this was a pure gap
+    exactly like detail 12's `'xt'` fix, not a tradeoff.
 
 Detail 5's other half still stands: `mode()` reports `n` even inside insert
 mode under `feedkeys`, so mode goldens remain out of reach for this oracle.

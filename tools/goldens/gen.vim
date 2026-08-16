@@ -75,6 +75,13 @@ function! s:Setup(case) abort
   silent! bwipeout!
   silent! execute 'edit! ' . fnameescape(s:tmpfile)
   silent! delmarks!
+  " `:edit` itself pushes the file's opening position onto the jumplist —
+  " confirmed with a scratch probe (getjumplist() right after :edit! holds one
+  " entry at line 1, before `cursor()` ever runs). Left alone, a case's very
+  " first `<C-o>` pops that phantom entry instead of correctly finding an
+  " empty jumplist, even though nothing the case's own keys did ever jumped.
+  " `cursor()` itself does not add an entry, so clearing here is enough.
+  silent! clearjumps
   " The last f/F/t/T target is global and survives :edit, so without this the
   " previous case's `f,` leaks into this case's bare `;`.
   silent! call setcharsearch({'char': '', 'forward': 1, 'until': 0})

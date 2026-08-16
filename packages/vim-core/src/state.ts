@@ -231,8 +231,16 @@ function reject(state: EditorState, key: KeyToken, reason: InvalidReason): StepR
   return { state: { ...state, pending: EMPTY_PENDING }, events: [{ type: 'KeyRejected', key, reason }] };
 }
 
-function invalid(state: EditorState, keys: string, reason: InvalidReason): StepResult {
-  return { state: { ...state, pending: EMPTY_PENDING }, events: [{ type: 'InvalidCommand', keys, reason }] };
+/**
+ * `cursor` is for the one documented case where an aborted command still
+ * moves the cursor: a counted `iw`/`aw` whose internal word-walk ran off the
+ * end of the buffer before satisfying the count (`textobjects.ts`'s
+ * `abortCursor`). Every other caller omits it and the cursor stays put, as
+ * an aborted command ordinarily does.
+ */
+function invalid(state: EditorState, keys: string, reason: InvalidReason, cursor?: Pos): StepResult {
+  const next = cursor === undefined ? state : { ...state, cursor: clamp(state.lines, cursor, false) };
+  return { state: { ...next, pending: EMPTY_PENDING }, events: [{ type: 'InvalidCommand', keys, reason }] };
 }
 
 function pendingOnly(state: EditorState, pending: Pending): StepResult {
@@ -669,14 +677,14 @@ function stepNormal(state: EditorState, key: KeyToken): StepResult {
   if (p.awaiting === 'textobject') {
     if (key === '<Esc>') return { state: { ...state, pending: EMPTY_PENDING }, events: [] };
     if (key.length !== 1) return invalid(state, keys.join(''), 'unknown-key');
-    const range = T.textObject(state.lines, state.cursor, p.textObjectKind!, key, countOf(p).count);
+    const result = T.textObject(state.lines, state.cursor, p.textObjectKind!, key, countOf(p).count);
     // Not FOUND (`di(` with no brackets) aborts the operator and mints nothing.
     // Found-but-EMPTY (`di(` on `()`) is a degenerate region, which still runs.
-    if (range === null) return invalid(state, keys.join(''), 'no-such-motion');
+    if (result.range === null) return invalid(state, keys.join(''), 'no-such-motion', result.abortCursor);
     // An object names its region outright, so the operated text starts at the
     // region's own start — column ZERO for a linewise object, which is why
     // `yip` lands on column one while `yy` keeps the column it had.
-    return runOperator(state, p.operator!, range, O.rangeStart(range), { fromObject: true });
+    return runOperator(state, p.operator!, result.range, O.rangeStart(result.range), { fromObject: true });
   }
 
   if (p.awaiting === 'replace') {
@@ -1366,8 +1374,9 @@ function stepVisual(state: EditorState, key: KeyToken): StepResult {
   if (p.awaiting === 'textobject') {
     if (key === '<Esc>') return { state: { ...state, pending: EMPTY_PENDING }, events: [] };
     if (key.length !== 1) return invalid(state, keys.join(''), 'unknown-key');
-    const range = T.textObject(state.lines, state.cursor, p.textObjectKind!, key, count);
-    if (range === null) return invalid(state, keys.join(''), 'no-such-motion');
+    const result = T.textObject(state.lines, state.cursor, p.textObjectKind!, key, count);
+    if (result.range === null) return invalid(state, keys.join(''), 'no-such-motion', result.abortCursor);
+    const range = result.range;
     // An object REPLACES the selection with its own extent, anchor included.
     const start = O.rangeStart(range);
     const end =

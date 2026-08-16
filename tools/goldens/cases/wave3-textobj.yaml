@@ -67,6 +67,15 @@ cases:
     buffer: 'alpha beta gamma'
     cursor: [1, 1]
     keys: 'd3iw'
+  - id: textobj/diw-count-overshoot-aborts-not-clamps
+    note: >
+      a count `iw` cannot fully satisfy runs off the end of the buffer and
+      fails the WHOLE object, exactly like `di(` with no bracket — found by
+      fuzzing an engine that clamped to the largest count that DID fit and
+      silently deleted the rest of the buffer instead of aborting
+    buffer: ['slw)cj', 'd{]ry']
+    cursor: [1, 1]
+    keys: '"_9diw'
   - id: textobj/d2aw
     note: each extra count adds a whole word WITH its whitespace
     buffer: 'alpha beta gamma'

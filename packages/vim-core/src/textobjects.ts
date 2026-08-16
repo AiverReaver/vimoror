@@ -6,10 +6,17 @@
  * return an `OperatorRange` directly rather than a `MotionResult`, and `end` is
  * EXCLUSIVE, matching what `operatorRange()` produces for motions.
  *
- * `null` means the object could not be found (`di(` with no brackets), which
- * aborts the operator. A found-but-EMPTY object (`di(` on `()`) is a different
- * thing entirely: a degenerate region, which runs the operator over nothing —
- * that is why `ci(` on `()` still enters insert mode.
+ * `range: null` means the object could not be found (`di(` with no brackets),
+ * which aborts the operator. A found-but-EMPTY object (`di(` on `()`) is a
+ * different thing entirely: a degenerate region, which runs the operator over
+ * nothing — that is why `ci(` on `()` still enters insert mode.
+ *
+ * `abortCursor` is set only for a counted `iw`/`aw` that runs off the end of
+ * the buffer before the count is satisfied — measured against real Vim: the
+ * whole command aborts (same as any other not-found object) but the cursor
+ * still lands wherever the internal word-walk got to before giving up,
+ * rather than staying put. Every other object kind leaves it unset, which
+ * keeps the ordinary "aborted command doesn't move the cursor" behavior.
  */
 
 import {
@@ -41,24 +48,31 @@ const BRACKETS: Record<string, readonly [string, string]> = {
   '<': ['<', '>'], '>': ['<', '>'],
 };
 
-export function textObject(
-  lines: Lines,
-  cursor: Pos,
-  kind: ObjectKind,
-  obj: string,
-  count: number,
-): OperatorRange | null {
+export type ObjectResult = { readonly range: OperatorRange } | { readonly range: null; readonly abortCursor?: Pos };
+
+const notFound: ObjectResult = { range: null };
+
+export function textObject(lines: Lines, cursor: Pos, kind: ObjectKind, obj: string, count: number): ObjectResult {
   const include = kind === 'a';
 
   if (obj === 'w' || obj === 'W') return wordObject(lines, cursor, include, obj === 'W', count);
-  if (obj === '"' || obj === "'" || obj === '`') return quoteObject(lines, cursor, obj, include);
-  if (obj === 'p') return paragraphObject(lines, cursor, include);
-  if (obj === 't') return tagObject(lines, cursor, include, count);
+  if (obj === '"' || obj === "'" || obj === '`') {
+    const r = quoteObject(lines, cursor, obj, include);
+    return r === null ? notFound : { range: r };
+  }
+  if (obj === 'p') return { range: paragraphObject(lines, cursor, include) };
+  if (obj === 't') {
+    const r = tagObject(lines, cursor, include, count);
+    return r === null ? notFound : { range: r };
+  }
 
   const pair = BRACKETS[obj];
-  if (pair !== undefined) return blockObject(lines, cursor, pair[0], pair[1], include, count);
+  if (pair !== undefined) {
+    const r = blockObject(lines, cursor, pair[0], pair[1], include, count);
+    return r === null ? notFound : { range: r };
+  }
 
-  return null;
+  return notFound;
 }
 
 /** A charwise range from an inclusive last position, which is what objects name. */
@@ -157,13 +171,7 @@ function beforeNextWord(lines: Lines, from: Pos, big: boolean): Pos {
  * whitespace instead, which is why `daw` on the last word of a line eats the
  * space before it rather than the line break after it.
  */
-function wordObject(
-  lines: Lines,
-  cursor: Pos,
-  include: boolean,
-  big: boolean,
-  count: number,
-): OperatorRange | null {
+function wordObject(lines: Lines, cursor: Pos, include: boolean, big: boolean, count: number): ObjectResult {
   const startCls = charClass(charAt(lines, cursor), big);
   const start = backInLine(lines, cursor, big);
 
@@ -174,13 +182,24 @@ function wordObject(
   };
 
   let end = extend(cursor);
-  if (end === null) return null;
+  if (end === null) return { range: null };
 
+  // A count that runs off the end of the buffer before it is satisfied fails
+  // the WHOLE object, exactly like `di(` with no enclosing bracket — measured
+  // against real Vim with a scratch probe run over an increasing count (`diw`
+  // through `9diw` on a short two-line buffer): each count up to what the
+  // buffer can actually satisfy deletes progressively more, but the moment
+  // the count overshoots, the buffer comes back completely untouched, not
+  // clamped to the largest count that did fit. Found by fuzzing — clamping
+  // here silently deleted the entire rest of the buffer for a count nobody
+  // meant literally. The cursor, however, still lands wherever the failed
+  // walk got to (same probe) rather than staying put — `abortCursor` carries
+  // that back to the caller instead of a plain `{ range: null }`.
   for (let n = 1; n < count; n += 1) {
     const next = nextPos(lines, end);
-    if (next === null) break;
+    if (next === null) return { range: null, abortCursor: end };
     const further = extend(next);
-    if (further === null) break;
+    if (further === null) return { range: null, abortCursor: next };
     end = further;
   }
 
@@ -200,14 +219,14 @@ function wordObject(
   // The walk can end up BEFORE where it started — `iw` on an empty LAST line
   // reaches back onto the previous line. The region is then that span, and it is
   // `op_delete`'s own promotion that turns it into whole lines for `d`.
-  if (comparePos(end, from) < 0) return inclusiveRange(lines, end, from);
+  if (comparePos(end, from) < 0) return { range: inclusiveRange(lines, end, from) };
 
   // On an empty line in the MIDDLE of a buffer the walk cannot move, and
   // `inclusiveRange` names a span whose end is past the (zero-length) line. That
   // is deliberate: it is a REAL region holding zero characters, not a degenerate
   // one — exactly the distinction Wave 2 drew between `D` on an empty line and
   // `dl` there. So `yiw` writes an empty register while `diw` mints no undo node.
-  return inclusiveRange(lines, from, end);
+  return { range: inclusiveRange(lines, from, end) };
 }
 
 // --- quotes -----------------------------------------------------------------

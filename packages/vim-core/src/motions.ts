@@ -146,17 +146,25 @@ export function moveGotoFirstLine(ctx: MotionContext): MotionResult {
   return { ...linewise({ line, col: firstNonBlank(ctx.lines, line) }), isJump: true };
 }
 
-/** `+` / `<CR>` — first non-blank of the next line. */
+/**
+ * `+` / `<CR>` — first non-blank of the next line, count lines down. Same
+ * `cursor_down()` overshoot rule `moveDown` already has: fails ONLY when the
+ * cursor is ALREADY on the last line (`d+` there is a true no-op, pinned by
+ * `delete/d-plus-at-last-line-noop`), clamps to the last line otherwise —
+ * measured against real Vim with a scratch probe (`9+` from a NON-last line
+ * of a 3-line buffer lands on the last line, no error). Found by fuzzing an
+ * engine that beeped on every overshoot instead of only the boundary one.
+ */
 export function moveLineDownFirstNonBlank(ctx: MotionContext): MotionResult | null {
-  const line = ctx.cursor.line + ctx.count;
-  if (line > lastLine(ctx.lines)) return null;
+  if (ctx.cursor.line >= lastLine(ctx.lines)) return null;
+  const line = Math.min(lastLine(ctx.lines), ctx.cursor.line + ctx.count);
   return linewise({ line, col: firstNonBlank(ctx.lines, line) });
 }
 
-/** `-` — first non-blank of the previous line. */
+/** `-` — first non-blank of the previous line, count lines up. Same boundary-only-fails rule as `moveUp`; see `moveLineDownFirstNonBlank`. */
 export function moveLineUpFirstNonBlank(ctx: MotionContext): MotionResult | null {
-  const line = ctx.cursor.line - ctx.count;
-  if (line < 0) return null;
+  if (ctx.cursor.line === 0) return null;
+  const line = Math.max(0, ctx.cursor.line - ctx.count);
   return linewise({ line, col: firstNonBlank(ctx.lines, line) });
 }
 

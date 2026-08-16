@@ -404,6 +404,36 @@
     }
   },
   {
+    "id": "textobj/diw-count-overshoot-aborts-not-clamps",
+    "buffer": [
+      "slw)cj",
+      "d{]ry"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "\"_9diw",
+    "groups": [
+      "\"_9diw"
+    ],
+    "note": "a count `iw` cannot fully satisfy runs off the end of the buffer and fails the WHOLE object, exactly like `di(` with no bracket — found by fuzzing an engine that clamped to the largest count that DID fit and silently deleted the rest of the buffer instead of aborting\n",
+    "encodedKeys": "\"_9diw",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "slw)cj",
+        "d{]ry"
+      ],
+      "cursor": [
+        2,
+        5
+      ],
+      "error": "",
+      "curswant": 5
+    }
+  },
+  {
     "id": "textobj/d2aw",
     "buffer": [
       "alpha beta gamma"

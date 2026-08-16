@@ -136,7 +136,7 @@ function loadFamily(file: string): CaseSpec[] {
 
 // --- the oracle -------------------------------------------------------------
 
-function runVim(cases: CaseSpec[], tag: string): VimResult[] {
+export function runVim(cases: CaseSpec[], tag: string): VimResult[] {
   mkdirSync(WORK_DIR, { recursive: true });
   const specPath = join(WORK_DIR, `spec-${tag}.json`);
   const outPath = join(WORK_DIR, `out-${tag}.json`);
@@ -249,4 +249,6 @@ function main(): void {
   }
 }
 
-main();
+// Guarded so `fuzz.ts` can import `runVim` without re-running this file's own
+// generate-everything main() as a side effect of the import.
+if (process.argv[1] === fileURLToPath(import.meta.url)) main();

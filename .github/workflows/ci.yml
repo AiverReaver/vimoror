@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.11.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm typecheck
+
+      # Goldens are generated locally against real Vim and committed, so
+      # `pnpm test` (vitest) diffs against the committed JSON — no Vim needed
+      # here. `pnpm goldens:generate/:verify` and `pnpm test:fuzz` all spawn
+      # a real Vim process and stay local-only, deliberately not run in CI.
+      - run: pnpm test

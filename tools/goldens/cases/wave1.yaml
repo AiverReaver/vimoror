@@ -126,6 +126,18 @@ cases:
     buffer: ['   one', 'two']
     cursor: [2, 3]
     keys: '-'
+  - id: wave1/plus-count-overshoot-clamps-not-fails
+    note: >
+      same cursor_down() rule as j/dd: fails ONLY from the last line, clamps
+      to it otherwise — found by fuzzing an engine that beeped on every
+      overshoot instead of just the boundary one
+    buffer: ['  a', '  b', '  c']
+    cursor: [1, 1]
+    keys: '9+'
+  - id: wave1/minus-count-overshoot-clamps-not-fails
+    buffer: ['  a', '  b', '  c']
+    cursor: [3, 1]
+    keys: '9-'
   - id: wave1/underscore
     buffer: ['   one', 'two']
     cursor: [1, 1]
