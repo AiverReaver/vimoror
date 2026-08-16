@@ -23,8 +23,10 @@ import * as O from './operators.ts';
 import * as P from './put.ts';
 import { BLACKHOLE, readRegister, recordWrite, UNNAMED } from './registers.ts';
 import * as S from './search.ts';
+import * as Sub from './subst.ts';
 import * as T from './textobjects.ts';
 import { canRedo, canUndo, initUndo, pushUndo, redo, undo, undoToSeq, type UndoState } from './undo.ts';
+import { compileVimPattern } from './vimregex.ts';
 import type {
   EngineEvent,
   InvalidReason,
@@ -42,6 +44,22 @@ export const MAX_COL = 2147483647;
 
 /** What `"_` reads back as for a put: written, and empty. */
 const EMPTY_VALUE: RegisterValue = { text: '', type: 'charwise' };
+
+/** The fixed parameters and running tally of a `:s ... c` session — everything but the match currently up for a decision. */
+type SubstProgress = {
+  readonly range: Ex.ExRange;
+  readonly pattern: string;
+  readonly replacement: string;
+  readonly global: boolean;
+  /** Where `u` returns to — the range's first line, matching `doExDelete`/`doExMove`. */
+  readonly changeStart: Pos;
+  readonly count: number;
+  readonly lastChangedLine: number | undefined;
+};
+
+type SubstJob = SubstProgress & {
+  readonly current: { readonly line: number; readonly match: Sub.SubstMatch };
+};
 
 export type Pending = {
   readonly count: string;
@@ -75,6 +93,8 @@ export type Pending = {
     | 'macro-replay'
     /** `:` — accumulating an ex command line until `<CR>` or `<Esc>`. */
     | 'command-line'
+    /** `:s ... c` — waiting for a `y n a q l <Esc>` response to one match. */
+    | 'confirm-subst'
     | undefined;
   readonly findCmd: 'f' | 'F' | 't' | 'T' | undefined;
   /** `i` or `a`, while waiting for the object character in `di(`, `caw`. */
@@ -84,6 +104,8 @@ export type Pending = {
   readonly searchText: string;
   /** `:`, while `awaiting === 'command-line'`. */
   readonly commandText: string;
+  /** The `:s ... c` session in progress, while `awaiting === 'confirm-subst'`. */
+  readonly substJob: SubstJob | undefined;
 };
 
 export const EMPTY_PENDING: Pending = {
@@ -99,6 +121,7 @@ export const EMPTY_PENDING: Pending = {
   searchLeader: undefined,
   searchText: '',
   commandText: '',
+  substJob: undefined,
 };
 
 export type EditorState = {
@@ -143,6 +166,8 @@ export type EditorState = {
   readonly replaying: boolean;
   /** True while `@` is feeding a macro's keys — unlike `replaying`, `.` still updates: see `step()`. */
   readonly macroReplaying: boolean;
+  /** True while a `:g`/`:v` body command is running — a body that is itself `:g`/`:v` sees this and rejects rather than recursing. */
+  readonly inGlobal: boolean;
   /** The `q` recording in progress, if any. Raw keystrokes, built up key by key. */
   readonly recording: Mac.MacroRecording | undefined;
   /** Finished recordings, by lowercase register name — what `@{reg}` plays back. */
@@ -185,6 +210,7 @@ export function initState(
     dotPending: undefined,
     replaying: false,
     macroReplaying: false,
+    inGlobal: false,
     recording: undefined,
     macros: {},
     lastMacroReg: undefined,
@@ -579,8 +605,10 @@ function recordChange(before: EditorState, key: KeyToken, after: EditorState): E
   // An ex command is never dot-repeatable — `.` after `:d<CR>` repeats
   // whatever normal-mode change came before it, not the ex command. Checked
   // on `before` so the WHOLE `:...<CR>` sequence is excluded, not just the
-  // keys typed while still accumulating.
-  if (before.pending.awaiting === 'command-line') return after;
+  // keys typed while still accumulating — `confirm-subst` extends this past
+  // the command's own `<CR>` for exactly the same reason, since a `:s ... c`
+  // session's `y`/`n`/`a` responses are still part of that one ex command.
+  if (before.pending.awaiting === 'command-line' || before.pending.awaiting === 'confirm-subst') return after;
 
   const visual = isVisual(before.mode) ? shapeOfSelection(before) : undefined;
   const keys = [...before.pending.dotKeys, key];
@@ -703,6 +731,8 @@ function stepNormal(state: EditorState, key: KeyToken): StepResult {
     if (key.length !== 1) return invalid(state, keys.join(''), 'unknown-key');
     return pendingOnly(state, bump({ commandText: p.commandText + key }));
   }
+
+  if (p.awaiting === 'confirm-subst') return doConfirmSubstKey(state, p.substJob!, key);
 
   // `q`/`@` have no visual-mode meaning, so these two `awaiting` states only
   // ever arise here — recording itself, once started, is captured by `step()`
@@ -2310,6 +2340,382 @@ function doExCopy(state: EditorState, range: Ex.ExRange, argsText: string, keysS
   };
 }
 
+function regexOpts(state: EditorState): { readonly ignorecase: boolean; readonly smartcase: boolean } {
+  return { ignorecase: state.options.ignorecase, smartcase: state.options.smartcase };
+}
+
+/**
+ * `:s[ubstitute]` — parses its own delimited argument syntax via `subst.ts`,
+ * then either applies the whole range eagerly or, for the `c` flag, opens an
+ * interactive `confirm-subst` session that `doConfirmSubstKey` steps one
+ * response at a time.
+ *
+ * Measured against real Vim 9.1: the pattern (once resolved — an empty one
+ * reuses `state.searchPattern`, exactly like `/`) is written to `searchPattern`
+ * and the `"/` register UNCONDITIONALLY, even when nothing ends up matching —
+ * the same early-write real Vim does for `/`. `:s` touches no other register;
+ * unlike `:d` it never yanks the replaced text. Undo mints a node only once a
+ * substitution actually lands (a pure search failure, E486, mints nothing),
+ * and `u` returns to the RANGE's first line — `changeStart`, matching
+ * `doExDelete`/`doExMove`'s own convention — not to wherever the last change
+ * happened to be.
+ */
+function doExSubstitute(state: EditorState, range: Ex.ExRange, argsText: string, keysStr: string): StepResult {
+  const spec = Sub.parseSubstArgs(argsText);
+  if (spec === null) return invalid(state, keysStr, 'invalid-substitute');
+  const pattern = spec.pattern === '' ? state.searchPattern : spec.pattern;
+  if (pattern === '') return invalid(state, keysStr, 'pattern-not-found');
+
+  const withPattern: EditorState = {
+    ...state,
+    searchPattern: pattern,
+    // `:s` has no notion of a backward substitute — a later bare `n` after it
+    // repeats forward, the same as if the pattern had come from `/`.
+    searchDirection: 'forward',
+    registers: { ...state.registers, '/': { text: pattern, type: 'charwise' } },
+  };
+  const opts = regexOpts(state);
+
+  if (!spec.flags.confirm) {
+    const result = Sub.substituteRange(withPattern.lines, range.first, range.last, pattern, spec.replacement, spec.flags.global, opts);
+    if (result.count === 0) return invalid(withPattern, keysStr, 'pattern-not-found');
+    const line = result.lastChangedLine!;
+    const cursor = { line, col: firstNonBlank(result.lines, line) };
+    return {
+      state: commit(withPattern, result.lines, cursor, undefined, { line: range.first, col: 0 }),
+      events: [bufferChanged(range.first, line)],
+    };
+  }
+
+  const found = Sub.findNextMatch(withPattern.lines, range.first, range.last, { line: range.first, col: 0 }, pattern, spec.flags.global, opts);
+  if (found === null) return invalid(withPattern, keysStr, 'pattern-not-found');
+  const progress: SubstProgress = {
+    range,
+    pattern,
+    replacement: spec.replacement,
+    global: spec.flags.global,
+    changeStart: { line: range.first, col: 0 },
+    count: 0,
+    lastChangedLine: undefined,
+  };
+  return presentConfirmMatch(withPattern, progress, found);
+}
+
+/** Splice one already-found match's replacement into the buffer, without closing an undo block — the confirm loop's own `mutate()`, matching insert mode's session pattern. */
+function applySubstMatch(
+  state: EditorState,
+  line: number,
+  match: Sub.SubstMatch,
+  replacement: string,
+): { readonly state: EditorState; readonly replacementLength: number } {
+  const text = lineAt(state.lines, line);
+  const replaced = Sub.buildReplacement(replacement, match);
+  const newLine = text.slice(0, match.index) + replaced + text.slice(match.index + match.length);
+  const lines = [...state.lines.slice(0, line), newLine, ...state.lines.slice(line + 1)];
+  return { state: mutate(state, lines, { line, col: match.index }, false), replacementLength: replaced.length };
+}
+
+/** Move the cursor onto a found match and wait for its confirm response — Vim's own highlight-and-prompt. */
+function presentConfirmMatch(
+  state: EditorState,
+  progress: SubstProgress,
+  found: { readonly line: number; readonly match: Sub.SubstMatch },
+): StepResult {
+  const at: Pos = { line: found.line, col: found.match.index };
+  const job: SubstJob = { ...progress, current: found };
+  return {
+    state: {
+      ...state,
+      cursor: clamp(state.lines, at, false),
+      pending: { ...EMPTY_PENDING, awaiting: 'confirm-subst', substJob: job },
+    },
+    events: [{ type: 'CursorMoved', to: at }],
+  };
+}
+
+/** Search onward from `from` for the next match to confirm; a search that comes up empty here is a normal end-of-session, NOT `pattern-not-found` — that error only applies to the very first search in `doExSubstitute`. */
+function advanceConfirmSubst(state: EditorState, progress: SubstProgress, from: Pos): StepResult {
+  const found = Sub.findNextMatch(state.lines, progress.range.first, progress.range.last, from, progress.pattern, progress.global, regexOpts(state));
+  if (found === null) return finishConfirmSubst(state, progress);
+  return presentConfirmMatch(state, progress, found);
+}
+
+/** Close the session: commit as ONE undo block if anything was accepted, otherwise leave the buffer and undo tree untouched — measured, a declined-or-quit-before-accepting session mints nothing. */
+function finishConfirmSubst(state: EditorState, progress: SubstProgress): StepResult {
+  if (progress.count === 0) {
+    return { state: { ...state, pending: EMPTY_PENDING }, events: [] };
+  }
+  const line = progress.lastChangedLine!;
+  const cursor = { line, col: firstNonBlank(state.lines, line) };
+  return {
+    state: commit(state, state.lines, cursor, undefined, progress.changeStart),
+    events: [bufferChanged(progress.range.first, line)],
+  };
+}
+
+/**
+ * One `y n a q l <Esc>` response to the match `job.current` highlights.
+ * `!global` always resumes the NEXT line at column 0 regardless of the
+ * decision, since only one match per line is ever considered without `g`;
+ * `global` resumes on the SAME line, past whatever text is now there (the
+ * replacement's own length for `y`/`l`, or just past the declined match for
+ * `n`) so a just-accepted replacement is never rematched.
+ *
+ * The oracle can only drive ONE confirm response through `feedkeys` reliably
+ * (see `tools/goldens/README.md`), so this sequencing is measured through a
+ * real interactive pty rather than a golden — `semantics.test.ts` pins it.
+ */
+function doConfirmSubstKey(state: EditorState, job: SubstJob, key: KeyToken): StepResult {
+  const { line, match } = job.current;
+
+  if (key === 'q' || key === '<Esc>') return finishConfirmSubst(state, job);
+
+  if (key === 'n') {
+    const from: Pos = job.global ? { line, col: match.index + Math.max(match.length, 1) } : { line: line + 1, col: 0 };
+    return advanceConfirmSubst(state, job, from);
+  }
+
+  if (key === 'y' || key === 'l') {
+    const applied = applySubstMatch(state, line, match, job.replacement);
+    const progress: SubstProgress = { ...job, count: job.count + 1, lastChangedLine: line };
+    if (key === 'l') return finishConfirmSubst(applied.state, progress);
+    const from: Pos = job.global ? { line, col: match.index + applied.replacementLength } : { line: line + 1, col: 0 };
+    return advanceConfirmSubst(applied.state, progress, from);
+  }
+
+  if (key === 'a') {
+    const opts = regexOpts(state);
+    let cur = state;
+    let progress: SubstProgress = job;
+    let at: { readonly line: number; readonly match: Sub.SubstMatch } | null = { line, match };
+    while (at !== null) {
+      const applied = applySubstMatch(cur, at.line, at.match, job.replacement);
+      cur = applied.state;
+      progress = { ...progress, count: progress.count + 1, lastChangedLine: at.line };
+      const from: Pos = job.global
+        ? { line: at.line, col: at.match.index + applied.replacementLength }
+        : { line: at.line + 1, col: 0 };
+      const found = Sub.findNextMatch(cur.lines, job.range.first, job.range.last, from, job.pattern, job.global, opts);
+      at = found === null ? null : found;
+    }
+    return finishConfirmSubst(cur, progress);
+  }
+
+  // Unrecognized key: real Vim beeps and re-asks the same match.
+  return { state, events: [] };
+}
+
+/**
+ * `:g{delim}pattern{delim}cmd` — ONE delimiter split, unlike `:s`'s three-part
+ * grammar: everything after the first unescaped delimiter is the body command
+ * VERBATIM, even if it contains that same delimiter again (`:g/x/s/a/b/`
+ * never gets split a second time here — the body parses its own args itself).
+ * `null` for no delimiter at all or one from `:s`'s own disallowed set.
+ */
+function parseGlobalArgs(args: string): { readonly pattern: string; readonly cmd: string } | null {
+  if (args === '') return null;
+  const delim = args[0]!;
+  if (Sub.BAD_DELIM.test(delim)) return null;
+  const parts = Sub.splitDelimited(args.slice(1), delim);
+  return { pattern: parts[0] ?? '', cmd: parts.slice(1).join(delim) };
+}
+
+/**
+ * `:g[lobal]` / `:v[global]` — run `cmd` once per line in `range` that
+ * matches `pattern` (or, `invert`ed, once per line that does NOT match).
+ *
+ * Measured against real Vim 9.1, several places this diverges from every
+ * sibling ex command already in this file:
+ *
+ * - The matched-line set is computed ONCE up front, as a `K.Marks`-shaped
+ *   record keyed by ascending numeric strings (so `Object.entries` always
+ *   hands back the earliest remaining entry for free) — a body command that
+ *   inserts lines never grows the set, and one that deletes a not-yet-
+ *   visited matched line causes `K.adjustMarks` to silently drop that entry,
+ *   exactly Vim's own mark-based skip. `K.lineShift`'s own model (first
+ *   differing line + net delta) is exact for that insert/delete case but
+ *   reads a net-ZERO-delta edit as "nothing moved" — wrong for a body that
+ *   REORDERS lines without changing their count (`:m`, or a `:normal`
+ *   sequence like `ddp`): measured, a `:g/x/m$` on a scattered-match buffer
+ *   silently corrupted every match after the first without this. `
+ *   remapMatchedByContent` is the fallback for exactly that case — a real
+ *   line-content LCS instead of the coarser single-region model, so a
+ *   REORDER is followed correctly rather than ignored. It is approximate
+ *   only for genuinely duplicate-content lines, where identity is
+ *   ambiguous by content alone — real Vim disambiguates by line pointer,
+ *   which this engine's plain string-array buffer has no equivalent of.
+ * - Undo is coalesced into ONE node for the whole command — measured: a
+ *   single `u` fully restores every processed line at once, `<C-r>` fully
+ *   redoes, and further `u`/`<C-r>` presses are true no-ops, unlike every
+ *   other multi-step feature here which mints one node per edit. Each body
+ *   invocation is still allowed to self-`commit()` into `cur`'s own undo
+ *   tree — that N-node chain is simply discarded wholesale in favor of a
+ *   single `pushUndo` bridging the ORIGINAL undo tree straight to the final
+ *   buffer. Marks/jumps/pcmark are NOT recomputed this way (a single
+ *   before/after `lineShift` cannot represent scattered edits in different
+ *   regions correctly) — `cur.marks`/`cur.jumps`/`cur.pcmark` already carry
+ *   the right values, incrementally shifted by each body invocation's own
+ *   `commit()`, so the final state keeps them as-is. Registers are NOT
+ *   coalesced either: each body invocation's own `commit()` already applies
+ *   ordinary numbered-register shifting, independent of which undo tree
+ *   backed it — measured against `:g/[ace]/d`, which behaves exactly like
+ *   three independent `:d` presses for register purposes.
+ * - A per-line body failure never aborts the loop — measured for both an
+ *   ordinary `:s` pattern-not-found and a nested `:g` — every originally-
+ *   matched line is always visited. This engine goes one step further and
+ *   never surfaces an aggregate failure for the outer call either, which is
+ *   a deliberate simplification: real Vim only ever raises E147 for a nested
+ *   global whose OWN cmdline carries an explicit range, staying silent for a
+ *   rangeless one — and even the silent, rangeless case still resolves and
+ *   writes ITS OWN pattern to `searchPattern`/`"/` before no-op'ing, since
+ *   pattern resolution happens before the recursion guard fires. This engine
+ *   collapses both into the same immediate, fully state-untouched
+ *   `invalid-global` rejection on every attempt regardless — so besides the
+ *   ranged case's E147 timing, a rangeless nested `:g`/`:v` also leaves
+ *   `searchPattern`/`"/` holding the OUTER pattern rather than the inner
+ *   one real Vim would have overwritten it with.
+ *   ponytail: this drops the ranged-vs-rangeless distinction (and the
+ *   rangeless case's search-register side effect) entirely; upgrade path
+ *   is inspecting the nested body's own parsed range if that split ever
+ *   matters.
+ * - A body that resolves to `:s` with the `c` flag is rejected UP FRONT,
+ *   before touching anything (no cursor move, no match scan) — this is
+ *   deliberately less faithful than the nested-`:g` case above: real Vim
+ *   does drive its confirm loop from inside `:g` (confirmed with a scratch
+ *   probe: the buffer stays untouched but the cursor still walks to the
+ *   last matched line, since nothing ever gets confirmed once the harness's
+ *   `-es` stdin runs dry mid-prompt), but this project's oracle already
+ *   cannot drive one plain `:s ... c` confirm session past its first
+ *   response — asking it to drive one from inside `:g` on top of that is
+ *   asking for something never reliably measurable, so this fails loudly
+ *   and completely instead of silently applying only whatever the harness
+ *   happened to get through. Pinned directly in `semantics.test.ts`, not as
+ *   a golden.
+ */
+
+/**
+ * `K.lineShift`'s fallback for the one shape it cannot represent: a body
+ * command that reordered lines without changing how many there are (`:m`,
+ * or a `:normal` sequence like `ddp`) — its "first differing line + net
+ * delta" model reads a net-zero delta as "nothing moved." This walks a real
+ * line-content LCS between `before`/`after` instead, so a matched line that
+ * physically moved is still found at its new index; a matched line whose
+ * content no longer appears anywhere is dropped, same rule `K.adjustMarks`
+ * already applies for a deleted line. Only ambiguous for genuinely
+ * duplicate-content lines, where identity can't be told apart by content
+ * alone — real Vim's line-pointer tracking has no equivalent gap.
+ */
+function remapMatchedByContent(matched: K.Marks, before: Lines, after: Lines): K.Marks {
+  const n = before.length;
+  const m = after.length;
+  const dp: number[][] = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0) as number[]);
+  for (let i = n - 1; i >= 0; i -= 1) {
+    for (let j = m - 1; j >= 0; j -= 1) {
+      dp[i]![j] = before[i] === after[j] ? dp[i + 1]![j + 1]! + 1 : Math.max(dp[i + 1]![j]!, dp[i]![j + 1]!);
+    }
+  }
+  const map: (number | undefined)[] = new Array(n);
+  let i = 0;
+  let j = 0;
+  while (i < n && j < m) {
+    if (before[i] === after[j] && dp[i]![j] === dp[i + 1]![j + 1]! + 1) {
+      map[i] = j;
+      i += 1;
+      j += 1;
+    } else if (dp[i + 1]![j]! >= dp[i]![j + 1]!) {
+      i += 1;
+    } else {
+      j += 1;
+    }
+  }
+  const out: Record<string, Pos> = {};
+  for (const [key, pos] of Object.entries(matched)) {
+    const newLine = map[pos.line];
+    if (newLine !== undefined) out[key] = { line: newLine, col: pos.col };
+  }
+  return out;
+}
+
+function doExGlobal(state: EditorState, range: Ex.ExRange, invert: boolean, argsText: string, keysStr: string): StepResult {
+  if (state.inGlobal) return invalid(state, keysStr, 'invalid-global');
+
+  const parsedArgs = parseGlobalArgs(argsText);
+  if (parsedArgs === null) return invalid(state, keysStr, 'invalid-substitute');
+  const pattern = parsedArgs.pattern === '' ? state.searchPattern : parsedArgs.pattern;
+  if (pattern === '') return invalid(state, keysStr, 'pattern-not-found');
+
+  const bodyCmd = parsedArgs.cmd.trim();
+  const bodyParsed = bodyCmd === '' ? null : Ex.parseCommand(bodyCmd, exContext(state));
+  if (bodyParsed !== null && !('error' in bodyParsed) && bodyParsed.name === 'substitute') {
+    const bodySpec = Sub.parseSubstArgs(bodyParsed.args);
+    if (bodySpec !== null && bodySpec.flags.confirm) return invalid(state, keysStr, 'invalid-global');
+  }
+
+  const withPattern: EditorState = {
+    ...state,
+    searchPattern: pattern,
+    searchDirection: 'forward',
+    registers: { ...state.registers, '/': { text: pattern, type: 'charwise' } },
+  };
+
+  let re: RegExp;
+  try {
+    re = compileVimPattern(pattern, regexOpts(state));
+  } catch {
+    return invalid(withPattern, keysStr, 'pattern-not-found');
+  }
+
+  const matchedInit: Record<string, Pos> = {};
+  let n = 0;
+  for (let l = range.first; l <= range.last; l += 1) {
+    re.lastIndex = 0;
+    const hit = re.test(lineAt(withPattern.lines, l));
+    if (hit !== invert) {
+      matchedInit[String(n)] = { line: l, col: 0 };
+      n += 1;
+    }
+  }
+  if (n === 0) return invalid(withPattern, keysStr, 'pattern-not-found');
+  let matched: K.Marks = matchedInit;
+
+  const events: EngineEvent[] = [];
+  let cur: EditorState = { ...withPattern, inGlobal: true, pending: EMPTY_PENDING };
+
+  while (true) {
+    const first = Object.entries(matched)[0];
+    if (first === undefined) break;
+    const [key, pos] = first;
+    const { [key]: _consumed, ...rest } = matched;
+    matched = rest;
+
+    cur = { ...cur, cursor: { line: pos.line, col: 0 } };
+    if (bodyCmd !== '') {
+      const before = cur.lines;
+      const r = doExCommand(cur, bodyCmd, keysStr);
+      cur = r.state;
+      events.push(...r.events);
+      if (cur.lines !== before) {
+        const shift = K.lineShift(before, cur.lines);
+        matched = shift !== null ? K.adjustMarks(matched, shift) : remapMatchedByContent(matched, before, cur.lines);
+      }
+    }
+  }
+
+  const changeStart: Pos = { line: range.first, col: 0 };
+  const finalCursor = clamp(cur.lines, cur.cursor, false);
+  return {
+    state: {
+      ...cur,
+      cursor: finalCursor,
+      desiredCol: finalCursor.col,
+      undoState: pushUndo(withPattern.undoState, cur.lines, finalCursor, changeStart),
+      inGlobal: false,
+      pending: EMPTY_PENDING,
+    },
+    events: [...events, changedSpan(withPattern.lines, cur.lines, range.first)],
+  };
+}
+
 /**
  * `:normal` — replay `args` as normal-mode keys, either once at the cursor
  * (no range) or once per line in the range. Feeds keys back through `step()`
@@ -2398,8 +2804,14 @@ function doExCommand(state: EditorState, cmdline: string, keysStr: string): Step
       return doExMove(state, parsed.range ?? { first: state.cursor.line, last: state.cursor.line }, parsed.args, keysStr);
     case 'copy':
       return doExCopy(state, parsed.range ?? { first: state.cursor.line, last: state.cursor.line }, parsed.args, keysStr);
+    case 'substitute':
+      return doExSubstitute(state, parsed.range ?? { first: state.cursor.line, last: state.cursor.line }, parsed.args, keysStr);
     case 'normal':
       return doExNormal(state, parsed.range, parsed.args);
+    case 'global':
+      return doExGlobal(state, parsed.range ?? { first: 0, last: lastLine(state.lines) }, parsed.bang, parsed.args, keysStr);
+    case 'vglobal':
+      return doExGlobal(state, parsed.range ?? { first: 0, last: lastLine(state.lines) }, true, parsed.args, keysStr);
     case 'set':
       return { state: { ...state, options: Ex.applySetArgs(state.options, parsed.args), pending: EMPTY_PENDING }, events: [] };
     case 'write':

@@ -1,0 +1,586 @@
+[
+  {
+    "id": "global/default-range-is-whole-buffer",
+    "buffer": [
+      "foo pat one",
+      "bar",
+      "baz pat two",
+      "qux",
+      "pat end"
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": ":g/pat/d<CR>",
+    "groups": [
+      ":g/pat/d<CR>"
+    ],
+    "note": "no range prefix — :g acts on 1,$ regardless of where the cursor starts, unlike every other ex command in wave4-excmd.yaml, which defaults to the cursor's own line\n",
+    "encodedKeys": ":g/pat/d\r",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "pat end\n"
+        },
+        "2": {
+          "type": "V",
+          "text": "baz pat two\n"
+        },
+        "3": {
+          "type": "V",
+          "text": "foo pat one\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "pat end\n"
+        },
+        "/": {
+          "type": "v",
+          "text": "pat"
+        }
+      },
+      "buffer": [
+        "bar",
+        "qux"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "global/explicit-range-restricts-to-it",
+    "buffer": [
+      "a pat",
+      "b pat",
+      "c pat",
+      "d pat",
+      "e pat"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ":2,4g/pat/d<CR>",
+    "groups": [
+      ":2,4g/pat/d<CR>"
+    ],
+    "note": "contrast with the default-range case above — only lines 2-4 are candidates",
+    "encodedKeys": ":2,4g/pat/d\r",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "d pat\n"
+        },
+        "2": {
+          "type": "V",
+          "text": "c pat\n"
+        },
+        "3": {
+          "type": "V",
+          "text": "b pat\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "d pat\n"
+        },
+        "/": {
+          "type": "v",
+          "text": "pat"
+        }
+      },
+      "buffer": [
+        "a pat",
+        "e pat"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "global/v-inverts-the-match",
+    "buffer": [
+      "apple",
+      "bar1",
+      "banana",
+      "bar2",
+      "cherry",
+      "baz3"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ":v/^b/d<CR>",
+    "groups": [
+      ":v/^b/d<CR>"
+    ],
+    "encodedKeys": ":v/^b/d\r",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "cherry\n"
+        },
+        "2": {
+          "type": "V",
+          "text": "apple\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "cherry\n"
+        },
+        "/": {
+          "type": "v",
+          "text": "^b"
+        }
+      },
+      "buffer": [
+        "bar1",
+        "banana",
+        "bar2",
+        "baz3"
+      ],
+      "cursor": [
+        4,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "global/gbang-inverts-identically-to-v",
+    "buffer": [
+      "apple",
+      "bar1",
+      "banana",
+      "bar2",
+      "cherry",
+      "baz3"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ":g!/^b/d<CR>",
+    "groups": [
+      ":g!/^b/d<CR>"
+    ],
+    "note": "same buffer and net effect as the :v case above — :g! is byte-for-byte the same inversion",
+    "encodedKeys": ":g!/^b/d\r",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "cherry\n"
+        },
+        "2": {
+          "type": "V",
+          "text": "apple\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "cherry\n"
+        },
+        "/": {
+          "type": "v",
+          "text": "^b"
+        }
+      },
+      "buffer": [
+        "bar1",
+        "banana",
+        "bar2",
+        "baz3"
+      ],
+      "cursor": [
+        4,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "global/scattered-deletes-prove-shift-tracking",
+    "buffer": [
+      "a",
+      "b",
+      "c",
+      "d",
+      "e"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ":g/[ace]/d<CR>",
+    "groups": [
+      ":g/[ace]/d<CR>"
+    ],
+    "note": "matched lines are non-adjacent (0, 2, 4) — each delete shrinks the buffer under the still-pending matches, so this only comes out right if the remaining matched-line set is kept in sync with every prior delete. Also the register-after-:g/d case: numbered registers shift exactly like three independent :d presses (last-deleted in \"1, first-deleted in \"3), which the comparator checks automatically.\n",
+    "encodedKeys": ":g/[ace]/d\r",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "e\n"
+        },
+        "2": {
+          "type": "V",
+          "text": "c\n"
+        },
+        "3": {
+          "type": "V",
+          "text": "a\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "e\n"
+        },
+        "/": {
+          "type": "v",
+          "text": "[ace]"
+        }
+      },
+      "buffer": [
+        "b",
+        "d"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "global/body-substitute-failure-is-absorbed-per-line",
+    "buffer": [
+      "x1 nomatch",
+      "y",
+      "x2",
+      "y",
+      "x3 nomatch",
+      "y",
+      "x4"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ":g/x/s/nomatch/HIT/<CR>",
+    "groups": [
+      ":g/x/s/nomatch/HIT/<CR>"
+    ],
+    "note": "the body :s fails (E486) on every matched line that has no \"nomatch\" text — measured: :g absorbs that failure completely and keeps visiting every remaining matched line rather than aborting\n",
+    "encodedKeys": ":g/x/s/nomatch/HIT/\r",
+    "expect": {
+      "registers": {
+        "/": {
+          "type": "v",
+          "text": "nomatch"
+        }
+      },
+      "buffer": [
+        "x1 HIT",
+        "y",
+        "x2",
+        "y",
+        "x3 HIT",
+        "y",
+        "x4"
+      ],
+      "cursor": [
+        7,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "global/body-normal-does-not-snap-cursor-back-to-match",
+    "buffer": [
+      "pat A",
+      "xxx",
+      "pat B",
+      "yyy",
+      "pat C",
+      "zzz",
+      "www"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ":g/pat/normal! j<CR>",
+    "groups": [
+      ":g/pat/normal! j<CR>"
+    ],
+    "note": "measured — the final cursor is wherever the LAST body invocation left it (one line below the last match, from its own \"j\"), not forced back onto that match line the way :g's own housekeeping would if it re-homed the cursor after the loop\n",
+    "encodedKeys": ":g/pat/normal! j\r",
+    "expect": {
+      "registers": {
+        "/": {
+          "type": "v",
+          "text": "pat"
+        }
+      },
+      "buffer": [
+        "pat A",
+        "xxx",
+        "pat B",
+        "yyy",
+        "pat C",
+        "zzz",
+        "www"
+      ],
+      "cursor": [
+        6,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "global/empty-pattern-reuses-last-search",
+    "buffer": [
+      "delta1 foo",
+      "beta",
+      "gamma2 foo"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "/foo<CR>:g//d<CR>",
+    "groups": [
+      "/foo<CR>:g//d<CR>"
+    ],
+    "encodedKeys": "/foo\r:g//d\r",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "gamma2 foo\n"
+        },
+        "2": {
+          "type": "V",
+          "text": "delta1 foo\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "gamma2 foo\n"
+        },
+        "/": {
+          "type": "v",
+          "text": "foo"
+        }
+      },
+      "buffer": [
+        "beta"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "global/zero-matches-is-silent-no-op",
+    "buffer": [
+      "aaa",
+      "bbb",
+      "ccc"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ":g/nomatch/d<CR>",
+    "groups": [
+      ":g/nomatch/d<CR>"
+    ],
+    "note": "unlike :s, a :g with zero matches raises no error at all in real Vim — measured",
+    "encodedKeys": ":g/nomatch/d\r",
+    "expect": {
+      "registers": {
+        "/": {
+          "type": "v",
+          "text": "nomatch"
+        }
+      },
+      "buffer": [
+        "aaa",
+        "bbb",
+        "ccc"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "global/undo-is-one-coalesced-block",
+    "buffer": [
+      "a1",
+      "b2",
+      "a3",
+      "b4",
+      "a5"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ":g/a/d<CR>uu",
+    "groups": [
+      ":g/a/d<CR>",
+      "u",
+      "u"
+    ],
+    "note": "three discrete groups per harness detail 7 — the :g itself, then TWO separate u presses. Measured against real Vim: a SINGLE u fully restores every deleted line at once (unlike every other multi-step feature here, which mints one undo node per edit), so the second u is a genuine no-op with nothing left below it, not a partial further-undo.\n",
+    "encodedKeys": ":g/a/d\ruu",
+    "expect": {
+      "registers": {
+        "1": {
+          "type": "V",
+          "text": "a5\n"
+        },
+        "2": {
+          "type": "V",
+          "text": "a3\n"
+        },
+        "3": {
+          "type": "V",
+          "text": "a1\n"
+        },
+        "\"": {
+          "type": "V",
+          "text": "a5\n"
+        },
+        "/": {
+          "type": "v",
+          "text": "a"
+        }
+      },
+      "buffer": [
+        "a1",
+        "b2",
+        "a3",
+        "b4",
+        "a5"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "global/body-move-reorders-scattered-matches",
+    "buffer": [
+      "x1",
+      "keep1",
+      "x2",
+      "keep2",
+      "x3"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ":g/x/m$<CR>",
+    "groups": [
+      ":g/x/m$<CR>"
+    ],
+    "note": "a :m body has a net-ZERO line-count delta (it relocates lines, doesn't add or remove any), which the matched-line tracker's usual K.lineShift path cannot represent at all — found by adversarial review, not by this case alone: an earlier implementation silently mispositioned every match after the first here. Measured against real Vim: each matched line is moved to the end in turn, so the final order of moved lines is their ORIGINAL relative order (x1, x2, x3), not reversed or scrambled.\n",
+    "encodedKeys": ":g/x/m$\r",
+    "expect": {
+      "registers": {
+        "/": {
+          "type": "v",
+          "text": "x"
+        }
+      },
+      "buffer": [
+        "keep1",
+        "keep2",
+        "x1",
+        "x2",
+        "x3"
+      ],
+      "cursor": [
+        5,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "global/nested-global-with-range-raises-e147",
+    "buffer": [
+      "x1",
+      "y",
+      "x2",
+      "y",
+      "x3",
+      "y"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ":g/x/2,4g/y/d<CR>",
+    "groups": [
+      ":g/x/2,4g/y/d<CR>"
+    ],
+    "note": "the INNER :g carries its own explicit range (2,4) — measured against real Vim: this is a genuine catchable error (E147, \"cannot do :global recursive with a range\"), thrown only after the outer loop has already visited every matched line (buffer ends up fully untouched; cursor sits on the LAST matched line, exactly where the outer loop parked it before the final, also-rejected attempt)\n",
+    "expectError": true,
+    "encodedKeys": ":g/x/2,4g/y/d\r",
+    "expect": {
+      "registers": {
+        "/": {
+          "type": "v",
+          "text": "x"
+        }
+      },
+      "buffer": [
+        "x1",
+        "y",
+        "x2",
+        "y",
+        "x3",
+        "y"
+      ],
+      "cursor": [
+        5,
+        1
+      ],
+      "error": "Vim(global):E147: Cannot do :global recursive with a range",
+      "curswant": 1
+    }
+  }
+]

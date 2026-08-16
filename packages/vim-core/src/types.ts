@@ -76,7 +76,13 @@ export type InvalidReason =
   /** A range that fails to parse, is backwards past repair, or falls outside the buffer. */
   | 'invalid-range'
   /** An ex command name that matches nothing implemented. */
-  | 'unknown-command';
+  | 'unknown-command'
+  /** `:s`/`:g`/`:v` — Vim's E486, no match for the pattern anywhere in the range. */
+  | 'pattern-not-found'
+  /** `:s`/`:g`/`:v` with no delimiter at all, or one from the disallowed set (letters, digits, `\ " |`). */
+  | 'invalid-substitute'
+  /** `:g`/`:v` — a body command not supported inside a global: nested `:g`/`:v`, or `:s` with the `c` flag. */
+  | 'invalid-global';
 
 export type ResolvedCommand = {
   /** The literal keys as typed, e.g. "d2w". */

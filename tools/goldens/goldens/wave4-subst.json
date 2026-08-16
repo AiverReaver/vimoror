@@ -1,0 +1,682 @@
+[
+  {
+    "id": "subst/basic-first-match-only",
+    "buffer": [
+      "x a x a x"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ":s/x/Q/<CR>",
+    "groups": [
+      ":s/x/Q/<CR>"
+    ],
+    "note": "no g flag — only the FIRST match on the line is replaced",
+    "encodedKeys": ":s/x/Q/\r",
+    "expect": {
+      "registers": {
+        "/": {
+          "type": "v",
+          "text": "x"
+        }
+      },
+      "buffer": [
+        "Q a x a x"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "subst/global-flag-all-matches",
+    "buffer": [
+      "x a x a x"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ":s/x/Q/g<CR>",
+    "groups": [
+      ":s/x/Q/g<CR>"
+    ],
+    "note": "the proven/subst-g case, re-pinned here alongside its siblings",
+    "encodedKeys": ":s/x/Q/g\r",
+    "expect": {
+      "registers": {
+        "/": {
+          "type": "v",
+          "text": "x"
+        }
+      },
+      "buffer": [
+        "Q a Q a Q"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "subst/range-mixed-match-and-no-match",
+    "buffer": [
+      "x1",
+      "x2",
+      "y3"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ":%s/x/Q/<CR>",
+    "groups": [
+      ":%s/x/Q/<CR>"
+    ],
+    "note": "cursor lands on the LAST line that actually matched, not range.last",
+    "encodedKeys": ":%s/x/Q/\r",
+    "expect": {
+      "registers": {
+        "/": {
+          "type": "v",
+          "text": "x"
+        }
+      },
+      "buffer": [
+        "Q1",
+        "Q2",
+        "y3"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "subst/cursor-is-first-non-blank-not-match-column",
+    "buffer": [
+      " ab cd"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ":s/cd/Z/<CR>",
+    "groups": [
+      ":s/cd/Z/<CR>"
+    ],
+    "note": "leading whitespace disambiguates \"first non-blank\" from \"match column\"",
+    "encodedKeys": ":s/cd/Z/\r",
+    "expect": {
+      "registers": {
+        "/": {
+          "type": "v",
+          "text": "cd"
+        }
+      },
+      "buffer": [
+        " ab Z"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 2
+    }
+  },
+  {
+    "id": "subst/capture-groups-reordered",
+    "buffer": [
+      "ab"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ":s/\\(a\\)\\(b\\)/\\2\\1/<CR>",
+    "groups": [
+      ":s/\\(a\\)\\(b\\)/\\2\\1/<CR>"
+    ],
+    "encodedKeys": ":s/\\(a\\)\\(b\\)/\\2\\1/\r",
+    "expect": {
+      "registers": {
+        "/": {
+          "type": "v",
+          "text": "\\(a\\)\\(b\\)"
+        }
+      },
+      "buffer": [
+        "ba"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "subst/ampersand-whole-match",
+    "buffer": [
+      "foo"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ":s/foo/[&]/<CR>",
+    "groups": [
+      ":s/foo/[&]/<CR>"
+    ],
+    "encodedKeys": ":s/foo/[&]/\r",
+    "expect": {
+      "registers": {
+        "/": {
+          "type": "v",
+          "text": "foo"
+        }
+      },
+      "buffer": [
+        "[foo]"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "subst/empty-pattern-reuses-last-search",
+    "buffer": [
+      "foo bar foo"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "/foo<CR>:s//BAZ/<CR>",
+    "groups": [
+      "/foo<CR>:s//BAZ/<CR>"
+    ],
+    "encodedKeys": "/foo\r:s//BAZ/\r",
+    "expect": {
+      "registers": {
+        "/": {
+          "type": "v",
+          "text": "foo"
+        }
+      },
+      "buffer": [
+        "BAZ bar foo"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "subst/alternate-delimiter",
+    "buffer": [
+      "a/b/c"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ":s#/#-#g<CR>",
+    "groups": [
+      ":s#/#-#g<CR>"
+    ],
+    "encodedKeys": ":s#/#-#g\r",
+    "expect": {
+      "registers": {
+        "/": {
+          "type": "v",
+          "text": "/"
+        }
+      },
+      "buffer": [
+        "a-b-c"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "subst/pattern-not-found-fails",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ":s/zzz/Q/<CR>",
+    "groups": [
+      ":s/zzz/Q/<CR>"
+    ],
+    "expectError": true,
+    "encodedKeys": ":s/zzz/Q/\r",
+    "expect": {
+      "registers": {
+        "/": {
+          "type": "v",
+          "text": "zzz"
+        }
+      },
+      "buffer": [
+        "abc"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "Vim(substitute):E486: Pattern not found: zzz",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "subst/pattern-not-found-sets-search-register-anyway",
+    "buffer": [
+      "abc",
+      "xxx zzz"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ":s/zzz/Q/<CR>jn",
+    "groups": [
+      ":s/zzz/Q/<CR>",
+      "jn"
+    ],
+    "note": "the pattern is written to searchPattern/\"/ even when nothing matches on the current (default-range) line — same early-write real Vim does for /. Two groups: the failing :s on line 1, then a plain n reusing whatever pattern got recorded, to make the write observable through something other than the register dump itself.\n",
+    "expectError": true,
+    "encodedKeys": ":s/zzz/Q/\rjn",
+    "expect": {
+      "registers": {
+        "/": {
+          "type": "v",
+          "text": "zzz"
+        }
+      },
+      "buffer": [
+        "abc",
+        "xxx zzz"
+      ],
+      "cursor": [
+        2,
+        5
+      ],
+      "error": "Vim(substitute):E486: Pattern not found: zzz",
+      "curswant": 5
+    }
+  },
+  {
+    "id": "subst/no-delimiter-is-invalid",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ":s<CR>",
+    "groups": [
+      ":s<CR>"
+    ],
+    "note": "bare :s (the \"repeat last substitute\" form) is out of scope — real Vim errors too (E35), since nothing has substituted yet",
+    "expectError": true,
+    "encodedKeys": ":s\r",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "abc"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "Vim(substitute):E33: No previous substitute regular expression",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "subst/undo-restores-and-lands-on-range-first",
+    "buffer": [
+      "x1",
+      "x2",
+      "x3",
+      "x4"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ":2,3s/x/Q/<CR>u",
+    "groups": [
+      ":2,3s/x/Q/<CR>",
+      "u"
+    ],
+    "note": "two discrete changes (the :s, then u) — separate groups per harness detail 7",
+    "encodedKeys": ":2,3s/x/Q/\ru",
+    "expect": {
+      "registers": {
+        "/": {
+          "type": "v",
+          "text": "x"
+        }
+      },
+      "buffer": [
+        "x1",
+        "x2",
+        "x3",
+        "x4"
+      ],
+      "cursor": [
+        2,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "subst/no-match-mints-no-undo-node",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "x:s/zzz/Q/<CR>u",
+    "groups": [
+      "x",
+      ":s/zzz/Q/<CR>",
+      "u"
+    ],
+    "note": "a failing :s changes nothing to undo — x then a failing :s then u should undo the x, not silently no-op on the failed substitute's own non-node\n",
+    "expectError": true,
+    "encodedKeys": "x:s/zzz/Q/\ru",
+    "expect": {
+      "registers": {
+        "\"": {
+          "type": "v",
+          "text": "a"
+        },
+        "-": {
+          "type": "v",
+          "text": "a"
+        },
+        "/": {
+          "type": "v",
+          "text": "zzz"
+        }
+      },
+      "buffer": [
+        "abc"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "Vim(substitute):E486: Pattern not found: zzz",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "subst/confirm-quit-immediately",
+    "buffer": [
+      "x a x a x"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ":s/x/Q/gc<CR>q",
+    "groups": [
+      ":s/x/Q/gc<CR>q"
+    ],
+    "note": "q as the very first response declines everything — buffer untouched, no undo node",
+    "encodedKeys": ":s/x/Q/gc\rq",
+    "expect": {
+      "registers": {
+        "/": {
+          "type": "v",
+          "text": "x"
+        }
+      },
+      "buffer": [
+        "x a x a x"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "subst/confirm-esc-declines",
+    "buffer": [
+      "x a x a x"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ":s/x/Q/gc<CR><Esc>",
+    "groups": [
+      ":s/x/Q/gc<CR><Esc>"
+    ],
+    "encodedKeys": ":s/x/Q/gc\r\u001b",
+    "expect": {
+      "registers": {
+        "/": {
+          "type": "v",
+          "text": "x"
+        }
+      },
+      "buffer": [
+        "x a x a x"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "subst/confirm-single-match-accept",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ":s/b/Z/c<CR>y",
+    "groups": [
+      ":s/b/Z/c<CR>y"
+    ],
+    "encodedKeys": ":s/b/Z/c\ry",
+    "expect": {
+      "registers": {
+        "/": {
+          "type": "v",
+          "text": "b"
+        }
+      },
+      "buffer": [
+        "aZc"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "subst/confirm-single-match-decline-cursor-moves-to-match",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ":s/b/Z/c<CR>n",
+    "groups": [
+      ":s/b/Z/c<CR>n"
+    ],
+    "note": "declining still moves the cursor to the match it was highlighting — measured: cursor ends on the match's own column, not back at the start\n",
+    "encodedKeys": ":s/b/Z/c\rn",
+    "expect": {
+      "registers": {
+        "/": {
+          "type": "v",
+          "text": "b"
+        }
+      },
+      "buffer": [
+        "abc"
+      ],
+      "cursor": [
+        1,
+        2
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "subst/confirm-l-accepts-then-quits",
+    "buffer": [
+      "x a x a x"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ":s/x/Q/gc<CR>l",
+    "groups": [
+      ":s/x/Q/gc<CR>l"
+    ],
+    "note": "l = \"substitute this one, then stop\" — only the FIRST of three matches lands",
+    "encodedKeys": ":s/x/Q/gc\rl",
+    "expect": {
+      "registers": {
+        "/": {
+          "type": "v",
+          "text": "x"
+        }
+      },
+      "buffer": [
+        "Q a x a x"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "subst/confirm-a-accepts-rest-of-whole-range",
+    "buffer": [
+      "x1",
+      "x2",
+      "x3"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ":%s/x/Q/gc<CR>a",
+    "groups": [
+      ":%s/x/Q/gc<CR>a"
+    ],
+    "note": "a needs exactly one oracle-visible response to cascade across every remaining line",
+    "encodedKeys": ":%s/x/Q/gc\ra",
+    "expect": {
+      "registers": {
+        "/": {
+          "type": "v",
+          "text": "x"
+        }
+      },
+      "buffer": [
+        "Q1",
+        "Q2",
+        "Q3"
+      ],
+      "cursor": [
+        3,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "subst/confirm-pattern-not-found-fails-before-any-prompt",
+    "buffer": [
+      "abc"
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": ":s/zzz/Q/gc<CR>",
+    "groups": [
+      ":s/zzz/Q/gc<CR>"
+    ],
+    "expectError": true,
+    "encodedKeys": ":s/zzz/Q/gc\r",
+    "expect": {
+      "registers": {
+        "/": {
+          "type": "v",
+          "text": "zzz"
+        }
+      },
+      "buffer": [
+        "abc"
+      ],
+      "cursor": [
+        1,
+        1
+      ],
+      "error": "Vim(substitute):E486: Pattern not found: zzz",
+      "curswant": 1
+    }
+  }
+]

@@ -142,6 +142,12 @@ const COMMANDS: readonly { readonly canonical: string; readonly full: string; re
   { canonical: 'copy', full: 'copy', min: 2 },
   { canonical: 'normal', full: 'normal', min: 4 },
   { canonical: 'set', full: 'set', min: 2 },
+  // `:s` alone is already unambiguous, unlike `:c`/`:co`.
+  { canonical: 'substitute', full: 'substitute', min: 1 },
+  // `:g` and `:v` are each unambiguous on their own — no letter starts more
+  // than one command implemented here.
+  { canonical: 'global', full: 'global', min: 1 },
+  { canonical: 'vglobal', full: 'vglobal', min: 1 },
   { canonical: 'write', full: 'write', min: 1 },
   { canonical: 'quit', full: 'quit', min: 1 },
 ];

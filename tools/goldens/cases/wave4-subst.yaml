@@ -1,0 +1,142 @@
+# `:s[ubstitute]` — Wave 4e: flags g/c, capture groups, empty-pattern reuse of
+# the last search, and an alternate delimiter.
+#
+# The `c` (confirm) flag has a real harness limitation, measured with a
+# scratch probe before writing any of this: real Vim's confirm loop needs one
+# `getchar()` per match, and this oracle's `feedkeys(..., 'xt')` only drives
+# the FIRST response correctly — a second response in the same key group is
+# silently dropped rather than answering the second prompt (confirmed against
+# a genuinely interactive Vim via a pty: multi-response sequences DO work
+# there, so this is an -es/feedkeys artifact, not a real Vim behavior). Every
+# confirm case below is therefore restricted to a single response that fully
+# resolves the whole `:s` command by itself — `q`/<Esc> immediately, a lone
+# match answered once, or `a`, which by definition never needs a second
+# prompt. Sequential multi-match confirm decisions (y then n then y, ...) are
+# pinned in `semantics.test.ts` instead, against the same pty measurement.
+
+cases:
+  - id: subst/basic-first-match-only
+    note: no g flag — only the FIRST match on the line is replaced
+    buffer: 'x a x a x'
+    cursor: [1, 1]
+    keys: ':s/x/Q/<CR>'
+
+  - id: subst/global-flag-all-matches
+    note: the proven/subst-g case, re-pinned here alongside its siblings
+    buffer: 'x a x a x'
+    cursor: [1, 1]
+    keys: ':s/x/Q/g<CR>'
+
+  - id: subst/range-mixed-match-and-no-match
+    note: cursor lands on the LAST line that actually matched, not range.last
+    buffer: ['x1', 'x2', 'y3']
+    cursor: [1, 1]
+    keys: ':%s/x/Q/<CR>'
+
+  - id: subst/cursor-is-first-non-blank-not-match-column
+    note: leading whitespace disambiguates "first non-blank" from "match column"
+    buffer: ' ab cd'
+    cursor: [1, 1]
+    keys: ':s/cd/Z/<CR>'
+
+  - id: subst/capture-groups-reordered
+    buffer: 'ab'
+    cursor: [1, 1]
+    keys: ':s/\(a\)\(b\)/\2\1/<CR>'
+
+  - id: subst/ampersand-whole-match
+    buffer: 'foo'
+    cursor: [1, 1]
+    keys: ':s/foo/[&]/<CR>'
+
+  - id: subst/empty-pattern-reuses-last-search
+    buffer: 'foo bar foo'
+    cursor: [1, 1]
+    keys: '/foo<CR>:s//BAZ/<CR>'
+
+  - id: subst/alternate-delimiter
+    buffer: 'a/b/c'
+    cursor: [1, 1]
+    keys: ':s#/#-#g<CR>'
+
+  - id: subst/pattern-not-found-fails
+    buffer: 'abc'
+    cursor: [1, 1]
+    keys: ':s/zzz/Q/<CR>'
+    expectError: true
+
+  - id: subst/pattern-not-found-sets-search-register-anyway
+    note: >
+      the pattern is written to searchPattern/"/ even when nothing matches on
+      the current (default-range) line — same early-write real Vim does for
+      /. Two groups: the failing :s on line 1, then a plain n reusing
+      whatever pattern got recorded, to make the write observable through
+      something other than the register dump itself.
+    buffer: ['abc', 'xxx zzz']
+    cursor: [1, 1]
+    keys: [':s/zzz/Q/<CR>', 'jn']
+    expectError: true
+
+  - id: subst/no-delimiter-is-invalid
+    note: bare :s (the "repeat last substitute" form) is out of scope — real Vim errors too (E35), since nothing has substituted yet
+    buffer: 'abc'
+    cursor: [1, 1]
+    keys: ':s<CR>'
+    expectError: true
+
+  - id: subst/undo-restores-and-lands-on-range-first
+    note: two discrete changes (the :s, then u) — separate groups per harness detail 7
+    buffer: ['x1', 'x2', 'x3', 'x4']
+    cursor: [1, 1]
+    keys: [':2,3s/x/Q/<CR>', 'u']
+
+  - id: subst/no-match-mints-no-undo-node
+    note: >
+      a failing :s changes nothing to undo — x then a failing :s then u should
+      undo the x, not silently no-op on the failed substitute's own non-node
+    buffer: 'abc'
+    cursor: [1, 1]
+    keys: ['x', ':s/zzz/Q/<CR>', 'u']
+    expectError: true
+
+  - id: subst/confirm-quit-immediately
+    note: q as the very first response declines everything — buffer untouched, no undo node
+    buffer: 'x a x a x'
+    cursor: [1, 1]
+    keys: ':s/x/Q/gc<CR>q'
+
+  - id: subst/confirm-esc-declines
+    buffer: 'x a x a x'
+    cursor: [1, 1]
+    keys: ':s/x/Q/gc<CR><Esc>'
+
+  - id: subst/confirm-single-match-accept
+    buffer: 'abc'
+    cursor: [1, 1]
+    keys: ':s/b/Z/c<CR>y'
+
+  - id: subst/confirm-single-match-decline-cursor-moves-to-match
+    note: >
+      declining still moves the cursor to the match it was highlighting —
+      measured: cursor ends on the match's own column, not back at the start
+    buffer: 'abc'
+    cursor: [1, 1]
+    keys: ':s/b/Z/c<CR>n'
+
+  - id: subst/confirm-l-accepts-then-quits
+    note: l = "substitute this one, then stop" — only the FIRST of three matches lands
+    buffer: 'x a x a x'
+    cursor: [1, 1]
+    keys: ':s/x/Q/gc<CR>l'
+
+  - id: subst/confirm-a-accepts-rest-of-whole-range
+    note: a needs exactly one oracle-visible response to cascade across every remaining line
+    buffer: ['x1', 'x2', 'x3']
+    cursor: [1, 1]
+    keys: ':%s/x/Q/gc<CR>a'
+
+  - id: subst/confirm-pattern-not-found-fails-before-any-prompt
+    buffer: 'abc'
+    cursor: [1, 1]
+    keys: ':s/zzz/Q/gc<CR>'
+    expectError: true

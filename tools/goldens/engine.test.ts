@@ -11,6 +11,7 @@ import { describe, expect, it } from 'vitest';
 import { describeDiffs, loadGoldens, runGolden } from './compare.ts';
 
 const FAMILIES = [
+  'proven',
   'wave1',
   'wave2-delete',
   'wave2-change',
@@ -31,6 +32,8 @@ const FAMILIES = [
   'wave4-search',
   'wave4-macros',
   'wave4-excmd',
+  'wave4-subst',
+  'wave4-global',
 ];
 
 for (const family of FAMILIES) {

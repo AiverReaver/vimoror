@@ -137,6 +137,95 @@ describe(':w / :q — events the golden oracle cannot express', () => {
   });
 });
 
+describe(':s ... c — sequential confirm responses (hand-verified through a real pty)', () => {
+  // The golden oracle cannot see this at all: `feedkeys(..., 'xt')` under -es
+  // drives the FIRST confirm response correctly but silently drops every
+  // later one in the same `:s` invocation (measured with a scratch probe —
+  // see tools/goldens/README.md and the wave4-subst.yaml file header).
+  // Confirmed as an -es/feedkeys artifact, not real Vim, by driving actual
+  // interactive Vim through a pty on 2026-08-16 (vim 9.1.1752, harness
+  // baseline options): 5 keystrokes of `y` against 5 matches produced "Q Q Q
+  // Q Q" and Vim's own "5 substitutions on 1 line" message. Every case here
+  // is a direct transcription of that pty session or Vim's documented
+  // `:help :s_flags` key semantics, exercised straight against the engine.
+
+  it('every "y" in a row accepts every match — the pty-measured case', () => {
+    const engine = new VimEngine(['x x x x x'], { line: 0, col: 0 });
+    engine.feedKeys(':s/x/Q/gc<CR>yyyyy');
+    expect(engine.lines).toEqual(['Q Q Q Q Q']);
+  });
+
+  it('y then n then y: accept, skip, accept — on one line', () => {
+    const engine = new VimEngine(['x a x a x'], { line: 0, col: 0 });
+    engine.feedKeys(':s/x/Q/gc<CR>yny');
+    expect(engine.lines).toEqual(['Q a x a Q']);
+  });
+
+  it('y then n then y across separate lines (no g needed — one match per line)', () => {
+    const engine = new VimEngine(['x1', 'x2', 'x3'], { line: 0, col: 0 });
+    engine.feedKeys(':%s/x/Q/c<CR>yny');
+    expect(engine.lines).toEqual(['Q1', 'x2', 'Q3']);
+  });
+
+  it('a after some manual decisions accepts itself and every remaining match', () => {
+    const engine = new VimEngine(['x a x a x'], { line: 0, col: 0 });
+    engine.feedKeys(':s/x/Q/gc<CR>na');
+    expect(engine.lines).toEqual(['x a Q a Q']);
+  });
+
+  it('a sequence of accepts is ONE undo block, not one per match', () => {
+    const engine = new VimEngine(['x x x'], { line: 0, col: 0 });
+    engine.feedKeys(':s/x/Q/gc<CR>yyy');
+    expect(engine.lines).toEqual(['Q Q Q']);
+    engine.feedKeys('u');
+    expect(engine.lines).toEqual(['x x x']);
+  });
+
+  it('cursor lands on first non-blank of the LAST accepted line, not the last prompt', () => {
+    const engine = new VimEngine(['x1', 'x2', 'y3'], { line: 0, col: 0 });
+    engine.feedKeys(':%s/x/Q/c<CR>yy');
+    expect(engine.lines).toEqual(['Q1', 'Q2', 'y3']);
+    expect(engine.cursor).toEqual({ line: 1, col: 0 });
+  });
+});
+
+describe(':g/:v — a body the golden oracle cannot safely drive', () => {
+  // `:s ... c` as a :g body is a genuine real-Vim feature (confirmed with a
+  // scratch probe: the confirm loop really does run once per matched line),
+  // but this project's oracle already cannot drive one plain `:s ... c`
+  // session past its first response (wave4-subst.yaml's own header) — asking
+  // it to drive one from inside `:g` on top of that is unmeasurable, so this
+  // engine rejects the combination outright, UP FRONT, before touching
+  // anything at all. That "touching nothing" is the one thing a golden could
+  // never prove either way (the comparator only diffs buffer/cursor/
+  // registers, never the specific InvalidReason), so both halves — the
+  // rejection itself and its true no-op side effects — are pinned here.
+
+  it('rejects a confirm-flagged :s body without moving the cursor at all', () => {
+    const engine = new VimEngine(['x1', 'y', 'x2', 'y'], { line: 1, col: 0 });
+    const events = engine.feedKeys(':g/x/s/x/y/gc<CR>');
+    expect(events).toContainEqual(expect.objectContaining({ type: 'InvalidCommand', reason: 'invalid-global' }));
+    expect(engine.lines).toEqual(['x1', 'y', 'x2', 'y']);
+    // Real Vim, by contrast, DOES walk the cursor to the last matched line
+    // here (verified with the same probe) even though nothing ends up
+    // confirmed — this engine's up-front rejection never even starts the
+    // scan, so the cursor is untouched instead. That divergence is the whole
+    // point of this test existing outside the golden family.
+    expect(engine.cursor).toEqual({ line: 1, col: 0 });
+  });
+
+  it('a nested :g/:v body is rejected the same way, on every matched line', () => {
+    const engine = new VimEngine(['x1', 'y', 'x2', 'y'], { line: 0, col: 0 });
+    const events = engine.feedKeys(':g/x/g/y/d<CR>');
+    const rejections = events.filter((e) => e.type === 'InvalidCommand' && e.reason === 'invalid-global');
+    // Once per outer-matched line (x1, x2) — the outer loop never aborts on
+    // the inner rejection, matching real Vim's own "visits every match
+    // regardless" behavior for a per-line body failure.
+    expect(rejections).toHaveLength(2);
+    expect(engine.lines).toEqual(['x1', 'y', 'x2', 'y']);
+  });
+});
+
 describe('snapshot/restore', () => {
   it('restoring a mid-insert snapshot yields a live normal-mode engine', () => {
     const engine = new VimEngine(['abc'], { line: 0, col: 0 });

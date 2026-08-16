@@ -63,20 +63,15 @@ not a bug fix.
       Vim left empty is a diff. This is what catches an engine that clamps
       where Vim fails: buffer and cursor agree either way and only the stray
       register betrays it (`yank/yh-at-col1-clears-unnamed`).
-- [x] **≥400 cases** — **1118 committed.** proven 7 · wave1 113 · wave2 492
+- [x] **≥400 cases** — **1150 committed.** proven 7 · wave1 113 · wave2 492
       across 8 families (caseops 62, change 55, delete 79, doubled 55,
       indent 59, insert 69, shortcuts 55, yank 58) · wave3 426 across 7
       families (paste 62, textobj 106, visual 66, motions 60, visualops 51,
-      marks 45, dot 36) · wave4 80 so far (undotree 8, search 29, macros 18,
-      excmd 25)
-- [ ] **`proven` is generated but NOT diffed against the engine.** It is absent
-      from `FAMILIES` in `engine.test.ts`, so `proven.test.ts` only checks the
-      generated goldens against the values hand-transcribed from the plan — the
-      engine itself is never run over them. That is currently unavoidable:
-      `proven/subst-g` is `:s/x/Q/g`, which is Wave 4. **Add `proven` to
-      `FAMILIES` as soon as `:s` lands** — the seven canonical cases are the
-      one set most worth having the engine diffed against, and it is easy to
-      assume they already are
+      marks 45, dot 36) · wave4 112 so far (undotree 8, search 29, macros 18,
+      excmd 25, subst 20, global 12)
+- [x] **`proven` is now diffed against the engine.** Added to `FAMILIES` in
+      `engine.test.ts` the moment `:s` landed (Wave 4e) — `proven/subst-g` was
+      the one case blocking this, and it passes unchanged.
 - [x] `expectError: true` per case, for a case that MEANS to fail. An
       undeclared error is a reported problem, and so is a declared one that
       did not happen — a case written to pin a failure that quietly started
@@ -101,6 +96,24 @@ not a bug fix.
       6). The group form plus engine-side mode assertions is sufficient through
       M0. Revisit only if Wave 4's macros need it, which is the one remaining
       candidate.
+- [x] **The candidate that actually needed a pty turned out to be Wave 4e's
+      `:s ... c`, not macros.** A scratch probe (instrumenting `undotree()`
+      between individual confirm responses, same technique as the macro probe)
+      found that `feedkeys(keys, 'xt')` drives only the FIRST `y`/`n`/`a`/`q`/`l`
+      response of a `:s` confirm session correctly — every later response in
+      the same invocation is silently dropped, not misapplied, just gone: five
+      `y` keystrokes against five matches on one line produced only ONE
+      replacement, with `mode()` still reporting `c` afterward. Confirmed as an
+      -es/feedkeys artifact rather than real Vim by driving actual interactive
+      Vim through a Python `pty` — the identical five `y` keystrokes there
+      produced all five replacements and Vim's own "5 substitutions on 1 line"
+      message. **Decision held rather than reopened:** goldens are restricted
+      to single-response-resolving `:s ... c` cases (`q`/`<Esc>` immediately, a
+      lone match answered once, `a` — which by definition never needs a second
+      prompt); the sequential multi-response behavior is pinned in
+      `semantics.test.ts` instead, transcribed from the pty session, exactly
+      the established "oracle structurally cannot express it" remedy already
+      used for empty-register writes and `:q`/`ZZ`.
 - [x] **Wave 4 macros needed a harness fix, but not the pty oracle above.**
       `feedkeys(keys, 'x')` correctly toggles `reg_recording()` on `q{reg}`,
       but the register comes back EMPTY — only the recording STATE is
@@ -637,14 +650,134 @@ yet** — Wave 4 starts from zero scaffolding, not partial stubs.
         every visual-mode exit already goes through. Invisible to every
         existing golden (marks are not part of `EngineSnapshot` or the
         comparator), so this cannot have changed anything already pinned.
-- [ ] **4e — `:s` substitution.** Flags `g`/`c`, capture groups (`\1`–`\9`
-      and `&`), reuses 4b's pattern translator, empty-pattern reuse of
-      `lastSearch`. This unblocks `proven/subst-g` — **add `proven` to
-      `FAMILIES` in `engine.test.ts` the moment this lands** (see the open
-      item in the golden-test-harness section above). `wave4-subst` goldens.
-- [ ] **4f — `:g` / `:v`.** Depends on 4d (range/ex dispatch) and 4e (typical
-      body command). Global match + per-line command execution; `:v` is the
-      inverse-match form. `wave4-global` goldens.
+- [x] **4e — `:s` substitution.** New `subst.ts`: delimiter-based argument
+      grammar (`:s{delim}pat{delim}repl{delim}flags`, any punctuation but
+      letters/digits/`\ " |` as delimiter, an escaped delimiter surviving as a
+      literal character in both pattern and replacement), matching built on
+      4b's `vimregex.ts` translator (already turns `\(`/`\)` into real JS
+      groups), and its own replacement-side escapes (`&`/`\0` → whole match,
+      `\1`–`\9` → capture group, `\\x` → `x` literally). `state.ts` owns the
+      actual substitution: eager (`g` only) via `subst.substituteRange` in one
+      pass, or an interactive `awaiting: 'confirm-subst'` session (mirroring
+      `command-line`/`search`'s existing shape in `Pending`) for the `c` flag,
+      stepping one `y n a q l <Esc>` response at a time through
+      `doConfirmSubstKey`. `proven/subst-g` added `FAMILIES` in
+      `engine.test.ts` the moment this landed — unchanged, first try. 20
+      `wave4-subst` goldens, all green, isolation verified.
+
+      Semantics measured with a scratch probe before writing any code (same
+      technique the README recommends), several refuting a first guess:
+      - `:s` writes `searchPattern` and the `"/` register UNCONDITIONALLY once
+        a pattern is resolved (an empty one reusing `state.searchPattern`,
+        exactly like `/`) — even when nothing ends up matching. It also sets
+        `searchDirection: 'forward'`, easy to miss: without it a bare `n`
+        right after a failed `:s` can't repeat the pattern it just recorded,
+        since `n`/`N` refuse to move at all when `searchDirection` is
+        `undefined`. Found by a golden, not reasoned out in advance.
+      - unlike `:d`, `:s` touches NO other register — no yank of the replaced
+        text into `"`/`"1`, confirmed empty via probe.
+      - undo mints a node only once a substitution actually lands — a pure
+        search failure (E486) mints nothing, refining the Wave 2/3 "reached
+        `u_save`" rule rather than contradicting it: `:s`'s own `u_save` is
+        deferred until the first real match, unlike `p`'s, which runs before
+        the register lookup that can fail.
+      - cursor after a successful `:s` is the first non-blank of the LAST
+        line that actually changed — not `range.last`, and not the match's own
+        column (disambiguated with a leading-whitespace case; the match column
+        and first-non-blank coincide in most naive test buffers). Undo's
+        `changeStart` (`uh_cursor`) is the range's FIRST line, matching
+        `doExDelete`/`doExMove`'s own convention, not wherever the change
+        actually happened.
+      - a declined-or-quit confirm session that found at least one match still
+        moves the cursor to that match's column (Vim's highlight-and-prompt,
+        visible even with no rendering) but mints no undo node; a session that
+        finds NO match at all raises E486 before any prompting, same as the
+        eager path.
+- [x] **4f — `:g` / `:v`.** `doExGlobal` in `state.ts`, next to `doExSubstitute`.
+      `excmd.ts` gains `global`/`vglobal` COMMANDS entries (each abbreviates to
+      a single letter, matching real Vim); the grammar itself reuses `subst.ts`'s
+      `splitDelimited`/`BAD_DELIM` (now exported) for ONE delimiter split into
+      `{ pattern, cmd }` — unlike `:s`'s three-part split, everything after
+      that first unescaped delimiter is the body command verbatim, even if it
+      contains the same delimiter again (`:g/x/s/a/b/`). `types.ts` gains one
+      new `InvalidReason`, `invalid-global`. 12 `wave4-global` goldens plus 2
+      `semantics.test.ts` cases (the one body shape no golden can safely pin,
+      see below), all green, isolation verified.
+
+      Semantics measured with three scratch-probe rounds before writing any
+      code, each contradicting a piece of the original design sketch:
+      - **undo is coalesced into ONE node for the whole command** — measured
+        with `undotree().seq_cur`: a single `u` fully restores every line
+        `:g/a/d` deleted at once (not one press per line, the way every other
+        multi-step feature in this file works), and a second `u` is a true
+        no-op. Registers are NOT coalesced the same way — `:g/[ace]/d` on
+        `a b c d e` behaves exactly like three independent `:d` presses for
+        numbered-register shifting (`"1` = last deleted, `"3` = first),
+        confirmed via probe and pinned by the comparator's automatic register
+        diff on `global/scattered-deletes-prove-shift-tracking`. The
+        implementation runs each body command through the REAL, existing
+        `doExDelete`/`doExSubstitute`/`doExNormal` (registers-and-all,
+        self-`commit()`-ing into a scratch copy of the state each time) and
+        only discards that scratch copy's own N-node undo chain at the very
+        end, replacing it with one `pushUndo` from the original tree straight
+        to the final buffer — cheaper than threading `mutate()` through every
+        existing body-command implementation, and exactly as correct, since
+        only the undo tree (not marks/jumps/registers/lines) needs discarding.
+      - **a per-line body failure never aborts the loop** — confirmed for an
+        ordinary `:s` pattern-not-found (E486, fully absorbed, every matched
+        line still visited) and for a nested `:g`/`:v`. Real Vim's nested-
+        global guard only raises a genuine, catchable E147 when the INNER
+        global's own cmdline carries an explicit numeric range; a rangeless
+        nested global is a true silent no-op (zero exception, zero buffer
+        change) either way, and even the E147 case only ever escapes AFTER
+        the whole outer loop has visited every match, never mid-loop —
+        confirmed with a probe reproducing Report C's exact `2,4g/y/d` inner
+        body: buffer fully untouched, cursor parked on the last outer-matched
+        line, `EXC: E147...` only once feedkeys ran out. This engine
+        deliberately does not replicate the ranged-vs-rangeless split —
+        BOTH collapse to the same immediate `invalid-global` rejection
+        (state untouched) on every attempt, tracked via a new transient
+        `EditorState.inGlobal` flag, the exact precedent `macroReplaying`
+        already set.
+      - **a confirm-flagged `:s` body is rejected up front, before touching
+        anything** — resolved by a probe that the design sketch itself flagged
+        as pending: real Vim DOES drive the confirm loop from inside `:g`
+        (cursor walks to the last matched line, nothing gets confirmed once
+        `-es` stdin runs dry mid-prompt with no response queued) — but since
+        this project's oracle already cannot drive one plain `:s ... c` past
+        its first response (4e's finding), driving one from inside `:g` too is
+        unmeasurable. The engine fails loudly instead: reject before the
+        pattern is even resolved or the cursor moves at all. This makes the
+        case impossible to pin as a golden — the cursor divergence versus real
+        Vim is permanent and deliberate — so it lives in `semantics.test.ts`
+        instead, alongside a matching test that the nested-`:g` rejection also
+        fires (and does not abort the outer loop) with the specific
+        `invalid-global` reason, something no golden can observe either (the
+        comparator only diffs buffer/cursor/registers, never event reasons).
+      - the matched-line set reuses `marks.ts` wholesale — a `K.Marks`-shaped
+        record keyed by ascending numeric strings (so `Object.entries` always
+        yields the earliest remaining entry), scanned once up front, with
+        `K.adjustMarks` dropping any entry a prior iteration's edit already
+        swept away. A body that inserts new lines never grows the set, so new
+        lines are never visited — both fall out of reusing existing machinery.
+        **One shape `K.lineShift` cannot represent at all: a body that
+        REORDERS lines without changing their count.** `:g/x/m$` on a
+        scattered-match buffer silently mispositioned every match after the
+        first on first implementation — `lineShift`'s "first differing line +
+        net delta" model reads a net-zero-delta edit as "nothing moved,"
+        found by an adversarial verification pass, not a golden (the goldens
+        as authored happened to only ever exercise `:m`/`:t` bodies where the
+        match set had already been fully drained by the time the reorder
+        happened). Fixed with `remapMatchedByContent`, a real line-content
+        LCS used only as the fallback when `K.lineShift` returns `null` for a
+        genuinely-changed buffer — approximate only for duplicate-content
+        lines, where identity can't be told apart by content alone.
+      - zero matches is a silent no-op in real Vim (confirmed: no exception,
+        no message, unlike `:s`'s E486) — modelled as the existing
+        `pattern-not-found` rejection, which leaves buffer/cursor untouched
+        exactly like the real no-op does, even though internally it is still
+        a "failure." The pattern/`"/`-register write happens unconditionally
+        BEFORE this check, mirroring `:s`'s own early-write.
 - [ ] **4g — Wrap-up.** Sanitize the fuzz alphabet (no `:q :w ZZ ZQ :!`, no
       shell escapes) now that ex-commands exist to sanitize against, and
       write the `pnpm test:fuzz` script — both were blocked on Wave 4 having

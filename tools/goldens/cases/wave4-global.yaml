@@ -1,0 +1,124 @@
+# `:g[lobal]` / `:v[global]` — Wave 4f: whole-buffer default range, `:v`/`:g!`
+# inversion, the mark-based matched-line set (scattered deletes, a body that
+# only touches some matched lines, a body that moves the cursor without
+# snapping back), coalesced undo, and a nested `:g`/`:v` rejection.
+#
+# One case from the design's "cover at minimum" list is deliberately absent:
+# `:s ... c` as a body. Real Vim genuinely DOES drive its confirm loop from
+# inside `:g` — confirmed with a scratch probe (buffer stays untouched, since
+# nothing ever gets confirmed once the harness's `-es` stdin runs dry
+# mid-prompt, but the CURSOR still walks to the last matched line first,
+# exactly like every other body command). This engine instead rejects that
+# combination up front, before touching anything at all — not even a cursor
+# move — because this project's oracle already cannot drive one plain
+# `:s ... c` confirm session past its first response (see `wave4-subst.yaml`'s
+# own header); asking it to drive one from inside `:g` on top of that is
+# asking for something never reliably measurable. The cursor divergence this
+# produces is real and known, not an oversight, so the case is pinned directly
+# against the engine in `semantics.test.ts` instead of here.
+
+cases:
+  - id: global/default-range-is-whole-buffer
+    note: >
+      no range prefix — :g acts on 1,$ regardless of where the cursor starts,
+      unlike every other ex command in wave4-excmd.yaml, which defaults to
+      the cursor's own line
+    buffer: ['foo pat one', 'bar', 'baz pat two', 'qux', 'pat end']
+    cursor: [2, 1]
+    keys: ':g/pat/d<CR>'
+
+  - id: global/explicit-range-restricts-to-it
+    note: contrast with the default-range case above — only lines 2-4 are candidates
+    buffer: ['a pat', 'b pat', 'c pat', 'd pat', 'e pat']
+    cursor: [1, 1]
+    keys: ':2,4g/pat/d<CR>'
+
+  - id: global/v-inverts-the-match
+    buffer: ['apple', 'bar1', 'banana', 'bar2', 'cherry', 'baz3']
+    cursor: [1, 1]
+    keys: ':v/^b/d<CR>'
+
+  - id: global/gbang-inverts-identically-to-v
+    note: same buffer and net effect as the :v case above — :g! is byte-for-byte the same inversion
+    buffer: ['apple', 'bar1', 'banana', 'bar2', 'cherry', 'baz3']
+    cursor: [1, 1]
+    keys: ':g!/^b/d<CR>'
+
+  - id: global/scattered-deletes-prove-shift-tracking
+    note: >
+      matched lines are non-adjacent (0, 2, 4) — each delete shrinks the
+      buffer under the still-pending matches, so this only comes out right if
+      the remaining matched-line set is kept in sync with every prior delete.
+      Also the register-after-:g/d case: numbered registers shift exactly like
+      three independent :d presses (last-deleted in "1, first-deleted in "3),
+      which the comparator checks automatically.
+    buffer: ['a', 'b', 'c', 'd', 'e']
+    cursor: [1, 1]
+    keys: ':g/[ace]/d<CR>'
+
+  - id: global/body-substitute-failure-is-absorbed-per-line
+    note: >
+      the body :s fails (E486) on every matched line that has no "nomatch"
+      text — measured: :g absorbs that failure completely and keeps visiting
+      every remaining matched line rather than aborting
+    buffer: ['x1 nomatch', 'y', 'x2', 'y', 'x3 nomatch', 'y', 'x4']
+    cursor: [1, 1]
+    keys: ':g/x/s/nomatch/HIT/<CR>'
+
+  - id: global/body-normal-does-not-snap-cursor-back-to-match
+    note: >
+      measured — the final cursor is wherever the LAST body invocation left
+      it (one line below the last match, from its own "j"), not forced back
+      onto that match line the way :g's own housekeeping would if it re-homed
+      the cursor after the loop
+    buffer: ['pat A', 'xxx', 'pat B', 'yyy', 'pat C', 'zzz', 'www']
+    cursor: [1, 1]
+    keys: ':g/pat/normal! j<CR>'
+
+  - id: global/empty-pattern-reuses-last-search
+    buffer: ['delta1 foo', 'beta', 'gamma2 foo']
+    cursor: [1, 1]
+    keys: '/foo<CR>:g//d<CR>'
+
+  - id: global/zero-matches-is-silent-no-op
+    note: unlike :s, a :g with zero matches raises no error at all in real Vim — measured
+    buffer: ['aaa', 'bbb', 'ccc']
+    cursor: [1, 1]
+    keys: ':g/nomatch/d<CR>'
+
+  - id: global/undo-is-one-coalesced-block
+    note: >
+      three discrete groups per harness detail 7 — the :g itself, then TWO
+      separate u presses. Measured against real Vim: a SINGLE u fully
+      restores every deleted line at once (unlike every other multi-step
+      feature here, which mints one undo node per edit), so the second u is a
+      genuine no-op with nothing left below it, not a partial further-undo.
+    buffer: ['a1', 'b2', 'a3', 'b4', 'a5']
+    cursor: [1, 1]
+    keys: [':g/a/d<CR>', 'u', 'u']
+
+  - id: global/body-move-reorders-scattered-matches
+    note: >
+      a :m body has a net-ZERO line-count delta (it relocates lines, doesn't
+      add or remove any), which the matched-line tracker's usual K.lineShift
+      path cannot represent at all — found by adversarial review, not by this
+      case alone: an earlier implementation silently mispositioned every
+      match after the first here. Measured against real Vim: each matched
+      line is moved to the end in turn, so the final order of moved lines is
+      their ORIGINAL relative order (x1, x2, x3), not reversed or scrambled.
+    buffer: ['x1', 'keep1', 'x2', 'keep2', 'x3']
+    cursor: [1, 1]
+    keys: ':g/x/m$<CR>'
+
+  - id: global/nested-global-with-range-raises-e147
+    note: >
+      the INNER :g carries its own explicit range (2,4) — measured against
+      real Vim: this is a genuine catchable error (E147, "cannot do :global
+      recursive with a range"), thrown only after the outer loop has already
+      visited every matched line (buffer ends up fully untouched; cursor sits
+      on the LAST matched line, exactly where the outer loop parked it before
+      the final, also-rejected attempt)
+    buffer: ['x1', 'y', 'x2', 'y', 'x3', 'y']
+    cursor: [1, 1]
+    keys: ':g/x/2,4g/y/d<CR>'
+    expectError: true
