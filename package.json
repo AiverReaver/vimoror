@@ -16,7 +16,7 @@
     "test:fuzz": "node tools/goldens/fuzz.ts",
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.json --pretty",
-    "dev:render": "vite --root packages/render/demo --port 5175"
+    "dev:render": "vite packages/render/demo --port 5175"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

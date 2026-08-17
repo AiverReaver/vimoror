@@ -968,8 +968,25 @@ root `tsconfig.json`/`package.json` edits for `DOM`/`DOM.Iterable` lib +
 `vite`/`dev:render`), `types.ts` (`Cell`, `CellBuffer`, `Camera`,
 `CursorShape`, `Rect`), `cell-buffer.ts`, `camera.ts`, `cursor-shape.ts` +
 their vitest suites. `pnpm typecheck`/`pnpm test` green repo-wide (1238
-tests), confirmed zero canvas/DOM code in `packages/render/src`. Waves B–E
-(font atlas, glyph grid + demo, CRT post-FX, wrap-up) are still open — the
+tests), confirmed zero canvas/DOM code in `packages/render/src`.
+
+**Wave B — font** `[x]` — vendored `assets/fonts/JetBrainsMono-Regular.woff2`
+(JetBrains Mono v2.304 release ZIP) + `OFL.txt` (its own header confirms
+OFL-1.1, matching `M1-PLAN.md`'s pre-verified licensing call). `font-atlas.ts`
+pure half (`atlasRectFor`, `atlasDimensions`, a 10x10 near-square grid for the
+95 printable-ASCII glyphs, out-of-range codes fall back to slot 0) +
+`font-atlas.test.ts` (UV math, column-wrap boundary, fallback) — `pnpm test`
+green repo-wide (1244 tests). Impure half `bakeFontAtlas()` (FontFace load +
+OffscreenCanvas bake) verified with a one-off demo page served through `pnpm
+dev:render` and screenshotted in-browser: all 95 glyphs baked in order, no
+cross-cell bleed at 4x zoom — page deleted afterward per the plan's "one-off"
+framing, Wave C builds the real demo. Also fixed a real bug surfaced by
+actually running `dev:render` for the first time: Vite 6's root is a
+positional arg, not a `--root` flag (Wave A's script used the flag form and
+had never been executed until this wave). Added `.claude/launch.json` so
+`dev:render` is previewable through the browser tool going forward.
+
+Waves C–E (glyph grid + demo, CRT post-FX, wrap-up) are still open — the
 bullets below stay unchecked until the full milestone (browser-confirmed
 cursor shapes across all 8 modes, working CRT pipeline) lands.
 
