@@ -1435,12 +1435,147 @@ real engine rather than by any test that exists:**
   settle it explicitly rather than inherit it, and `M2-PLAN.md`'s "what counts
   as one act for the tick" is the same decision from the other end.
 
+### Wave C — the loop `[x]`
+
+`tick.ts`, `rules.ts`, `gating.ts`, `session.ts` and their four suites, all
+importing through the barrel. **1403 tests green** (1344 + 59 new — 38 for the
+loop itself, 21 more from the adversarial review below), `pnpm typecheck`
+clean, `pnpm validate:stages` clean, `pnpm goldens:verify` clean with zero
+golden bytes changed, `pnpm demo` 4/4. The done-line holds head-lessly: every
+shipped fixture WINS through `session.feedKeys(stage.solution)` — the honest
+half of M3's replay gate, upgraded from Wave B's weaker "no key rejected" —
+and `act1-four-directions` is losable by budget, the synthetic hallway stage
+by threat, with a locked key rejected in character.
+
+The three decisions Waves A–B handed over, settled:
+
+- [x] **One resolved command is one tick.** The tick source is core's own
+      `CommandResolved` — no parallel keystroke counter to drift, exactly the
+      trap `M2-PLAN.md` finding 2 warned about. So an insert session is ONE
+      tick however many characters it types (the one place the rest rule and a
+      per-keystroke tick disagree, settled deliberately: a world that advances
+      per typed character makes `i` lethal near a threat, punishing the exact
+      mode beginners live in), a **rejected** key never ticks (Wave A's
+      invariant, now also a fast-check property over random locked keys), and
+      a **failed** command still ticks — `h` at column zero beeps, resolves,
+      counts, and the world moves.
+- [x] **Standing in a threat's cells is safe; the threat must move onto you.**
+      Mechanically rather than by special case: a threat chases one step per
+      tick along each axis, closing the gap between its own rectangle and the
+      cursor, so a threat whose rectangle already CONTAINS the cursor has no
+      gap, does not move — and `reached` requires a move. That is what lets
+      `act2-grammar-awakens` survive `di(` leaving the cursor at 0:12 inside
+      `the-aside`, which under the other reading lost the stage on the first
+      command of its own solution. Corollary pinned by test: walking ONTO a
+      stationary threat is survivable; the threat catching you as you step off
+      is not.
+- [x] **Entity coordinates stay static under buffer edits** — `di(` shortens
+      line 0 by thirteen characters and no rectangle re-anchors; threats move
+      only by their own chase step. Marks-style adjustment (`marks.ts`) stays
+      the upgrade path if content ever needs it. A chase step can never carry
+      a threat further out of bounds than its author put it, since it only
+      ever closes the gap toward a cursor that is always in the buffer.
+
+What the wave added beyond the handoff:
+
+- [x] **Lose is evaluated before win on the same tick** — the threat landing
+      on you exactly as you land on the exit kills you. A horror game showing
+      mercy on ties would be the genre lying about itself; the schema keeps
+      the common case honest anyway (a budget below the shipped solution is a
+      parse error). Flipping the order fails exactly one test, by name.
+- [x] **Beats fire once each, and are evaluated BEFORE the outcome latches** —
+      a beat conditioned on the winning cell (`act2`'s exit beat) still fires
+      on the winning tick. Event order within a turn is fixed:
+      `Tick` → `ThreatMoved`* → `BeatFired`* → `OutcomeDecided`.
+- [x] **A decided session is frozen** — `feed` ignores every key after
+      `won`/`lost`, so a mid-string loss freezes the rest of the notation
+      string (pinned: 30 fed keys, 21 ticks, 9 ignored).
+- [x] `gating.ts`'s `REJECTION_LINES` is a total `Record<InvalidReason,
+      string>` — a 17th reason added to core is a compile error here, not a
+      silent generic message. The lines are the mechanical layer's defaults in
+      Acts I–III's restrained register; M5/M6 own the real copy.
+- [x] `keystrokes-over` is strictly over — winning on exactly the budget's
+      last keystroke is a win.
+- [x] Walls and pickups are deliberately INERT in Wave C — overlay data plus
+      `cursor-on` targets, nothing more. No mechanic in `MergedPlan.md` or the
+      condition vocabulary consumes them yet; wall-blocking and pickup effects
+      are content-milestone decisions, not something to invent here. The
+      `act1-four-directions` wall never intersects its own solution, so
+      nothing ships broken by this.
+
+**The adversarial review Wave A left unfinished ran to completion in this
+wave** (its four unreported lenses on `engine.ts`, plus fresh lenses on the
+Wave C files), every finding adversarially verified before being acted on: 16
+confirmed, 1 refuted, 2 verifier-orphaned findings re-verified by hand — and
+all 18 real ones fixed in the same change. The ones worth knowing about later:
+
+- [x] **`<Esc>` is never lockable** (`ALWAYS_ALLOWED`, shared by `gating.ts`
+      and the schema's playability checks so they cannot disagree). The
+      shipped `act2` fixture allowed `i` for `di(` without listing `<Esc>` —
+      one stage-taught keypress soft-locked the player in insert mode with no
+      rest, no tick, no win and no lose, forever. Verified live before the
+      fix; the class extends to `:`/`/`/`q`, all of which `<Esc>` cancels.
+- [x] **Only the FED key's own rejection resolves nothing** (`e.key === key`
+      in `engine.ts`). A replay (`@a`, `.`, `:normal`) surfaces its INNER
+      keys' rejections through the same event stream, so a macro halted by a
+      locked key used to mutate the buffer and then resolve NOTHING — a free
+      edit with no keystroke cost and no tick for the world to move on.
+- [x] **A rejection forfeits exactly `pending.keyBuffer`, not everything**
+      (`keyBuffer` holds every key of the half-typed command, count digits and
+      register prefix included). The old at-rest-only clear left a mid-visual
+      forfeit (`v`, `f`, locked key, `d`) resolving a three-keystroke `vfd`
+      that never ran, and — the mutation the review proved no test caught —
+      an unconditional clear would have scored `iabq<Esc>` as one keystroke.
+- [x] **A mid-insert snapshot's undo tree now carries its own buffer** —
+      inside an insert (or `:s ... c`) session the buffer mutates ahead of the
+      block's `pushUndo`, so the saved lines belonged to NO undo node and a
+      restored `u` stepped to the wrong buffer, with the saved text
+      unreachable by redo. `snapshot()` mints the missing node, keyed on being
+      MID-BLOCK rather than on the lines/node mismatch alone — because
+      `injectUndoEntry` creates exactly that mismatch at rest, on purpose
+      (Act IV's "edits you didn't make"), and it must round-trip as-is. The
+      first restore-side attempt broke that test within minutes of existing.
+- [x] **`injectEdit` now shifts `lastVisual` and `visualStart`** with the same
+      line shift it already applied to marks/jumps/pcmark (`gv` reads
+      `lastVisual`, not the marks, and deleted text the player never selected)
+      **and clamps the cursor with visual's `allowEndOfLine`** — an injection
+      on ANOTHER line used to pull a live `v$` selection one character short,
+      the exact defect `restore()` had already fixed on the snapshot path.
+- [x] **`leaveVisual` clamps the cursor** (state.ts, measured against real
+      Vim 9.1): `v$<Esc>x` deletes the last character in Vim, and used to
+      silently no-op here because the EOL-NUL column survived into normal
+      mode. `lastVisual` keeps the RAW `$` column, so `gv` still reselects out
+      to the line break.
+- [x] **A self-referencing macro halts instead of crashing** — `qa@aq` then
+      `@a` recursed one synchronous `step()` per iteration into an uncaught
+      RangeError out of `feed()`, 7 keystrokes any player can type. Real Vim
+      spins forever (uninterruptible in a game), so past depth 100 the replay
+      halts with the new `recursive-macro` reason — whose addition proved the
+      `REJECTION_LINES` totality guard: `gating.ts` stopped compiling until
+      the in-fiction line existed.
+- [x] `expandKeySpecs` uses `Object.hasOwn` — a spec named `toString` used to
+      pick up the inherited function, crash at stage LOAD, and still parse as
+      valid because the schema's error path swallowed the same throw.
+- [x] `session.feed` passes `BufferSaved`/`QuitRequested` through — zero-I/O
+      core delegates `:w`/`:q` to the host and they leave no trace in engine
+      state, so dropping them made both unimplementable one layer up (and an
+      Act VI stage whose win is `:w` is already sketched).
+- [x] Test-strength holes the review proved by running the mutation: session
+      keystrokes counted per-command instead of per-key survived every test
+      (now asserted against the 9-key insert), `RuleContext` wired to the
+      AUTHORED entity array instead of the live one survived (now a
+      session-level `cursor-on` a moved threat), rectangle threats reaching
+      with their BODY was never exercised (corner-only detection survived),
+      and mid-replace restore, the `v$o` anchor clamp and a mid-walk jumplist
+      idx each had zero coverage. All pinned now.
+
 ### The rest of M2
-- [ ] Key gating — rejected *in character*, never a silent no-op
-- [ ] Turn-based entities: **threats tick only when the player acts.** Keeps
+- [x] Key gating — rejected *in character*, never a silent no-op (Wave C,
+      `gating.ts` + `session.ts`)
+- [x] Turn-based entities: **threats tick only when the player acts.** Keeps
       everything deterministic and replayable, and a thing that moves only when
       you do is scarier than one on a timer. A handful of late stages opt into
-      real-time.
+      real-time. (Wave C, `tick.ts` — the real-time opt-in stays future work)
 - [ ] Difficulty presets as pure modifier config — `:set verymagic` / `magic` /
       `nomagic`
 - [ ] Hints — diff live state against the golden-solution prefix

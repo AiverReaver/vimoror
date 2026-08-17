@@ -249,3 +249,31 @@ describe('snapshot/restore', () => {
     expect(restored.lines).toEqual(['  foo']);
   });
 });
+
+describe('leaving visual mode (hand-verified against Vim 9.1, 2026-08-18)', () => {
+  it('a non-operator exit clamps a `$` cursor back onto the last character', () => {
+    // Measured: real Vim's `v$<Esc>x` deletes the last character. The
+    // end-of-line NUL is a legal cursor position only WHILE visual mode is
+    // active; without the clamp in `leaveVisual` the `x` lands one column out
+    // and silently deletes nothing.
+    const engine = new VimEngine(['ab', 'cd']);
+    engine.feedKeys('v$<Esc>');
+    expect(engine.cursor).toEqual({ line: 0, col: 1 });
+    engine.feedKeys('x');
+    expect(engine.lines).toEqual(['a', 'cd']);
+  });
+
+  it('the `v` toggle exit clamps the same way', () => {
+    const engine = new VimEngine(['ab', 'cd']);
+    engine.feedKeys('v$v');
+    expect(engine.cursor).toEqual({ line: 0, col: 1 });
+  });
+
+  it('`gv` still reselects out to the end-of-line NUL afterwards', () => {
+    // The clamp is on the CURSOR only — `lastVisual` keeps the raw `$`
+    // position, or the reselected `v$d` would stop joining the next line up.
+    const engine = new VimEngine(['ab', 'cd']);
+    engine.feedKeys('v$<Esc>gvd');
+    expect(engine.lines).toEqual(['cd']);
+  });
+});

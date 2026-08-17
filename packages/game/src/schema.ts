@@ -77,6 +77,16 @@ const KEY_MACROS: Readonly<Record<string, readonly KeyToken[]>> = {
 
 const MACRO_NAMES = Object.keys(KEY_MACROS).join(', ');
 
+/**
+ * Keys a `KeyPolicy` must never lock, whatever `allowedKeys` says: `<Esc>` is
+ * the universal cancel, and a stage that permits an insert-entering key (or
+ * `:`, `/`, `q`) without it soft-locks the player in a state the tick cannot
+ * see — no rest, no resolve, unwinnable AND unlosable. `gating.ts` adds these
+ * to every policy it builds; the playability checks below count them as
+ * allowed for the same reason, so the two surfaces cannot disagree.
+ */
+export const ALWAYS_ALLOWED: readonly KeyToken[] = ['<Esc>'];
+
 const keySpecSchema = z
   .string()
   .min(1, 'a key spec may not be empty')
@@ -86,7 +96,7 @@ const keySpecSchema = z
     // on `{`, `p`, `r`, ... and the author never finds out. Anything shaped
     // like a macro must BE one.
     if (/^\{.*\}$/.test(spec)) {
-      if (!(spec in KEY_MACROS)) {
+      if (!Object.hasOwn(KEY_MACROS, spec)) {
         ctx.addIssue({ code: z.ZodIssueCode.custom, message: `unknown key macro ${spec} — known macros: ${MACRO_NAMES}` });
       }
       return;
@@ -102,7 +112,12 @@ const keySpecSchema = z
 export function expandKeySpecs(specs: readonly string[]): Set<KeyToken> {
   const out = new Set<KeyToken>();
   for (const spec of specs) {
-    const macro = KEY_MACROS[spec];
+    // `Object.hasOwn`, not a bare index: a spec named after an
+    // `Object.prototype` member ('toString', 'valueOf', ...) must fall through
+    // to `tokenize` as ordinary notation, not pick up an inherited function
+    // and crash the `for..of` — a crash the schema's own error path swallows,
+    // so it would surface only at stage load.
+    const macro = Object.hasOwn(KEY_MACROS, spec) ? KEY_MACROS[spec] : undefined;
     for (const token of macro ?? tokenize(spec)) out.add(token);
   }
   return out;
@@ -373,7 +388,11 @@ export const stageSchema = stageShape.superRefine((stage, ctx) => {
 
   // Every spec below is already known to tokenize — `keySpecSchema` ran first —
   // but a spec-level failure aborts only its own entry, so guard the expansion.
-  const allowed = stage.allowedKeys === undefined ? undefined : safeExpand(stage.allowedKeys);
+  // ALWAYS_ALLOWED joins the set because `gating.ts` will grant those keys
+  // regardless: a solution ending in `<Esc>` must not be rejected here for
+  // using a key the policy can never actually lock.
+  const allowed =
+    stage.allowedKeys === undefined ? undefined : safeExpand([...stage.allowedKeys, ...ALWAYS_ALLOWED]);
 
   if (allowed !== undefined) {
     for (const [i, spec] of stage.teachesKeys.entries()) {

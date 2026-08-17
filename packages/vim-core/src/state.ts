@@ -166,6 +166,8 @@ export type EditorState = {
   readonly replaying: boolean;
   /** True while `@` is feeding a macro's keys — unlike `replaying`, `.` still updates: see `step()`. */
   readonly macroReplaying: boolean;
+  /** Nesting depth of `@` replays — the guard that halts a self-referencing macro (see `doMacroReplay`). Always 0 at rest. */
+  readonly macroDepth: number;
   /** True while a `:g`/`:v` body command is running — a body that is itself `:g`/`:v` sees this and rejects rather than recursing. */
   readonly inGlobal: boolean;
   /** The `q` recording in progress, if any. Raw keystrokes, built up key by key. */
@@ -210,6 +212,7 @@ export function initState(
     dotPending: undefined,
     replaying: false,
     macroReplaying: false,
+    macroDepth: 0,
     inGlobal: false,
     recording: undefined,
     macros: {},
@@ -1227,9 +1230,16 @@ function leaveVisual(state: EditorState): EditorState {
     ...state,
     mode: 'normal',
     visualStart: undefined,
-    // Remember it for `gv`, whichever way we are leaving.
+    // Remember it for `gv`, whichever way we are leaving — RAW, a `$` cursor's
+    // end-of-line column included, because `gv` re-clamps with allowEndOfLine.
     lastVisual: { mode: state.mode, start: state.visualStart ?? state.cursor, end: state.cursor },
     marks: { ...state.marks, '<': from, '>': to },
+    // Normal mode must never hold the one-past-last-character column `v$`
+    // legitimately parks on. Measured: real Vim's `v$<Esc>x` deletes the last
+    // character; without this clamp the `x` silently no-ops one column out.
+    // Operator exits overwrite the cursor anyway, so this only bites the
+    // non-operator exits (`<Esc>`, `v`/`V` toggle, `:`).
+    cursor: clamp(state.lines, state.cursor, false),
     pending: EMPTY_PENDING,
   };
 }
@@ -2277,13 +2287,26 @@ function doMacroStop(state: EditorState): StepResult {
  */
 const MACRO_HALT_EXEMPT = new Set<InvalidReason>(['empty-register', 'mark-not-set']);
 
+/**
+ * Macros may legitimately replay other macros, but a SELF-referencing one
+ * (`qa@aq` then `@a`) nests one synchronous `step()` per iteration and, with no
+ * bound, overflows the JS call stack — an uncaught RangeError escaping
+ * `VimEngine.feed()`. Real Vim spins such a macro until the user interrupts
+ * it, which a game engine cannot offer, so past a depth no honest macro chain
+ * reaches the replay halts like any other macro error. The inner
+ * `recursive-macro` failure trips the outer loop's halt-on-error rule, so the
+ * whole nest unwinds cleanly.
+ */
+const MAX_MACRO_DEPTH = 100;
+
 function doMacroReplay(state: EditorState, regKey: string, count: number, keysStr: string): StepResult {
   const target = regKey === '@' ? state.lastMacroReg : regKey.toLowerCase();
   if (target === undefined) return invalid(state, keysStr, 'empty-register');
   const tokens = state.macros[target];
   if (tokens === undefined || tokens.length === 0) return invalid(state, keysStr, 'empty-register');
+  if (state.macroDepth >= MAX_MACRO_DEPTH) return invalid(state, keysStr, 'recursive-macro');
 
-  let s: EditorState = { ...state, macroReplaying: true, pending: EMPTY_PENDING, lastMacroReg: target };
+  let s: EditorState = { ...state, macroReplaying: true, macroDepth: state.macroDepth + 1, pending: EMPTY_PENDING, lastMacroReg: target };
   const events: EngineEvent[] = [];
 
   replayCount: for (let i = 0; i < count; i += 1) {
@@ -2299,7 +2322,7 @@ function doMacroReplay(state: EditorState, regKey: string, count: number, keysSt
     }
   }
 
-  return { state: { ...s, macroReplaying: false, pending: EMPTY_PENDING }, events };
+  return { state: { ...s, macroReplaying: false, macroDepth: state.macroDepth, pending: EMPTY_PENDING }, events };
 }
 
 // --- ex commands --------------------------------------------------------------

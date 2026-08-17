@@ -144,13 +144,24 @@ export class VimEngine {
     // player's score nor advances the world. Locking a key must never punish
     // the player for pressing it.
     //
-    // `reject()` also throws away whatever half-typed command was pending, so
-    // the keys already spent on it are forfeited with it — otherwise `d`,
-    // locked-`w`, `j` would resolve as a three-keystroke `dj`. They are dropped
-    // rather than resolved so that no tick can be blamed on a locked key. An
-    // insert session survives rejection intact, so its keys keep counting.
-    if (events.some((e) => e.type === 'KeyRejected')) {
-      if (atRest(state)) this.#pendingKeys = [];
+    // Only the FED key's own rejection counts. A replay (`@a`, `.`, `:normal`)
+    // surfaces its INNER keys' rejections through this same event stream, and
+    // a halted replay is a FAILED command — it may already have edited the
+    // buffer — so it must still resolve and tick rather than vanish as a free
+    // edit. (`e.key === key` misfires only when a replayed macro's body
+    // contains the very key that triggered it — unreachable under a fixed
+    // stage policy, since recording would have rejected that key too.)
+    if (events.some((e) => e.type === 'KeyRejected' && e.key === key)) {
+      // `reject()` threw away whatever half-typed command was pending, so the
+      // keys already spent building it — exactly `pending.keyBuffer`, which
+      // holds every key of the half-typed command, count digits and register
+      // prefix included — are forfeited with it. Dropped rather than
+      // resolved, so no tick can ever be blamed on a locked key: without this
+      // `d`, locked-`w`, `j` would resolve as a three-keystroke `dj`. An
+      // insert session or visual selection keeps everything OUTSIDE the
+      // pending: its keys keep counting.
+      const forfeited = before.pending.keyBuffer.length;
+      this.#pendingKeys = this.#pendingKeys.slice(0, this.#pendingKeys.length - forfeited);
       return [...events];
     }
 
@@ -202,25 +213,40 @@ export class VimEngine {
    */
   readonly director = {
     injectEdit: (edit: Edit): void => {
-      const lines = applyEdit(this.#state.lines, edit);
-      const cursor = clamp(lines, this.#state.cursor, false);
+      const s = this.#state;
+      const lines = applyEdit(s.lines, edit);
+      // Visual mode may legitimately hold the end-of-line NUL (`v$`) — the
+      // same clamp `restore()` applies, or an injected edit on ANOTHER line
+      // silently pulls a live `v$` selection one character short.
+      const cursor = clamp(lines, s.cursor, isVisual(s.mode));
       // An injected edit shifts marks exactly as a typed one does — otherwise
       // the horror layer could silently desynchronise the player's own marks
-      // from the buffer, and replay would stop being reproducible.
-      const shift = lineShift(this.#state.lines, lines);
+      // from the buffer, and replay would stop being reproducible. `gv` reads
+      // `lastVisual`, not the `'<`/`'>` marks this call just moved, and a live
+      // visual anchor shifts with its text too — both took the same silent
+      // desync without their own adjustment.
+      const shift = lineShift(s.lines, lines);
       this.#state = {
-        ...this.#state,
+        ...s,
         ...(shift === null
           ? {}
           : {
-              marks: adjustMarks(this.#state.marks, shift),
-              jumps: adjustJumps(this.#state.jumps, shift),
-              pcmark:
-                this.#state.pcmark === undefined ? undefined : adjustPos(this.#state.pcmark, shift),
+              marks: adjustMarks(s.marks, shift),
+              jumps: adjustJumps(s.jumps, shift),
+              pcmark: s.pcmark === undefined ? undefined : adjustPos(s.pcmark, shift),
+              lastVisual:
+                s.lastVisual === undefined
+                  ? undefined
+                  : {
+                      ...s.lastVisual,
+                      start: adjustPos(s.lastVisual.start, shift),
+                      end: adjustPos(s.lastVisual.end, shift),
+                    },
+              visualStart: s.visualStart === undefined ? undefined : adjustPos(s.visualStart, shift),
             }),
         lines,
         cursor,
-        undoState: pushUndo(this.#state.undoState, lines, cursor, edit.start),
+        undoState: pushUndo(s.undoState, lines, cursor, edit.start),
         pending: EMPTY_PENDING,
       };
     },
@@ -243,6 +269,22 @@ export class VimEngine {
   snapshot(): EngineSnapshot {
     const s = this.#state;
     const policy = s.keyPolicy;
+    // A snapshot taken MID-UNDO-BLOCK (an open insert session, a `:s ... c`
+    // confirm session with accepted matches) carries lines that no undo node
+    // holds yet — the block's own `pushUndo` runs at the END of the block.
+    // Serialize the tree WITH the missing node (exactly what `finishInsert`
+    // would mint), or a restored `u` steps to the WRONG buffer — or reports
+    // nothing-to-undo with unsaved text on screen — and the saved lines are
+    // permanently unreachable by redo. Deliberately keyed on being mid-block,
+    // NOT on the lines/node mismatch alone: `injectUndoEntry` creates exactly
+    // that mismatch at rest, on purpose, and it must round-trip as-is.
+    const midBlock = s.insert !== undefined || s.pending.awaiting === 'confirm-subst';
+    const current = s.undoState.nodes.get(s.undoState.current);
+    const at = clamp(s.lines, s.cursor, false);
+    const undoState =
+      midBlock && current !== undefined && !sameLines(current.lines, s.lines)
+        ? pushUndo(s.undoState, s.lines, at, at)
+        : s.undoState;
     return {
       lines: [...s.lines],
       cursor: s.cursor,
@@ -256,7 +298,7 @@ export class VimEngine {
       // see undo.ts), so a long session's save grows with edits × buffer size.
       // Fine for stage-sized buffers; cap or diff the nodes if a save ever gets
       // big enough to notice.
-      undo: { nodes: [...s.undoState.nodes.values()], current: s.undoState.current, nextId: s.undoState.nextId },
+      undo: { nodes: [...undoState.nodes.values()], current: undoState.current, nextId: undoState.nextId },
       dot: s.dot,
       marks: { ...s.marks },
       jumps: { list: [...s.jumps.list], idx: s.jumps.idx },
@@ -317,6 +359,10 @@ export class VimEngine {
     };
     return engine;
   }
+}
+
+function sameLines(a: readonly string[], b: readonly string[]): boolean {
+  return a.length === b.length && a.every((line, i) => line === b[i]);
 }
 
 /**

@@ -214,6 +214,28 @@ describe('playability', () => {
     rejects(withBase({ solution: 'dw', par: 5 }), /^solution: uses "d", "w", which allowedKeys locks/);
   });
 
+  it('never counts <Esc> as locked — gating grants it unconditionally', () => {
+    // A gated insert-mode stage MUST be authorable without listing <Esc>:
+    // `stageKeyPolicy` always allows it (the anti-soft-lock rule), so a
+    // solution ending in <Esc> is playable and must not be rejected here.
+    const patch = {
+      allowedKeys: ['hjkl', 'G', '$', 'i'],
+      solution: 'ihi<Esc>G',
+      par: 6,
+      win: [{ kind: 'buffer-equals', lines: ['hialpha beta', 'gamma'] }],
+    };
+    expect(issues(withBase(patch))).toEqual([]);
+  });
+
+  it('a key spec named after an Object.prototype member is ordinary notation, not a crash', () => {
+    // `KEY_MACROS['toString']` on a plain object literal is an inherited
+    // FUNCTION — an unguarded lookup iterates it, throws at stage load, and
+    // the schema's own error path swallows the same throw, so the stage
+    // parses as valid and dies later.
+    const stage = parseStage(withBase({ allowedKeys: ['hjkl', 'G', 'toString', 'valueOf'] }));
+    expect(expandKeySpecs(stage.allowedKeys!).has('t')).toBe(true);
+  });
+
   it('rejects a par the shipped solution cannot reach', () => {
     rejects(withBase({ solution: 'hjkl', par: 2 }), /^par: par is 2 but the solution takes 4 keystrokes/);
   });

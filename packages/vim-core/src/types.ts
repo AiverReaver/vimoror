@@ -82,7 +82,13 @@ export type InvalidReason =
   /** `:s`/`:g`/`:v` with no delimiter at all, or one from the disallowed set (letters, digits, `\ " |`). */
   | 'invalid-substitute'
   /** `:g`/`:v` — a body command not supported inside a global: nested `:g`/`:v`, or `:s` with the `c` flag. */
-  | 'invalid-global';
+  | 'invalid-global'
+  /**
+   * `@` replay nested past any honest macro chain's depth — a self-referencing
+   * macro (`qa@aq` then `@a`). Real Vim spins until interrupted, which a game
+   * engine cannot offer; halting like any other macro error is the divergence.
+   */
+  | 'recursive-macro';
 
 export type ResolvedCommand = {
   /** The literal keys as typed, e.g. "d2w". */

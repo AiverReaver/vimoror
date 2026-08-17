@@ -52,8 +52,16 @@ describe('snapshot round trip preserves history', () => {
     ['macros', 'qaxq', '@a'],
     ['last macro register', 'qaxq@a', '@@'],
     ['jumplist', 'G', '<C-o>'],
+    // Mid-WALK, not just mid-list: after `<C-o>` the idx sits inside the list,
+    // and a snapshot that re-parked it at the end would send `<C-i>` nowhere
+    // while re-arming `<C-o>` — both directions diverging after a reload.
+    ['jumplist position mid-walk', 'G<C-o>', '<C-i>'],
     ['lastFind', 'fa', ';'],
     ['last visual selection', 'vll<Esc>w', 'gvd'],
+    // `o` swaps the selection's ends, so the ANCHOR sits on the end-of-line
+    // NUL — the one shape the cursor-side `$` tests below cannot reach, and
+    // the anchor is clamped by a separate call in `restore()`.
+    ['a visual anchor on the end-of-line NUL', 'v$o', 'd'],
     // These two already worked; they are here so a refactor cannot lose them.
     ['search state', '/gamma<CR>', 'n'],
     ['registers', 'yw', '"0p'],
@@ -105,6 +113,30 @@ describe('snapshot round trip preserves history', () => {
     expect(observable(restored)).toEqual(observable(live));
   });
 
+  it('an injected edit shifts `gv`, not just the marks', () => {
+    // `gv` reads `lastVisual`, not the `'<`/`'>` marks `injectEdit` already
+    // moved — left unshifted, the player's `gv` deletes text they never
+    // selected, the exact silent desync the director API forbids.
+    const live = new VimEngine(['aaa', 'bbb', 'ccc']);
+    live.feedKeys('vjy'); // select aaa..b, lastVisual lines 0-1
+    live.director.injectEdit({ start: { line: 0, col: 0 }, end: { line: 0, col: 0 }, text: 'XXX\n' });
+
+    live.feedKeys('gvd');
+    expect(live.lines).toEqual(['XXX', 'bb', 'ccc']);
+  });
+
+  it('an injected edit keeps a live visual-`$` cursor on the end-of-line NUL', () => {
+    // The same clamp rule `restore()` follows: an injection touching ANOTHER
+    // line must not pull the selection one character short.
+    const live = new VimEngine(['ab', 'cd']);
+    live.feedKeys('v$');
+    live.director.injectEdit({ start: { line: 1, col: 0 }, end: { line: 1, col: 1 }, text: 'X' });
+    expect(live.cursor).toEqual({ line: 0, col: 2 });
+
+    live.feedKeys('d'); // still takes the line break, so it still joins
+    expect(live.lines).toEqual(['Xd']);
+  });
+
   it('a key policy survives, so a locked key stays locked across a reload', () => {
     // Not a horror concern — a gameplay-correctness bug any player who reloads
     // can reach. Key gating IS the pedagogy; it must not evaporate on load.
@@ -143,6 +175,40 @@ describe('snapshot round trip preserves history', () => {
     // Not a zombie: it accepts keys.
     restored.feedKeys('x');
     expect(restored.lines[0]).toBe('abclpha beta');
+  });
+
+  it('a mid-replace snapshot restores to a usable normal-mode engine too', () => {
+    // The insert guard's twin: `R` is the OTHER mode whose session is not
+    // carried, and restoring `mode: 'replace'` without one gives an engine
+    // whose every key — `<Esc>` included — bounces off `not-in-mode`.
+    const live = new VimEngine(LINES);
+    live.feedKeys('Rab');
+    const restored = roundTrip(live);
+
+    expect(restored.mode).toBe('normal');
+    expect(restored.lines[0]).toBe('abpha beta');
+    restored.feedKeys('x');
+    expect(restored.lines[0]).toBe('abha beta');
+  });
+
+  it('a mid-insert snapshot keeps the typed text reachable by undo and redo', () => {
+    // Inside an insert session the buffer mutates ahead of the block's
+    // `pushUndo`, so the saved lines belong to NO undo node. Without minting
+    // one at restore, `u` steps to the wrong buffer — or reports
+    // nothing-to-undo with unsaved text on screen — and the saved lines are
+    // permanently unreachable by `<C-r>`.
+    const live = new VimEngine(['ab']);
+    live.feedKeys('x'); // ['b'], one real node
+    live.feedKeys('iZ'); // ['Zb'], session still open
+    const restored = roundTrip(live);
+
+    expect(restored.lines).toEqual(['Zb']);
+    restored.feedKeys('u');
+    expect(restored.lines).toEqual(['b']);
+    restored.feedKeys('u');
+    expect(restored.lines).toEqual(['ab']);
+    restored.feedKeys('<C-r><C-r>');
+    expect(restored.lines).toEqual(['Zb']);
   });
 
   it('a mid-visual snapshot restores the selection rather than a broken mode', () => {
@@ -298,6 +364,75 @@ describe('CommandResolved fires once per return to rest', () => {
     // next command's keystroke count.
     e.feedKeys('j');
     expect(fired).toEqual([{ keys: 'j', keystrokes: 1, shape: 'j' }]);
+  });
+
+  it('an insert session survives a mid-session rejection with its keys intact', () => {
+    // The other side of the forfeit rule: only the half-typed PENDING is
+    // forfeited, and mid-insert the pending is empty. An unconditional clear
+    // here would score `iabq<Esc>` as a one-keystroke `<Esc>`.
+    const e = new VimEngine(LINES);
+    e.setKeyPolicy({ denied: new Set(['q']) });
+    const fired: ResolvedCommand[] = [];
+    e.onCommandResolved((c) => fired.push(c));
+
+    e.feedKeys('iabq<Esc>');
+    expect(fired).toEqual([{ keys: 'iab<Esc>', keystrokes: 4, shape: 'iab<Esc>' }]);
+  });
+
+  it('a rejection mid-visual forfeits the half-typed command, not the selection', () => {
+    // `v`, `f` (awaiting its target char), locked `x`, `d`: the `f` is
+    // discarded by `reject()` and its key must go with it — but the `v` is
+    // part of the still-open selection and must stay. Clearing everything
+    // scores `d` alone; clearing nothing resolves a `vfd` that never ran.
+    const e = new VimEngine(LINES);
+    e.setKeyPolicy({ denied: new Set(['x']) });
+    const fired: ResolvedCommand[] = [];
+    e.onCommandResolved((c) => fired.push(c));
+
+    e.feedKeys('vfxd');
+    expect(fired).toEqual([{ keys: 'vd', keystrokes: 2, shape: 'vd' }]);
+  });
+
+  it('a replay halted by a locked INNER key still resolves — the buffer already changed', () => {
+    // `@a` where the macro body hits a locked key is a FAILED command, not a
+    // rejected one: the keys the PLAYER pressed were all allowed, and the
+    // replay may already have edited the buffer. Swallowing the resolution
+    // here would hand out a free edit — no keystroke cost, no tick.
+    const e = new VimEngine(LINES);
+    e.feedKeys('qaxwq');
+    e.setKeyPolicy({ denied: new Set(['w']) });
+    const fired: ResolvedCommand[] = [];
+    e.onCommandResolved((c) => fired.push(c));
+
+    const before = e.lines[0];
+    e.feedKeys('@a');
+    expect(e.lines[0]).not.toBe(before); // the macro's `x` ran
+    expect(fired).toEqual([{ keys: '@a', keystrokes: 2, shape: '@a' }]);
+  });
+
+  it('a dot repeat halted by a locked key resolves as the one `.` keystroke', () => {
+    const e = new VimEngine(LINES);
+    e.feedKeys('x');
+    e.setKeyPolicy({ denied: new Set(['x']) });
+    const fired: ResolvedCommand[] = [];
+    e.onCommandResolved((c) => fired.push(c));
+
+    e.feedKeys('.');
+    expect(fired).toEqual([{ keys: '.', keystrokes: 1, shape: '.' }]);
+  });
+
+  it('a self-referencing macro halts with recursive-macro instead of crashing', () => {
+    // `qa@aq` then `@a` used to nest one synchronous step() per iteration and
+    // throw an uncaught RangeError out of feed(). It must halt like any other
+    // macro error — and still resolve, since the player's keys were allowed.
+    const e = new VimEngine(LINES);
+    e.feedKeys('qa@aq');
+    const fired: ResolvedCommand[] = [];
+    e.onCommandResolved((c) => fired.push(c));
+
+    const events = e.feedKeys('@a');
+    expect(events.some((v) => v.type === 'InvalidCommand' && v.reason === 'recursive-macro')).toBe(true);
+    expect(fired).toEqual([{ keys: '@a', keystrokes: 2, shape: '@a' }]);
   });
 
   it('every keystroke is accounted for once the engine is back at rest', () => {
