@@ -287,11 +287,13 @@ fixed, and each now has a golden case or a unit test.
       when it deletes nothing and types nothing (`cl<Esc>`/`s<Esc>`/`C<Esc>` on
       an empty line), because `op_change` prepared the entry first. A bare
       `i<Esc>`/`R<Esc>` still mints none
-- [ ] Undo tree, insert session, `lastFind`, marks, the jumplist and the `.`
-      record are **not serialized** in `EngineSnapshot` — a restored engine
-      starts with the snapshot as its undo root and with no marks or repeatable
-      change. Deferred and documented in `engine.ts`; revisit before the M0
-      scripted-demo done-line, which round-trips through a JSON snapshot
+- [x] Undo tree, `lastFind`, marks, the jumplist and the `.` record were **not
+      serialized** in `EngineSnapshot` — a restored engine started with the
+      snapshot as its undo root and with no marks or repeatable change. Deferred
+      through M0 and M1, **closed at M2 Wave A** (see that section below), which
+      is the point M2's own director-determinism done-line made it unavoidable.
+      The **insert session is still deliberately excluded**: a mid-insert
+      snapshot restores to normal mode, like a real Vim session after a reload
 
 **Wave 3 — memory** `[x]` — registers/paste, text objects, visual modes,
 marks + the jumplist, and `.` dot-repeat all landed and green
@@ -481,11 +483,13 @@ marks + the jumplist, and `.` dot-repeat all landed and green
         on the way out rather than on push. Columns are not compared
       - `<C-o>`/`<C-i>` are commands, not motions: an operator pending makes
         them beep rather than jump. `<C-i>` and `<Tab>` are the same key
-- [ ] Marks, the jumplist and the previous-context mark are **not serialized**
-      in `EngineSnapshot`, alongside the undo tree / insert session / `lastFind`
-      already listed below. Same deferral, same revisit point
-- [ ] Recorded macros (`EditorState.macros`, `recording`, `lastMacroReg`) are
-      likewise **not serialized** in `EngineSnapshot` — same deferral
+- [x] Marks, the jumplist and the previous-context mark are **serialized as of
+      M2 Wave A**, alongside the undo tree / `lastFind` / `.` record listed
+      above. Same deferral, closed at the same point
+- [x] Recorded macros (`EditorState.macros`, `lastMacroReg`) **likewise, at M2
+      Wave A**. An in-progress `recording` is the one exclusion, for the same
+      reason the insert session is: it is a half-finished command, and a reload
+      does not resume one
 
 **Wave 4 — automation** `[x]`
 
@@ -1205,17 +1209,110 @@ what M2 has to build and neither of which is visible in the bullets below:**
   `EngineSnapshot`" entries above have been pointing at all along, and M2's
   own done-line (the director determinism test) cannot be stated without
   closing it. M2 owns that `vim-core` change, exactly as M1 owned the root
-  `tsconfig.json` `lib` addition.
+  `tsconfig.json` `lib` addition. **Closed in Wave A below.**
 - **`onCommandResolved` never fires for a single-keystroke command.** Measured:
   `x`, `j`, `u`, `.` and a whole `iab<Esc>` insert session emit **zero**
-  events, while `dw`/`d2w`/`3x`/`ci(`/`:d<CR>` each emit one.
-  `engine.ts:89` fires only when the pending buffer empties *having held
-  something*, and a one-key command's buffer was never non-empty. This breaks
+  events, while `dw`/`d2w`/`3x`/`ci(`/`:d<CR>` each emit one. `feed()` fired
+  only when the pending buffer emptied *having held something*, and a one-key
+  command's buffer was never non-empty. This breaks
   both features built on it: scoring silently undercounts (a stage solved with
   `xxx` scores **zero** keystrokes), and turn-based entities — "threats tick
   only when the player acts" — would never tick during Act I's pure `hjkl`
   navigation, which is precisely the act whose stated mechanic is "something
   moves only when you do."
+
+### Wave A — the `vim-core` debt M2 rests on `[x]`
+
+Both findings above, fixed in `packages/vim-core/src/engine.ts` before any
+`packages/game/` file exists, per `M2-PLAN.md`'s build order. Test-first: the new
+`packages/vim-core/src/engine.test.ts` encodes the divergence table as its
+parameter list and the resolve table as another, so both are pinned the way the
+rest of the package is. **1298 tests green** (1244 + 54 new), `pnpm typecheck`
+clean, `pnpm goldens:verify` clean with **zero golden bytes changed**, and
+`pnpm demo`'s four JSON-round-trip scenes still pass — they are the existing
+consumer of `snapshot()`/`restore()`.
+
+- [x] **`EngineSnapshot` carries the eight missing capabilities**: undo tree,
+      dot record, marks, jumplist, `pcmark`, `lastFind`, macros +
+      `lastMacroReg`, `keyPolicy`. Plus two the plan's table did not list but
+      which diverge identically: `visualStart` and `lastVisual` (without them
+      `gv` after a reload reselects nothing).
+- [x] **Two of those needed flattening, not just copying** — and this is the
+      failure mode worth remembering, because it is silent rather than loud:
+      `UndoState.nodes` is a `Map` and `KeyPolicy.allowed`/`denied` are `Set`s,
+      and **`JSON.stringify` renders both as `{}`**. A snapshot that "carries"
+      them would restore an empty undo tree and an empty policy while
+      typechecking perfectly and throwing nothing. Hence `UndoSnapshot` and
+      `KeyPolicySnapshot`, and hence the one test that catches it: re-snapshot a
+      restored engine and compare the JSON strings for equality.
+- [x] Every new field is `T | undefined` rather than optional, so a
+      **pre-Wave-A save still loads** — it just loads without history. Pinned by
+      its own case, since the M0 demo and any fixture written before this wave
+      are exactly that shape.
+- [x] `restore()`'s existing insert-mode guard (restoring `mode: 'insert'`
+      without its session gave an engine that rejected every key, `<Esc>`
+      included) turned out to have **a twin nobody had hit yet**: a mid-visual
+      snapshot restored `mode: 'visual'` with `visualStart` undefined. Now
+      `visualStart` is carried, and the guard covers the visual modes too as a
+      backstop, so a snapshot from either source cannot produce a zombie.
+- [x] **`restore()` was silently CLAMPING the saved cursor, and for visual mode
+      that is wrong** — found by an adversarial review pass, not by the tests as
+      first authored. `restore()` rebuilds through the ordinary constructor,
+      whose `clamp(lines, cursor, allowEndOfLine: false)` forbids the
+      one-past-last-character column — and `$` in visual mode legitimately parks
+      the cursor exactly there (Wave 3f's rule, above). The saved cursor was
+      then never patched back, so a restored `v$` selection was one character
+      short: **`v$d` gave `['', 'cd']` where the live engine gave `['cd']`, and
+      the unnamed register came back `"ab"` instead of `"ab\n"`** — buffer AND
+      register diverging, on the one mode the change had gone out of its way to
+      preserve. `restore()` now re-clamps both cursor and `visualStart` with
+      `allowEndOfLine: true` when the restored mode is visual, mirroring `gv`'s
+      own restore path in `state.ts`, which clamps a stored selection's both
+      ends exactly that way. Normal mode still clamps to `len - 1`, so a
+      mid-insert save's cursor is still pulled back on restore, as `<Esc>` does.
+      The lesson for the next reviewer: `vjl` cannot catch this and neither can
+      any test whose selection stops short of the line end — the five new cases
+      all use `$`.
+- [x] The `:s ... c` confirm session was the one `awaiting` state the resolve
+      table missed. Verified separately: it resolves as ONE 17-keystroke command
+      (`:%s/a/b/gc<CR>yynyyn`), not as a command plus six loose responses, and
+      it terminates on `<Esc>`/`q` too rather than wedging the counter open.
+- [x] `rebuildUndo` falls back to the fresh root when `current` names a node the
+      save does not contain — a dangling pointer would otherwise make every `u`
+      a silent no-op, which is the same class of bug as the `Map`-to-`{}` one.
+- [x] **`CommandResolved` now fires once per return to REST**, where rest is
+      "no pending key buffer, no `awaiting` accumulator, no insert session, no
+      visual anchor" (`atRest()`). The old rule fired only when the pending
+      buffer emptied *having held something*, so `x`/`j`/`u`/`.` scored zero.
+      What the rest rule additionally fixes, both measured and neither in the
+      plan's table:
+      - **`ci(foo<Esc>` used to resolve at the `(`, for 3 keystrokes, and the
+        typing was never counted at all.** An insert session is now ONE command
+        resolving on `<Esc>`, carrying all 7. Par is meaningless otherwise.
+      - **a whole visual operation fired nothing** — `vjd` emitted zero events,
+        because `v` never fills the pending buffer. Now one command, 3 keys.
+      - an `awaiting` accumulator (`:`, `/`, a `:s ... c` confirm session)
+        empties the key buffer while still mid-command, which is why `atRest`
+        tests both rather than just the buffer.
+      - an open `q` recording is deliberately **not** a rest barrier: it spans
+        whole commands, so `qaxq` is correctly three of them (`qa`, `x`, `q`).
+- [x] **A rejected key resolves nothing** — the invariant `tick.ts` needs, since
+      a locked key that advanced the world would punish the player for
+      exploring. Writing the test for it surfaced a real bug in the first
+      implementation: `reject()` (`state.ts`) clears the whole half-typed
+      pending command, so `d`, locked-`w`, `j` left the spent `d` in the
+      keystroke accumulator and resolved a phantom two-keystroke `dj`. The keys
+      forfeited with the aborted command are now dropped with it — *dropped*
+      rather than resolved, so no tick can ever be blamed on a locked key. An
+      insert session survives rejection intact, so its keys keep counting.
+- [x] A **failed** command is not a rejected one: `ci(` with no bracket in the
+      buffer aborts the operator and still resolves for its 3 keystrokes. Only
+      the key policy makes a keypress free.
+- [x] `marks.ts`, `dot.ts` and `macros.ts` added to `vim-core`'s barrel —
+      `EngineSnapshot` names `Marks`, `JumpList`, `DotRecord` and `MacroStore`
+      in its public shape, and `packages/game` will need to name them too.
+
+### The rest of M2
 
 - [ ] Zod stage schema (buffer text, entity overlay, `allowedKeys`,
       `teachesKeys`, `par`, win/lose conditions, triggers, story beats,

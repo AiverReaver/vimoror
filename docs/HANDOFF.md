@@ -1,4 +1,4 @@
-# HANDOFF — M0 + M1 complete (2026-08-17)
+# HANDOFF — M0 + M1 complete, M2 Wave A done (2026-08-17)
 
 Read this first when continuing work. The plan of record is `MergedPlan.md`;
 the tracking doc is `docs/CHECKLIST.md`; the harness gospel is
@@ -399,9 +399,26 @@ artifact and excluded.
 - `[[ ]]` section motions are not implemented. `H M L` are **decided**: core
   stays viewport-free and they arrive at M1 fed a window height + topline.
 - `o`/`O` with `autoindent` don't copy the indent (baseline is `noautoindent`).
-- `curswant` is captured in every golden but not compared. Undo tree, insert
-  session, `lastFind`, marks, jumplist and the `.` record are not serialized in
-  `EngineSnapshot`. Both deferred deliberately, both tracked in the checklist.
+- `curswant` is captured in every golden but not compared. Deferred
+  deliberately, tracked in the checklist.
+- `EngineSnapshot`'s missing history is **closed as of M2 Wave A** — the undo
+  tree, `.` record, marks, jumplist, `pcmark`, `lastFind`, macros, `keyPolicy`,
+  `visualStart` and `lastVisual` all round-trip now. Still excluded on purpose:
+  the **insert session** and an in-progress **`q` recording**, both being
+  half-finished commands that a reload does not resume. Three traps if you touch
+  this, all of which fail SILENTLY rather than loudly:
+  - `UndoState.nodes` is a `Map` and `KeyPolicy`'s sets are `Set`s, and
+    `JSON.stringify` renders both as `{}`. The only thing that catches it is
+    re-snapshotting a restored engine and diffing the JSON, which
+    `engine.test.ts` does.
+  - `restore()` rebuilds through the ordinary constructor, so the saved cursor
+    gets `clamp(..., allowEndOfLine: false)`. That is wrong for visual mode,
+    where `$` legitimately sits on the end-of-line NUL (fact 4 above) — a
+    restored `v$` was one character short, and `v$d` stopped joining the next
+    line up. Re-clamped with `true` for visual now, mirroring `gv`. A test whose
+    selection stops short of the line end cannot see this.
+  - a restored `undoState.current` naming a node the save does not contain makes
+    every `u` a silent no-op; `rebuildUndo` falls back to the fresh root.
 - The blockwise register's WIDTH is not modelled — the comparator maps any
   `\x16…` type to `blockwise` and ignores the width, so a width-only divergence
   would not be caught today.
@@ -453,9 +470,11 @@ non-blocking. Worth doing early in whatever comes after M0:
   why: it is pure `vim-core` grammar work touching zero render files). Pick
   it up whenever `vim-core` is next touched — scratch-probe the boundary
   semantics, add to `motions.ts`, author a golden family.
-- M2 (`@vimorror/game`) needs its own plan before it starts, same as M1 did —
-  see `MergedPlan.md`'s M1–M6 table, and use `docs/M1-PLAN.md` as the shape
-  of what that plan should look like.
+- M2 (`@vimorror/game`) has its plan: **`docs/M2-PLAN.md`**, waves A–E.
+  **Wave A is done** — the `vim-core` debt M2 rests on (`EngineSnapshot`'s
+  missing history and `CommandResolved` never firing for a one-key command).
+  `docs/CHECKLIST.md`'s M2 section carries what building it taught. Wave B (the
+  Zod stage schema) is next, and is the first `packages/game/` file.
 
 No open design questions carry over from 4f — the one item 4e's handoff
 flagged as unresolved (whether `:g` containing `:s ... c` is worth

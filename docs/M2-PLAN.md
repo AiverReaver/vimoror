@@ -18,6 +18,12 @@ anywhere in the existing bullets.
 
 ### 1. `EngineSnapshot` is missing 8 of the 11 things replay depends on
 
+> **Resolved in Wave A (2026-08-17).** Every row below reads OK now. Building it
+> turned up four things this section did not predict — they are written up under
+> "What Wave A found that this plan did not" at the end of the section, because
+> two of them are traps that fail *silently* and one is a defect this plan's own
+> table could never have surfaced.
+
 **This is the big one, because "director determinism" is M2's own done-line.**
 `MergedPlan.md` states it as: *a replay containing injected edits must
 reproduce byte-identically from its snapshot. If horror breaks replay, the
@@ -63,6 +69,52 @@ behind it — the existing corpus is the regression net, and every field added
 is a field `restore()` currently drops on the floor, so nothing that passes
 today can start failing.
 
+#### What Wave A found that this plan did not
+
+The claim above — "every field added is a field `restore()` currently drops on
+the floor, so nothing that passes today can start failing" — held. What did not
+hold is the assumption that carrying the fields is the whole job.
+
+- **Two of the eleven cannot be carried by copying, and fail silently if you
+  try.** `UndoState.nodes` is a `Map` and `KeyPolicy.allowed`/`denied` are
+  `Set`s, and **`JSON.stringify` renders both as `{}`**. A `snapshot()` that
+  simply spreads them typechecks perfectly, throws nothing, and restores an
+  empty undo tree and an empty key policy — the key-policy half re-opening the
+  exact gameplay bug this section calls out two paragraphs up. Hence
+  `UndoSnapshot` and `KeyPolicySnapshot`, and hence the one test that can catch
+  it: **re-snapshot a restored engine and compare the JSON strings**. Nothing
+  weaker sees it, because both failures are shaped like success.
+- **The list of fields is 11, not 7.** `visualStart` and `lastVisual` diverge
+  identically and are not in the table above (`gv` after a reload reselected
+  nothing), and `pcmark` is separate from `marks` (`` `` `` and `''` return to
+  it). A restore that carries `mode: 'visual'` without `visualStart` is also
+  the same class of zombie as the mid-insert restore `engine.ts` already
+  documented — an engine in visual mode with no anchor.
+- **`restore()` silently CLAMPS the saved cursor, which is wrong for visual
+  mode.** It rebuilds through the ordinary constructor, whose
+  `clamp(..., allowEndOfLine: false)` forbids the one-past-last-character
+  column — and `$` in visual mode legitimately parks the cursor exactly there.
+  A restored `v$` selection was one character short: **`v$d` produced
+  `['', 'cd']` where the live engine produced `['cd']`, with the unnamed
+  register coming back `"ab"` instead of `"ab\n"`** — buffer *and* register
+  diverging, on the one mode the change had gone out of its way to preserve.
+  Fixed by re-clamping cursor and `visualStart` with `allowEndOfLine: true`
+  when the restored mode is visual, mirroring `gv`'s own restore path in
+  `state.ts`. **This plan's divergence table could not have found it** — every
+  row builds history and then consumes it from a normal-mode rest state, and
+  this defect only exists mid-visual. It was caught by an adversarial review
+  pass afterwards, and a test whose selection stops short of the line end
+  (`vjl`) cannot see it either.
+- **A dangling undo pointer is the third silent failure.** A restored
+  `undoState.current` naming a node the save does not contain makes every `u` a
+  no-op rather than an error; `rebuildUndo` falls back to the fresh root.
+
+The through-line worth carrying into Wave B: **on this surface, wrong looks
+exactly like right.** Three of the four defects above produce a working,
+non-throwing engine that is quietly missing history. Assertions on
+buffer-and-cursor alone are not enough; the JSON-identity check is what makes
+them visible.
+
 ### 2. `onCommandResolved` never fires for a single-keystroke command
 
 Measured, feeding each sequence to a fresh engine with a listener attached:
@@ -96,6 +148,47 @@ does — the exact "drift between two implementations" trap `dot.ts` was
 designed to avoid. Wave A pins the intended table as tests **first**, since
 this is a behavior change to a package whose whole value is that its behavior
 is pinned.
+
+#### What Wave A found that this plan did not
+
+> **Resolved in Wave A (2026-08-17).** The recommendation was taken: fixed in
+> `vim-core`, no second counter in `game`.
+
+**"Single-keystroke" turned out to be the wrong diagnosis of the right bug.**
+The table above reads as "one-key commands are missed", which suggests a narrow
+fix — fire when the buffer went from empty to empty. Two much larger holes sit
+in the same place and are invisible in that framing:
+
+- **An insert session's typing was never counted at all.** `ci(foo<Esc>`
+  resolved at the `(` for **3 keystrokes when the player pressed 7** — it is in
+  the *right* column of the table above, scored as a success. Every `c`, `i`,
+  `a`, `o`, `s` stage would have scored its edit as free. Par is meaningless
+  against that.
+- **A whole visual operation fired nothing.** `vjd` emits zero events, because
+  `v` never fills the pending buffer — so visual mode is as invisible to
+  scoring and ticking as `hjkl` is, and it is not in the table above either.
+
+So the rule is not "also fire for one-key commands" but **"a command resolves
+once per return to REST"**, where rest is: no pending key buffer, no `awaiting`
+accumulator, no insert session, no visual anchor (`atRest()` in `engine.ts`).
+The `awaiting` clause matters on its own — `:`, `/` and a `:s ... c` confirm
+session all empty the pending key buffer while still mid-command, so testing
+the buffer alone would resolve `:%s/a/b/gc<CR>` and then score each `y`/`n`
+response as its own command. Measured: the whole session correctly resolves as
+one 17-keystroke command, and terminates on `<Esc>`/`q` rather than wedging the
+counter open. An open `q` recording is deliberately **not** a rest barrier — it
+spans whole commands, so `qaxq` is correctly three of them.
+
+**And one defect the plan's framing actively hid.** The rejected-key rule this
+plan states under Wave C ("a rejected key must not advance the tick") has a
+prerequisite in Wave A that only surfaced while writing its test: `reject()` in
+`state.ts` clears the whole half-typed pending command, so `d`, locked-`w`, `j`
+left the already-spent `d` in the keystroke accumulator and resolved a phantom
+two-keystroke `dj`. Keys forfeited with an aborted command are now dropped with
+it — **dropped rather than resolved**, so that no tick can ever be blamed on a
+locked key. A *failed* command is not a rejected one: `ci(` with no bracket in
+the buffer still resolves for its 3 keystrokes. Only the key policy makes a
+keypress free.
 
 ### 3. Zero scaffolding exists — `packages/game/`, `apps/`, `content/` are all absent
 
@@ -193,13 +286,34 @@ whole layer sits between a deterministic engine and a replay test.
 
 ## Build order
 
-1. **Wave A — the `vim-core` debt M2 rests on.** Findings 1 and 2, in
-   `vim-core`, before any `packages/game/` file exists: extend
-   `EngineSnapshot` (undo tree, dot record, marks, jumplist, `lastFind`,
-   macros, `keyPolicy`) and settle `CommandResolved` for single-key commands.
-   Test-first, since both are behavior changes to a pinned package. Done when
-   the divergence table above reads OK on every row and the existing 1244
-   tests are still green.
+1. **Wave A — the `vim-core` debt M2 rests on.** `[x]` **Done 2026-08-17.**
+   Findings 1 and 2, in `vim-core`, before any `packages/game/` file exists:
+   extend `EngineSnapshot` (undo tree, dot record, marks, jumplist, `pcmark`,
+   `lastFind`, macros, `lastMacroReg`, `keyPolicy`, `visualStart`,
+   `lastVisual` — 11 fields, not the 7 this plan first listed) and settle
+   `CommandResolved`, which became a return-to-REST rule rather than a
+   single-key patch. Test-first, since both are behavior changes to a pinned
+   package.
+
+   Delivered in `packages/vim-core/src/engine.ts` plus a new 54-case
+   `engine.test.ts` that encodes the divergence table as one parameter list and
+   the resolve table as another. **1298 tests green** (1244 + 54),
+   `pnpm typecheck` clean, `pnpm goldens:verify` clean with **zero golden bytes
+   changed**, and `pnpm demo`'s four JSON-round-trip scenes still pass — they
+   are the pre-existing consumer of `snapshot()`/`restore()`. One extra
+   `vim-core` edit beyond `engine.ts`: `isVisual` exported from `state.ts` and
+   reused rather than duplicated, and `marks.ts`/`dot.ts`/`macros.ts` added to
+   the barrel, since `EngineSnapshot` now names `Marks`, `JumpList`,
+   `DotRecord` and `MacroStore` in its public shape and `packages/game` will
+   need them too.
+
+   **Left open, and worth doing before Wave C leans on any of this:** the
+   adversarial review that caught the visual-`$` clamp defect hit a session
+   limit partway through — its JSON-safety, restore-hazards, resolve-rule and
+   test-strength lenses never reported. Only the completeness lens finished (a
+   26-case build/snapshot/restore/consume sweep, green on every field it
+   covered). Re-run it; the finding it did produce was real and high-severity,
+   which is the argument for finishing the other four.
 2. **Wave B — the schema.** `schema.ts` + `entities.ts` + hand-authored
    `content/stages/` fixtures + `validate:stages`. Done when a human can
    author a stage as JSON and get a precise error for every way of getting it
@@ -220,10 +334,20 @@ Real vitest suites, co-located `src/*.test.ts`, matching both existing
 packages' convention. No new test infrastructure — every module is pure.
 
 **The director determinism test is the milestone's keystone**, and per finding
-1 it is currently unwritable. Its shape: a scripted session mixing player keys
-with `director.*` injections, snapshotted mid-run, restored, replayed, and
+1 it was unwritable until Wave A. Its shape: a scripted session mixing player
+keys with `director.*` injections, snapshotted mid-run, restored, replayed, and
 diffed byte-for-byte — including the undo tree, marks and macros the restore
 now carries. The divergence table above becomes its parameter list.
+
+Wave A wrote the `vim-core`-level half of it (`engine.test.ts`: a script mixing
+`feedKeys` with `injectEdit`/`injectUndoEntry`/`rewriteRegister`, round-tripped
+through real JSON and then fed ``u<C-r>.@cd`a"zp`` to consume every kind of
+history it built). Wave E's version is the same test one layer up, through
+`session.feedKeys` with a stage attached. Two assertions Wave A's experience
+says to include in that one, because the engine-level suite needed both:
+**re-snapshot the restored session and compare JSON strings** (the only thing
+that catches a `Map`/`Set` reaching JSON as `{}`), and **exercise a `$`-in-
+visual selection** (the only shape that catches a cursor clamped on restore).
 
 Property tests (fast-check is already wired) for the invariants a fixture
 corpus cannot enumerate: a stage winnable with `allowedKeys` stays winnable at
@@ -244,7 +368,10 @@ a rejected key never advances the tick.
 5. Gentle Mode and the jump-scare toggle disable startle beats with all
    mechanics and story intact.
 6. Nothing changed outside `packages/game/` and `content/` except the Wave A
-   `vim-core` debt (findings 1 and 2), which this plan states as owned.
+   `vim-core` debt (findings 1 and 2), which this plan states as owned. As
+   built, that is exactly three files: `engine.ts` (the work), `state.ts` (one
+   `export` keyword on `isVisual`, reused rather than duplicated) and
+   `index.ts` (barrel re-exports for the types `EngineSnapshot` now names).
 
 **Explicitly NOT in M2:** the stage editor and solution recorder (M3); the
 title screen, comfort-settings UI, save system, audio, Playwright E2E (M4);
@@ -257,6 +384,14 @@ rendering.
   resolved command, or per buffer change. Wave C decides it against a real
   fixture stage rather than in the abstract; it is the one choice here that
   changes how the game *feels*, and it is cheap to change in one pure file.
+  Wave A narrowed it without settling it: `CommandResolved` is now a viable
+  tick source on its own, since it fires for `hjkl` and for a whole visual or
+  insert command alike, which it did not before. The live question is whether
+  "one insert session = one tick" feels right, since that is one tick for
+  arbitrarily many keystrokes — the one place the rest rule and a
+  per-keystroke tick genuinely disagree. Two constraints Wave A already fixed
+  in place: a **rejected** key never resolves and so can never tick, and a
+  **failed** command does resolve and therefore does tick.
 - Whether hints live in the stage data or are derived entirely from the
   recorded solution. Deferred to Wave D, when M3's recorder shape is closer.
 
@@ -267,6 +402,7 @@ rendering.
   `gating.ts`, `difficulty.ts`, `hints.ts`, `scoring.ts`, `gentle.ts`,
   `session.ts`, `index.ts`
 - `packages/vim-core/src/engine.ts` (Wave A — `EngineSnapshot`,
-  `CommandResolved`), and the state modules it must now serialize
+  `CommandResolved`) and its `engine.test.ts`, plus `state.ts` (`isVisual`
+  exported) and `index.ts` (barrel) — the state modules it must now serialize
 - `content/stages/*.json`, `tools/validate-stages.ts`
 - Root `package.json` (`validate:stages` script)

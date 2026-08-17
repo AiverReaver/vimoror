@@ -13,12 +13,47 @@
 
 import { applyEdit, clamp, type Lines } from './buffer.ts';
 import { render, tokenize } from './keys.ts';
-import { adjustJumps, adjustMarks, adjustPos, lineShift } from './marks.ts';
+import { adjustJumps, adjustMarks, adjustPos, lineShift, type JumpList, type Marks } from './marks.ts';
 import { DEFAULT_OPTIONS, type EditorOptions } from './operators.ts';
-import { pushUndo } from './undo.ts';
-import { EMPTY_PENDING, initState, step, type EditorState, type Pending } from './state.ts';
+import { pushUndo, type UndoNode, type UndoState } from './undo.ts';
+import { EMPTY_PENDING, initState, isVisual, step, type EditorState, type Pending } from './state.ts';
+import type { DotRecord } from './dot.ts';
+import type { MacroStore } from './macros.ts';
 import type { Edit, EngineEvent, KeyPolicy, KeyToken, Mode, Pos, RegisterType, ResolvedCommand } from './types.ts';
 
+/**
+ * The undo tree, flattened for JSON. `UndoState.nodes` is a `Map`, which
+ * `JSON.stringify` renders as `{}` — silently emptying the tree rather than
+ * failing, which is exactly why `engine.test.ts` re-snapshots a restored engine
+ * and compares the JSON.
+ */
+export type UndoSnapshot = {
+  /** In creation order, so `children` indices stay meaningful on rebuild. */
+  readonly nodes: readonly UndoNode[];
+  readonly current: number;
+  readonly nextId: number;
+};
+
+/** `KeyPolicy`'s `Set`s, likewise flattened — a `Set` also JSONs to `{}`. */
+export type KeyPolicySnapshot = {
+  readonly allowed: readonly KeyToken[] | undefined;
+  readonly denied: readonly KeyToken[] | undefined;
+};
+
+/**
+ * Everything a save, a replay or a ghost run has to reproduce.
+ *
+ * Every field below `options` was added at M2 Wave A. Before that a restored
+ * engine dropped them on the floor, which made `u`, `<C-r>`, `.`, marks, `@a`,
+ * `<C-o>`, `;`, `gv` and — worst, because it is a gameplay bug rather than a
+ * horror one — the stage's own key policy all diverge from the live engine they
+ * were snapshotted from. They are typed `T | undefined` rather than optional so
+ * that a pre-Wave-A JSON save still restores: it just restores without history.
+ *
+ * The insert session is still deliberately NOT carried: a snapshot taken
+ * mid-insert restores to normal mode, like a real Vim session after a reload.
+ * An open `q` recording is dropped for the same reason.
+ */
 export type EngineSnapshot = {
   readonly lines: readonly string[];
   readonly cursor: Pos;
@@ -28,6 +63,20 @@ export type EngineSnapshot = {
   readonly searchPattern: string;
   readonly searchDirection: 'forward' | 'backward' | undefined;
   readonly options: EditorOptions;
+  readonly undo: UndoSnapshot | undefined;
+  readonly dot: DotRecord | undefined;
+  readonly marks: Marks | undefined;
+  readonly jumps: JumpList | undefined;
+  /** Vim's `w_pcmark` — where `` `` `` and `''` return to. */
+  readonly pcmark: Pos | undefined;
+  readonly lastFind: { readonly cmd: 'f' | 'F' | 't' | 'T'; readonly ch: string } | undefined;
+  readonly macros: MacroStore | undefined;
+  readonly lastMacroReg: string | undefined;
+  readonly keyPolicy: KeyPolicySnapshot | undefined;
+  /** The live selection, so a mid-visual save is not a broken mode. */
+  readonly visualStart: Pos | undefined;
+  /** What `gv` reselects. */
+  readonly lastVisual: { readonly mode: Mode; readonly start: Pos; readonly end: Pos } | undefined;
 };
 
 export type PendingView = {
@@ -41,6 +90,13 @@ export type PendingView = {
 export class VimEngine {
   #state: EditorState;
   #commandListeners: ((c: ResolvedCommand) => void)[] = [];
+  /**
+   * Keys fed since the last resolved command — an insert session's whole body
+   * included, since that session IS the command. Transient like
+   * `state.pending`, and deliberately not snapshotted for the same reason: a
+   * restore lands at rest, so there is no half-typed command to carry.
+   */
+  #pendingKeys: readonly KeyToken[] = [];
 
   constructor(lines: Lines, cursor: Pos = { line: 0, col: 0 }, options: EditorOptions = DEFAULT_OPTIONS) {
     this.#state = initState(lines, cursor, options);
@@ -84,20 +140,38 @@ export class VimEngine {
     const { state, events } = step(before, key);
     this.#state = state;
 
-    // A command "resolves" when the pending buffer empties having held
-    // something — that is the unit keystroke scoring counts.
-    if (before.pending.keyBuffer.length > 0 && state.pending.keyBuffer.length === 0) {
-      const keys = render([...before.pending.keyBuffer, key]);
-      const command: ResolvedCommand = {
-        keys,
-        keystrokes: before.pending.keyBuffer.length + 1,
-        shape: shapeOf(keys),
-      };
-      for (const cb of this.#commandListeners) cb(command);
-      return [...events, { type: 'CommandResolved', command }];
+    // A REJECTED key is not part of any command: it neither counts against the
+    // player's score nor advances the world. Locking a key must never punish
+    // the player for pressing it.
+    //
+    // `reject()` also throws away whatever half-typed command was pending, so
+    // the keys already spent on it are forfeited with it — otherwise `d`,
+    // locked-`w`, `j` would resolve as a three-keystroke `dj`. They are dropped
+    // rather than resolved so that no tick can be blamed on a locked key. An
+    // insert session survives rejection intact, so its keys keep counting.
+    if (events.some((e) => e.type === 'KeyRejected')) {
+      if (atRest(state)) this.#pendingKeys = [];
+      return [...events];
     }
 
-    return [...events];
+    this.#pendingKeys = [...this.#pendingKeys, key];
+
+    // A command "resolves" when the engine returns to REST. The old rule — the
+    // pending buffer emptied having held something — scored ZERO for every
+    // one-key command (`x`, `j`, `u`, `.`), which meant a stage solved with
+    // `xxx` cost nothing and Act I's pure-`hjkl` stages emitted no events at
+    // all for a turn-based threat to tick off.
+    if (!atRest(state)) return [...events];
+
+    const keys = render(this.#pendingKeys);
+    const command: ResolvedCommand = {
+      keys,
+      keystrokes: this.#pendingKeys.length,
+      shape: shapeOf(keys),
+    };
+    this.#pendingKeys = [];
+    for (const cb of this.#commandListeners) cb(command);
+    return [...events, { type: 'CommandResolved', command }];
   }
 
   /** Feed authoring notation, e.g. `feedKeys('d2w')`. */
@@ -167,15 +241,38 @@ export class VimEngine {
 
   /** Saves, replays, ghost runs and test fixtures all share this one path. */
   snapshot(): EngineSnapshot {
+    const s = this.#state;
+    const policy = s.keyPolicy;
     return {
-      lines: [...this.#state.lines],
-      cursor: this.#state.cursor,
-      desiredCol: this.#state.desiredCol,
-      mode: this.#state.mode,
-      registers: { ...this.#state.registers },
-      searchPattern: this.#state.searchPattern,
-      searchDirection: this.#state.searchDirection,
-      options: this.#state.options,
+      lines: [...s.lines],
+      cursor: s.cursor,
+      desiredCol: s.desiredCol,
+      mode: s.mode,
+      registers: { ...s.registers },
+      searchPattern: s.searchPattern,
+      searchDirection: s.searchDirection,
+      options: s.options,
+      // ponytail: the undo tree stores whole buffers per node (snapshot undo,
+      // see undo.ts), so a long session's save grows with edits × buffer size.
+      // Fine for stage-sized buffers; cap or diff the nodes if a save ever gets
+      // big enough to notice.
+      undo: { nodes: [...s.undoState.nodes.values()], current: s.undoState.current, nextId: s.undoState.nextId },
+      dot: s.dot,
+      marks: { ...s.marks },
+      jumps: { list: [...s.jumps.list], idx: s.jumps.idx },
+      pcmark: s.pcmark,
+      lastFind: s.lastFind,
+      macros: { ...s.macros },
+      lastMacroReg: s.lastMacroReg,
+      keyPolicy:
+        policy === undefined
+          ? undefined
+          : {
+              allowed: policy.allowed === undefined ? undefined : [...policy.allowed],
+              denied: policy.denied === undefined ? undefined : [...policy.denied],
+            },
+      visualStart: s.visualStart,
+      lastVisual: s.lastVisual,
     };
   }
 
@@ -183,20 +280,78 @@ export class VimEngine {
     const engine = new VimEngine(s.lines, s.cursor, s.options ?? DEFAULT_OPTIONS);
     // A snapshot taken mid-insert restores to NORMAL mode, like a real Vim
     // session after a reload. Restoring `mode: 'insert'` without its session
-    // would leave an engine that rejects every key, <Esc> included.
-    // The undo tree is not serialized yet — a restored engine starts with the
-    // snapshot as its undo root.
-    const mode: Mode = s.mode === 'insert' || s.mode === 'replace' ? 'normal' : s.mode;
+    // would leave an engine that rejects every key, <Esc> included. A visual
+    // mode whose anchor did not survive is the same trap, so it gets the same
+    // treatment rather than restoring a selection with no fixed end.
+    const anchor = isVisual(s.mode) ? s.visualStart : undefined;
+    const insertish = s.mode === 'insert' || s.mode === 'replace';
+    const mode: Mode = insertish || (isVisual(s.mode) && anchor === undefined) ? 'normal' : s.mode;
     engine.#state = {
       ...engine.#state,
       desiredCol: s.desiredCol,
       mode,
+      // `new VimEngine(...)` above already clamped the cursor with
+      // `allowEndOfLine: false`. That is right for normal mode and WRONG for
+      // visual, where `$` legitimately parks the cursor ON the end-of-line NUL
+      // — and an inclusive selection ending past the line then takes the LINE
+      // BREAK, which is why `v$d` joins the next line up while `vlld` over the
+      // same characters leaves an empty line behind. Clamped, a restored `v$`
+      // selection is silently one character short and `v$d` stops joining.
+      // `gv`'s own restore path clamps a stored selection's BOTH ends with
+      // `allowEndOfLine: true`; restoring a saved selection is the same job.
+      ...(isVisual(mode) ? { cursor: clamp(s.lines, s.cursor, true) } : {}),
       registers: { ...s.registers },
       searchPattern: s.searchPattern,
       searchDirection: s.searchDirection,
+      ...(s.undo === undefined ? {} : { undoState: rebuildUndo(s.undo, engine.#state.undoState) }),
+      dot: s.dot,
+      ...(s.marks === undefined ? {} : { marks: { ...s.marks } }),
+      ...(s.jumps === undefined ? {} : { jumps: { list: [...s.jumps.list], idx: s.jumps.idx } }),
+      pcmark: s.pcmark,
+      lastFind: s.lastFind,
+      ...(s.macros === undefined ? {} : { macros: { ...s.macros } }),
+      lastMacroReg: s.lastMacroReg,
+      keyPolicy: rebuildKeyPolicy(s.keyPolicy),
+      visualStart: anchor === undefined || !isVisual(mode) ? undefined : clamp(s.lines, anchor, true),
+      lastVisual: s.lastVisual,
     };
     return engine;
   }
+}
+
+/**
+ * At rest = no half-typed command anywhere. The pending buffer covers `d` and
+ * `f`; `awaiting` covers the accumulators that empty it while still waiting
+ * (`:`, `/`, a `:s ... c` confirm session); and the insert session and visual
+ * anchor cover the two states where a command spans arbitrarily many keys.
+ *
+ * An open `q` recording is deliberately NOT a barrier — it spans whole
+ * commands, so `qaxq` really is three of them.
+ */
+function atRest(s: EditorState): boolean {
+  return (
+    s.pending.keyBuffer.length === 0 &&
+    s.pending.awaiting === undefined &&
+    s.insert === undefined &&
+    s.visualStart === undefined
+  );
+}
+
+function rebuildUndo(snap: UndoSnapshot, fallback: UndoState): UndoState {
+  if (snap.nodes.length === 0) return fallback;
+  const nodes = new Map<number, UndoNode>();
+  for (const n of snap.nodes) nodes.set(n.id, n);
+  // A `current` naming a node the save does not contain would leave every `u`
+  // a silent no-op; fall back to the fresh root rather than to a broken tree.
+  return nodes.has(snap.current) ? { nodes, current: snap.current, nextId: snap.nextId } : fallback;
+}
+
+function rebuildKeyPolicy(snap: KeyPolicySnapshot | undefined): KeyPolicy | undefined {
+  if (snap === undefined) return undefined;
+  return {
+    ...(snap.allowed === undefined ? {} : { allowed: new Set(snap.allowed) }),
+    ...(snap.denied === undefined ? {} : { denied: new Set(snap.denied) }),
+  };
 }
 
 /** `d2w` → `d{count}w`, so scoring compares command shapes not literal keys. */

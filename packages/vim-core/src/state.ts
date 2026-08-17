@@ -1204,7 +1204,7 @@ function runOperator(
 
 // --- visual mode ------------------------------------------------------------
 
-function isVisual(mode: Mode): boolean {
+export function isVisual(mode: Mode): boolean {
   return mode === 'visual' || mode === 'visual-line' || mode === 'visual-block';
 }
 
