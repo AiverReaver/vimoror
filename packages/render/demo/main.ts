@@ -14,11 +14,10 @@
 
 import { VimEngine, type KeyToken } from '@vimorror/core';
 
-import { linesToCells } from '../src/cell-buffer.ts';
-import { followCursor } from '../src/camera.ts';
-import { bakeFontAtlas } from '../src/font-atlas.ts';
-import { createRenderer } from '../src/pipeline.ts';
-import type { Camera } from '../src/types.ts';
+// Through the barrel, not the individual modules: the demo is render's only
+// consumer until M2, so this is what keeps `index.ts` honest about exporting
+// everything a real caller needs.
+import { bakeFontAtlas, createRenderer, followCursor, linesToCells, type Camera } from '../src/index.ts';
 
 const CELL_W = 10;
 const CELL_H = 20;
@@ -30,13 +29,20 @@ const BG = '#000000';
 
 const FONT_URL = new URL('../assets/fonts/JetBrainsMono-Regular.woff2', import.meta.url).href;
 
+// The bracket sample sits ABOVE the hint line on purpose. `i(` searches AHEAD
+// across lines when the cursor encloses no block, and the hint line's own
+// literal `ci(` is an unmatched open paren — found first from the opening
+// cursor, with no `)` ever matching it, so the object aborts and the `ci(`
+// button silently does nothing. Verified as real Vim's behaviour too, not an
+// engine wart: `di(` from line 1 col 1 leaves this buffer untouched in Vim 9.1
+// and empties `(word)` once the stray paren is out of the search path.
 const INITIAL_LINES = [
   'The quick brown fox jumps over the lazy dog.',
   '',
+  '(word) [bracket] {brace} "quoted string"',
+  '',
   'vimorror renders vim-core through a hand-rolled Canvas2D glyph grid.',
   'Try: dw  ci(  v$d  gg  G  u  <C-r>  /fox<CR>  :s/fox/cat/',
-  '',
-  '(word) [bracket] {brace} "quoted string"',
 ];
 
 const canvas = document.querySelector<HTMLCanvasElement>('#grid')!;

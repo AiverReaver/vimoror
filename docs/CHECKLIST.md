@@ -1103,7 +1103,65 @@ running while the buffer is idle. `pnpm typecheck`/`pnpm test` green repo-wide
 (1244 tests, zero new test infra — all three new files are GPU/canvas code,
 manual-verified per the plan's testing split).
 
-Wave E (wrap-up: `index.ts`, final repo-wide green) is still open.
+**Wave E — wrap-up** `[x]` — `index.ts`: a flat `export *` barrel over all nine
+modules, mirroring `vim-core/src/index.ts`'s pattern (no narrowing needed here —
+render has no `engine.ts`-style class whose internals want hiding, and
+`GlyphGrid` is legitimately usable standalone by a caller that wants the grid
+without any post-FX). `demo/main.ts` now imports through `../src/index.ts`
+rather than the five individual modules — the demo is render's only consumer
+until M2, so pointing it at the barrel is what keeps `index.ts` honest about
+exporting everything a real caller needs, instead of it going stale unnoticed.
+
+Verified: `pnpm typecheck` (root, the flat all-packages compile) and `pnpm -C
+packages/render typecheck` (the package-scoped one) both clean, `pnpm test`
+green repo-wide at **1244 tests** — same count as Wave D, since Wave E adds no
+new logic to test. Re-confirmed in-browser through `pnpm dev:render`: the
+barrel is genuinely on the module graph (`packages/render/src/index.ts`
+fetched, all nine modules loaded in barrel order), zero console errors, and
+the engine→renderer path still live end to end (a `dd` through the demo's
+canned buttons removed the line and repainted both panes, the WebGL2 one with
+its phosphor ghost of the prior frame).
+
+**One real demo bug found by re-driving those buttons, and it is a content
+bug, not a code one: the demo's own hint line was disarming its `ci(`
+button.** `i(` searches AHEAD across lines when the cursor encloses no block
+(Wave 3's measured `openAhead` rule), and the hint line's literal `ci(` is an
+unmatched open paren sitting *before* the `(word)` sample. From the opening
+cursor the search found that stray paren first, and the only `)` later in the
+buffer belongs to `(word)`'s own `(` — so `matchingClose` returned null, the
+object aborted, and the button silently did nothing. **Confirmed as real Vim's
+behaviour, not an engine divergence**, with a `/usr/bin/vim` probe on the
+identical buffer: `di(` from line 1 col 1 leaves it completely untouched in
+Vim 9.1, and empties `(word)` once the stray paren is out of the search path.
+Fixed by moving the bracket sample line ABOVE the hint line — the smallest
+change that puts a matched pair first, with no hint text distorted (balancing
+it to `ci()` would have made the hint line itself the nearest block, which is
+worse). Engine and Vim now agree on the new buffer, checked both ways, and the
+button confirmed live in-browser: `()` with the bar cursor between the parens,
+mode `insert`.
+
+**The button was dead from the day it was written** — `INITIAL_LINES` is
+byte-identical in `17b339f` (Wave C) and `9e3e4c3` (Wave D), so it never
+worked once. Wave C's entry above is nonetheless true *as written*: it claims
+"`ci(` **on** `(word)`", cursor-placed, which resolves through
+`enclosingOpen` and never runs the forward search at all — verified still
+working on both the old and new buffers. The gap is that the same entry also
+lists `ci(` among the canned buttons, so it reads as though the button was
+what got exercised. Wave C's text is left as the honest record of what was
+actually checked; **the lesson is that a canned button verified by hand-placed
+cursor proves nothing about the button.** All nine buttons swept from the
+demo's own opening state as a result: `ci(` was the only genuine dead one.
+`gg`/`u`/`<C-r>` also change nothing there, but correctly — line 1 is already
+line 1, and a pristine buffer has nothing to undo or redo.
+
+**All five of `M1-PLAN.md`'s "M1 done when" criteria now hold**, with one
+honest footnote on the fifth: nothing changed outside `packages/render/`
+except the two root fixes the plan named (`tsconfig.json`'s `lib`,
+`package.json`'s `vite` devDependency + `dev:render` script) — plus
+`pnpm-lock.yaml` as that devDependency's direct consequence, and
+`.claude/launch.json`, added in Wave B so `dev:render` is reachable through
+the browser tool. Neither was in the plan's list; both are tooling-only and
+touch no shipped code.
 
 **Owns the decision:** canvas vs DOM, decided against real per-cell animation
 requirements. (PixiJS and CodeMirror 6 cannot both be the surface — Pixi is

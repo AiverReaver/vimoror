@@ -1,10 +1,17 @@
-# HANDOFF — M0 complete (2026-08-16)
+# HANDOFF — M0 + M1 complete (2026-08-17)
 
 Read this first when continuing work. The plan of record is `MergedPlan.md`;
 the tracking doc is `docs/CHECKLIST.md`; the harness gospel is
 `tools/goldens/README.md`. This file only carries what those three do not: the
 current verified state, and the engine-internals notes a newcomer would
 otherwise have to rediscover by reading `state.ts` end to end.
+
+**M1 (`@vimorror/render`) is done as of 2026-08-17** — all five waves A–E,
+against `docs/M1-PLAN.md`. Everything below the header is still about
+`vim-core`/M0 and remains accurate; render's own hard-won details live in
+`docs/CHECKLIST.md`'s M1 section (the phosphor-accumulator copy, the
+`{alpha: false}` trap, `GlyphGrid.invalidate()`, the two-canvas context split)
+rather than being duplicated here.
 
 `docs/WAVE3-REPORT.md` is the standalone handoff for Wave 3 — the two bugs it
 fixed in existing code, and the two open items below written out in full for a
@@ -441,8 +448,14 @@ non-blocking. Worth doing early in whatever comes after M0:
 - `docs/curriculum.md` / `story-bible.md` / `stage-schema.md` — tracked
   separately in `docs/CHECKLIST.md`'s "Docs written at M0" section, never
   part of the formal "M0 done when" gate, but still undone.
-- M1 (`@vimorror/render`) needs its own plan before it starts, same as every
-  milestone after M0 — see `MergedPlan.md`'s M1–M6 table.
+- `H`/`M`/`L` — unblocked since M1 Wave A locked `Camera`'s `{topline,
+  height}` shape, and deliberately kept OUT of M1 (`M1-PLAN.md` explains
+  why: it is pure `vim-core` grammar work touching zero render files). Pick
+  it up whenever `vim-core` is next touched — scratch-probe the boundary
+  semantics, add to `motions.ts`, author a golden family.
+- M2 (`@vimorror/game`) needs its own plan before it starts, same as M1 did —
+  see `MergedPlan.md`'s M1–M6 table, and use `docs/M1-PLAN.md` as the shape
+  of what that plan should look like.
 
 No open design questions carry over from 4f — the one item 4e's handoff
 flagged as unresolved (whether `:g` containing `:s ... c` is worth
