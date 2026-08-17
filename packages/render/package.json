@@ -1,0 +1,16 @@
+{
+  "name": "@vimorror/render",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Canvas2D glyph-grid renderer with a WebGL2 CRT post-FX layer for @vimorror/core.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@vimorror/core": "workspace:*"
+  }
+}

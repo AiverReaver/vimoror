@@ -957,6 +957,22 @@ text, save system, or UI.
 
 ## M1 — `@vimorror/render`
 
+**`docs/M1-PLAN.md` is the decomposed build plan** — file breakdown, package
+scaffolding, build order (waves A–E), a verified JetBrains Mono licensing
+resolution, testing strategy, and an explicit done-line. The bullets below
+stay as the compressed tracking checklist; that doc is the plan of record for
+*how*.
+
+**Wave A — pure data layer** `[x]` — package scaffolding (`packages/render/`,
+root `tsconfig.json`/`package.json` edits for `DOM`/`DOM.Iterable` lib +
+`vite`/`dev:render`), `types.ts` (`Cell`, `CellBuffer`, `Camera`,
+`CursorShape`, `Rect`), `cell-buffer.ts`, `camera.ts`, `cursor-shape.ts` +
+their vitest suites. `pnpm typecheck`/`pnpm test` green repo-wide (1238
+tests), confirmed zero canvas/DOM code in `packages/render/src`. Waves B–E
+(font atlas, glyph grid + demo, CRT post-FX, wrap-up) are still open — the
+bullets below stay unchecked until the full milestone (browser-confirmed
+cursor shapes across all 8 modes, working CRT pipeline) lands.
+
 **Owns the decision:** canvas vs DOM, decided against real per-cell animation
 requirements. (PixiJS and CodeMirror 6 cannot both be the surface — Pixi is
 canvas, CM6 is DOM. Since the interpreter and world are ours, the renderer is
