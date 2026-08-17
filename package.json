@@ -12,6 +12,7 @@
     "goldens:generate": "node tools/goldens/generate.ts",
     "goldens:verify": "node tools/goldens/generate.ts --verify-isolation",
     "demo": "node tools/demo.ts",
+    "validate:stages": "node tools/validate-stages.ts",
     "test": "vitest run",
     "test:fuzz": "node tools/goldens/fuzz.ts",
     "test:watch": "vitest",

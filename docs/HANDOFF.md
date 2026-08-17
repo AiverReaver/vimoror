@@ -1,4 +1,4 @@
-# HANDOFF — M0 + M1 complete, M2 Wave A done (2026-08-17)
+# HANDOFF — M0 + M1 complete, M2 Waves A–B done (2026-08-17)
 
 Read this first when continuing work. The plan of record is `MergedPlan.md`;
 the tracking doc is `docs/CHECKLIST.md`; the harness gospel is
@@ -471,10 +471,34 @@ non-blocking. Worth doing early in whatever comes after M0:
   it up whenever `vim-core` is next touched — scratch-probe the boundary
   semantics, add to `motions.ts`, author a golden family.
 - M2 (`@vimorror/game`) has its plan: **`docs/M2-PLAN.md`**, waves A–E.
-  **Wave A is done** — the `vim-core` debt M2 rests on (`EngineSnapshot`'s
-  missing history and `CommandResolved` never firing for a one-key command).
-  `docs/CHECKLIST.md`'s M2 section carries what building it taught. Wave B (the
-  Zod stage schema) is next, and is the first `packages/game/` file.
+  **Waves A and B are done.** A was the `vim-core` debt M2 rests on
+  (`EngineSnapshot`'s missing history and `CommandResolved` never firing for a
+  one-key command); B is the stage schema — `packages/game/src/{schema,
+  entities,index}.ts`, three hand-authored `content/stages/` fixtures, and
+  `pnpm validate:stages`. `docs/CHECKLIST.md`'s M2 section carries what building
+  both taught. **Wave C (the loop — `tick.ts`, `rules.ts`, `gating.ts`,
+  `session.ts`) is next**, and inherits three open decisions:
+  - **what counts as one "act" for the tick** — `M2-PLAN.md`'s own open
+    judgment call, narrowed by Wave A (`CommandResolved` is now a viable tick
+    source, since it fires for `hjkl` and for a whole visual or insert command
+    alike) but not settled: one insert session is one tick for arbitrarily many
+    keystrokes, which is the one place the rest rule and a per-keystroke tick
+    genuinely disagree
+  - **entity coordinates are static, and a buffer edit does not re-anchor
+    them.** `di(` in `act2-grammar-awakens` shortens line 0 by thirteen
+    characters and the threat rectangle still names columns 11–25. `marks.ts`
+    is the precedent if adjustment turns out to be needed
+  - **does standing in a threat's cells lose, or must the threat move onto
+    you?** Measured: after `di(` that fixture's cursor sits INSIDE the threat
+    rectangle, so the first reading loses the stage on the first command of its
+    own shipped solution. `threat-reaches-cursor` is named for the threat doing
+    the reaching, which is what it was authored against
+- **Wave A left one thing open**, and Wave C is where it starts to matter: the
+  adversarial review that caught the visual-`$` clamp defect hit a session limit
+  partway through, so its JSON-safety, restore-hazards, resolve-rule and
+  test-strength lenses never reported. Only the completeness lens finished. The
+  one finding it did produce was real and high-severity, which is the argument
+  for finishing the other four.
 
 No open design questions carry over from 4f — the one item 4e's handoff
 flagged as unresolved (whether `:g` containing `:s ... c` is worth

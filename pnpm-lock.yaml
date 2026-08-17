@@ -27,6 +27,15 @@ importers:
         specifier: ^2.6.1
         version: 2.9.0
 
+  packages/game:
+    dependencies:
+      '@vimorror/core':
+        specifier: workspace:*
+        version: link:../vim-core
+      zod:
+        specifier: ^3.24.0
+        version: 3.25.76
+
   packages/render:
     dependencies:
       '@vimorror/core':
@@ -761,6 +770,9 @@ packages:
     engines: {node: '>= 14.6'}
     hasBin: true
 
+  zod@3.25.76:
+    resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
+
 snapshots:
 
   '@esbuild/aix-ppc64@0.21.5':
@@ -1296,3 +1308,5 @@ snapshots:
       stackback: 0.0.2
 
   yaml@2.9.0: {}
+
+  zod@3.25.76: {}

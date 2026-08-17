@@ -1,0 +1,65 @@
+{
+  "id": "act2-grammar-awakens",
+  "act": 2,
+  "title": "The Grammar Awakens",
+  "buffer": [
+    "delete the (parenthetical) doubt",
+    "keep this line",
+    "and this one too"
+  ],
+  "cursor": { "line": 0, "col": 0 },
+  "entities": [
+    {
+      "id": "exit",
+      "kind": "goal",
+      "at": { "line": 2, "col": 0 },
+      "glyph": "X",
+      "label": "the exit"
+    },
+    {
+      "id": "the-aside",
+      "kind": "threat",
+      "at": { "line": 0, "col": 11 },
+      "to": { "line": 0, "col": 25 },
+      "glyph": "?",
+      "label": "an aside that has been here longer than you have"
+    },
+    {
+      "id": "spare-register",
+      "kind": "pickup",
+      "at": { "line": 1, "col": 0 },
+      "glyph": "*",
+      "label": "a spare register"
+    }
+  ],
+  "allowedKeys": ["hjkl", "0123456789", "^", "$", "gg", "G", "dwbe", "i(", "yp"],
+  "teachesKeys": ["d", "i("],
+  "par": 4,
+  "solution": "di(G",
+  "win": [
+    { "kind": "cursor-on", "entity": "exit" },
+    {
+      "kind": "buffer-equals",
+      "lines": ["delete the () doubt", "keep this line", "and this one too"]
+    }
+  ],
+  "lose": [
+    { "kind": "keystrokes-over", "max": 12 },
+    { "kind": "threat-reaches-cursor" }
+  ],
+  "beats": [
+    {
+      "id": "aside-noticed",
+      "text": "It was never load-bearing. You have read past it a hundred times and the sentence held anyway.",
+      "startling": false,
+      "on": { "kind": "cursor-on", "entity": "the-aside" }
+    },
+    {
+      "id": "aside-removed",
+      "text": "The brackets stay. Something has to hold the shape of the space where it was.",
+      "startling": true,
+      "on": { "kind": "cursor-on", "entity": "exit" }
+    }
+  ],
+  "options": { "shiftwidth": 2, "expandtab": true }
+}

@@ -1,0 +1,17 @@
+{
+  "name": "@vimorror/game",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Framework-free rules layer: stage schema, entities, gating, difficulty, scoring.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@vimorror/core": "workspace:*",
+    "zod": "^3.24.0"
+  }
+}

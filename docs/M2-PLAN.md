@@ -314,10 +314,40 @@ whole layer sits between a deterministic engine and a replay test.
    26-case build/snapshot/restore/consume sweep, green on every field it
    covered). Re-run it; the finding it did produce was real and high-severity,
    which is the argument for finishing the other four.
-2. **Wave B — the schema.** `schema.ts` + `entities.ts` + hand-authored
-   `content/stages/` fixtures + `validate:stages`. Done when a human can
-   author a stage as JSON and get a precise error for every way of getting it
-   wrong.
+2. **Wave B — the schema.** `[x]` **Done 2026-08-17.** `schema.ts` +
+   `entities.ts` + hand-authored `content/stages/` fixtures + `validate:stages`.
+   Done when a human can author a stage as JSON and get a precise error for
+   every way of getting it wrong.
+
+   Delivered as `packages/game/{package.json,tsconfig.json}` plus
+   `src/{schema,entities,index}.ts` and their two suites, three fixtures, and
+   `tools/validate-stages.ts`. **1344 tests green** (1298 + 46), `pnpm
+   typecheck` clean, `pnpm validate:stages` clean. `docs/CHECKLIST.md`'s Wave B
+   section carries the full rule inventory; three things worth pulling up here
+   because they changed the plan's own assumptions:
+
+   - **"Triggers" and "story beats" are not two overlay items.** They collapse
+     into ONE condition vocabulary shared by `win`, `lose` and a beat's `on`,
+     because a trigger with no beat attached has nothing to do and a beat needs
+     exactly one condition to fire on. Positional conditions name an ENTITY
+     rather than carrying coordinates, which kills a whole drift class.
+   - **`options` had to parse to a COMPLETE `EditorOptions`, not a partial** —
+     `.partial()` types as `number | undefined` and will not spread onto
+     `DEFAULT_OPTIONS` at all under `exactOptionalPropertyTypes`. A parsed stage
+     now drops straight into `new VimEngine(...)`, which is the seam Wave C's
+     `session.ts` wants, and a test really does build one that way.
+   - **`allowedKeys` is the one field that must NOT be defaulted.** `[]` and
+     absent mean opposite things to a `KeyPolicy`, so a default would silently
+     pick one; `[]` is rejected outright and omission is how a stage says
+     ungated.
+
+   **Two decisions handed to Wave C**, both found by probing the fixtures
+   against a real engine: entity coordinates are static and a buffer edit does
+   not re-anchor them, and it is unsettled whether standing in a threat's cells
+   loses or the threat must move onto you. Measured — after `di(` the
+   `act2-grammar-awakens` cursor sits inside `the-aside`'s rectangle, so the
+   first reading loses that stage on the first command of its own solution. The
+   condition's name (`threat-reaches-cursor`) is the argument for the second.
 3. **Wave C — the loop.** `tick.ts`, `rules.ts`, `gating.ts`, `session.ts`.
    Done when a fixture stage is winnable and losable head-lessly through
    `session.feedKeys(...)`, with a locked key rejected in character.

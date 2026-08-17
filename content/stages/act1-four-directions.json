@@ -1,0 +1,35 @@
+{
+  "id": "act1-four-directions",
+  "act": 1,
+  "title": "Four Directions",
+  "buffer": [
+    "the cursor remembers",
+    "every room it has",
+    "been left alone in",
+    "and waits there"
+  ],
+  "cursor": { "line": 0, "col": 0 },
+  "entities": [
+    {
+      "id": "way-out",
+      "kind": "goal",
+      "at": { "line": 3, "col": 14 },
+      "glyph": "X",
+      "label": "the way out"
+    },
+    {
+      "id": "sealed-row",
+      "kind": "wall",
+      "at": { "line": 1, "col": 0 },
+      "to": { "line": 1, "col": 4 },
+      "glyph": "#",
+      "label": "a row that will not take the cursor"
+    }
+  ],
+  "allowedKeys": ["hjkl", "0123456789", "^", "$", "gg", "G"],
+  "teachesKeys": ["hjkl0^$", "G"],
+  "par": 3,
+  "solution": "G$",
+  "win": [{ "kind": "cursor-on", "entity": "way-out" }],
+  "lose": [{ "kind": "keystrokes-over", "max": 20 }]
+}

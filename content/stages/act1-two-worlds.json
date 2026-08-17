@@ -1,0 +1,9 @@
+{
+  "id": "act1-two-worlds",
+  "act": 1,
+  "title": "Two Worlds",
+  "buffer": ["world"],
+  "par": 9,
+  "solution": "ihello, <Esc>",
+  "win": [{ "kind": "buffer-equals", "lines": ["hello, world"] }]
+}

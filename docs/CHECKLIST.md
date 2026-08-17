@@ -1312,11 +1312,130 @@ consumer of `snapshot()`/`restore()`.
       `EngineSnapshot` names `Marks`, `JumpList`, `DotRecord` and `MacroStore`
       in its public shape, and `packages/game` will need to name them too.
 
-### The rest of M2
+### Wave B — the stage schema `[x]`
 
-- [ ] Zod stage schema (buffer text, entity overlay, `allowedKeys`,
+The first `packages/game/` files: `schema.ts`, `entities.ts`, `index.ts`, the
+package's own `package.json`/`tsconfig.json`, three hand-authored fixtures in
+`content/stages/`, and `tools/validate-stages.ts` behind `pnpm validate:stages`.
+**1344 tests green** (1298 + 46 new), `pnpm typecheck` clean, all three fixtures
+valid. Zod 3 is `@vimorror/game`'s one runtime dependency; `vim-core` stays at
+zero, per `M2-PLAN.md`'s finding 4.
+
+Wave B's done-line is not "a stage parses" but **"a human gets a precise error
+for every way of getting it wrong"**, which is Wave A's lesson carried into a new
+file: on this surface wrong looks exactly like right. Nearly every rule below
+exists because the thing it catches otherwise fails silently and late.
+
+- [x] **Zod stage schema** (buffer text, entity overlay, `allowedKeys`,
       `teachesKeys`, `par`, win/lose conditions, triggers, story beats,
-      per-stage difficulty overrides)
+      per-stage `:set` overrides). `parseStage`/`safeParseStage`/`formatIssues`
+      are the public surface; `formatIssues` renders `path: message` per line
+      because Zod's own `message` is a JSON blob nobody reads.
+- [x] **Every object is `.strict()`.** A typo'd `beat` for `beats` otherwise
+      drops the whole story array and the stage plays silently without it.
+- [x] **The parsed type is the OUTPUT type** — every `.default()` is resolved by
+      the time a consumer sees it, so `rules.ts`/`tick.ts` read no `undefined`s.
+      Verified separately that Zod CLONES a default rather than handing every
+      parse the same object, so two stages cannot share one `entities` array.
+- [x] **`allowedKeys` is the one deliberately un-defaulted field.** `[]` and
+      absent mean OPPOSITE things to a `KeyPolicy` — omitted is ungated
+      (`allowed === undefined`), `[]` permits no key at all — so `[]` is
+      rejected with "omit the field entirely" rather than a default silently
+      picking one reading.
+- [x] **`options` parses to a COMPLETE `EditorOptions`**, every field carrying
+      core's own default, so a parsed stage drops straight into
+      `new VimEngine(...)` with no merge step. `.partial()` would have typed as
+      `number | undefined` and failed to spread onto `DEFAULT_OPTIONS` at all
+      under `exactOptionalPropertyTypes`. `satisfies Record<keyof EditorOptions,
+      ...>` is the drift guard: add an option to `vim-core` and this file stops
+      compiling until it is authorable.
+- [x] **Win, lose and a beat's trigger are ONE condition vocabulary.** The plan
+      listed "triggers" and "story beats" as separate overlay items; they
+      collapse, because a trigger with no beat attached has nothing to do and a
+      beat needs exactly one condition to fire on. Positional conditions name an
+      ENTITY rather than carrying coordinates — a goal the player must reach has
+      to be drawn somewhere, and a second copy of its coordinates is a second
+      thing to drift.
+- [x] **`beat.startling` is REQUIRED, not defaulted to `false`.** A default is
+      the dangerous direction here: an author who forgets the flag ships a
+      startle beat that fires for a player who asked for none, and comfort
+      settings are not somewhere a silent default belongs. Gentle Mode stays a
+      constraint on the DATA rather than a switch buried in a renderer.
+- [x] **The "never fires / cannot be played" rule class**, which is where most
+      of the value is — every one of these parses perfectly without it:
+      - a spawn outside the buffer. `VimEngine` CLAMPS a bad cursor rather than
+        refusing it, so the player just starts somewhere the author did not mean
+      - `{printabl}`. It tokenizes without throwing into eleven ordinary keys,
+        so the stage gates on `{`, `p`, `r`, … and the author never finds out.
+        Anything SHAPED like a macro must BE one; `{printable}` (all 95
+        printable characters) is the only one, and it earns its place because
+        the policy is checked per keystroke
+      - a condition naming an entity id that does not exist — an unwinnable
+        stage in `win`, dead config in `lose`, checked in beat triggers too
+      - a `threat-reaches-cursor` condition in a stage with no threat entity.
+        Same class, and the condition's own NAME is the argument: the threat
+        does the reaching, so with none drawn nothing can
+      - every win condition already true AT SPAWN. Only the statically decidable
+        kinds are judged and every other kind counts as "not yet", so a stage
+        carrying one runtime condition is never false-flagged
+      - a stage that teaches a key its own `allowedKeys` locks, or ships a
+        solution `allowedKeys` would reject
+      - a par below the shipped solution's own keystroke count — and the same
+        check one step out, a `lose` keystroke budget below it, which loses the
+        stage before its own solution can win it
+      - a buffer line containing `\n`. It renders as two lines in an editor's
+        preview and reaches `vim-core` as ONE line holding a literal newline.
+        Rejected rather than split for the author, since splitting would quietly
+        change their line numbering
+- [x] **`entities.ts` owns the one question the shapes cannot answer** — which
+      cells an entity occupies. An entity is a single cell (`at`) or an
+      inclusive RECTANGLE (`at`..`to`), `<C-v>`-shaped rather than a charwise
+      span that flows around line ends, which is what lets a wall be one
+      authored entity instead of twenty. A charwise implementation passes every
+      other test in the file, so that case has its own.
+- [x] **What looks like an import cycle is not one.** `entities.ts` takes only
+      TYPES back from `schema.ts` and `verbatimModuleSyntax` erases those
+      outright, so the only runtime edge is schema → entities. That is what lets
+      the schema's own refinements call `occupies` instead of carrying a second
+      copy of the rectangle math to drift from it.
+- [x] **`pnpm validate:stages`** — schema check plus the two rules a single
+      stage cannot see on its own: ids unique across the corpus, and a file
+      named after the stage it holds (so a stage is loaded by a path join, not a
+      scan). `MergedPlan.md` names this script as the CI gate that replays every
+      solution and asserts a win; that half is M3's, because asserting a win
+      means evaluating win conditions and the evaluator is `rules.ts` in Wave C.
+      `checkStage` is the seam.
+- [x] **Three fixtures, hand-authored as JSON** — `act1-two-worlds` (ungated,
+      insert-mode, defaults-only, and therefore the proof that authoring a stage
+      takes seven fields), `act1-four-directions` (gating, a wall rectangle, a
+      keystroke budget), `act2-grammar-awakens` (a threat, a pickup, two beats
+      including a startling one, `:set` overrides, a two-condition win). Tests
+      feed each one's own solution through a real `VimEngine` under the stage's
+      own `KeyPolicy` and assert **no key rejected and the engine at rest** —
+      the honest half of M3's validator. Verified beyond that with a scratch
+      probe that all three really do reach their win state.
+- [x] Test imports run through `index.ts` rather than the modules directly, so
+      the barrel cannot go stale unnoticed (M1 Wave E's lesson).
+
+**Two things Wave C has to decide, both found by probing the fixtures against a
+real engine rather than by any test that exists:**
+
+- **Entity coordinates are static, and a buffer edit does not re-anchor them.**
+  `di(` in `act2-grammar-awakens` shortens line 0 by thirteen characters and
+  `the-aside`'s rectangle still names columns 11–25. Nothing in Wave B is wrong
+  about that — the schema validates a stage at rest — but `tick.ts`/`rules.ts`
+  are the first consumers that will care, and marks-style adjustment
+  (`marks.ts`) is the precedent if they need it.
+- **Does standing in a threat's cells lose, or does the threat have to move onto
+  you?** Measured: after `di(` the cursor sits at 0:12, INSIDE `the-aside`'s
+  rectangle, so under the first reading `act2-grammar-awakens` loses on the
+  first command of its own shipped solution. The condition is named
+  `threat-reaches-cursor` — the threat doing the reaching, driven by the tick —
+  and the second reading is what the fixture was authored against. Wave C should
+  settle it explicitly rather than inherit it, and `M2-PLAN.md`'s "what counts
+  as one act for the tick" is the same decision from the other end.
+
+### The rest of M2
 - [ ] Key gating — rejected *in character*, never a silent no-op
 - [ ] Turn-based entities: **threats tick only when the player acts.** Keeps
       everything deterministic and replayable, and a thing that moves only when
