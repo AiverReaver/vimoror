@@ -986,22 +986,59 @@ positional arg, not a `--root` flag (Wave A's script used the flag form and
 had never been executed until this wave). Added `.claude/launch.json` so
 `dev:render` is previewable through the browser tool going forward.
 
-Waves C–E (glyph grid + demo, CRT post-FX, wrap-up) are still open — the
-bullets below stay unchecked until the full milestone (browser-confirmed
-cursor shapes across all 8 modes, working CRT pipeline) lands.
+**Wave C — the glyph grid** `[x]` — `glyph-grid.ts`: a `GlyphGrid` class owning
+a `<canvas>` 2D context and the previous frame's `CellBuffer`. `render(next,
+atlas, cursor)` reuses Wave A's `diffCells` and blits only the changed cells
+from the atlas via a `source-atop` (recolor the glyph's opaque pixels to
+`Cell.fg`) + `destination-over` (fill the still-transparent rest with
+`Cell.bg`) composite pair — this is *why* the atlas bakes glyphs
+white-on-transparent rather than baking a fixed color per glyph, so one atlas
+serves any `fg` a frame asks for. The cursor overlay is a separate pass using
+a `difference` blend (inverts whatever's underneath, so it's visible on any
+`fg`/`bg` without needing its own color) — a cell the cursor moves off but
+whose content didn't change is explicitly redrawn plain first, or the
+inverted pixels from the previous frame would stick.
+
+`demo/{index.html,main.ts}` — a real `VimEngine` (not a scripted/fixture
+one), a demo-only `KeyboardEvent → KeyToken` translator (deliberately not
+real input handling, that's M4's job: ctrl+letter → `<C-x>`, the handful of
+named keys with `e.key.length > 1` that vim-core knows, everything else with
+`length === 1` passed through raw, everything else ignored so browser
+defaults like arrow-key scroll still work), a mode/pending readout, and
+canned buttons (`dd`, `d2w`, `ci(`, `yyp`, `v$d`, `gg`, `G`, `u`, redo) that
+`feedKeys()` scripted sequences for repeatable spot-checks. Viewport lines
+are padded/truncated to a fixed `COLS` before reaching `linesToCells` (reused
+as-is, not reimplemented) so the canvas grid size never shifts frame to
+frame.
+
+Verified through `pnpm dev:render` in-browser, pixel-level rather than
+eyeballed: each of the 4 distinct cursor shapes (the 8 modes collapse to 4
+via `CURSOR_SHAPES`) confirmed by sampling canvas pixels before/after a mode
+switch — block fills the whole cell, bar only its left slice, underline only
+its bottom slice, hollow-block only its border with the center untouched,
+each matching the `difference`-inverted-vs-plain arithmetic exactly. Live
+typing (`i`, raw characters, `<Esc>`) and a text object (`ci(` on `(word)` →
+correctly enters insert with the parens' contents removed) confirmed by
+screenshot, dirty-cell redraw confirmed by only the edited region changing.
+`pnpm typecheck`/`pnpm test` still green repo-wide (1244 tests, zero new test
+infra — `glyph-grid.ts` and the demo are canvas/DOM code, manual-verified
+only, per the plan's testing split).
+
+Waves D–E (CRT post-FX, wrap-up) are still open — the bullets below stay
+unchecked until the full milestone (working CRT pipeline) lands.
 
 **Owns the decision:** canvas vs DOM, decided against real per-cell animation
 requirements. (PixiJS and CodeMirror 6 cannot both be the surface — Pixi is
 canvas, CM6 is DOM. Since the interpreter and world are ours, the renderer is
 ours.)
 
-- [ ] Hand-rolled Canvas 2D glyph grid, offscreen font atlas, dirty-cell redraw
-- [ ] Camera, cursor shapes per mode
+- [x] Hand-rolled Canvas 2D glyph grid, offscreen font atlas, dirty-cell redraw
+- [x] Camera, cursor shapes per mode
 - [ ] WebGL2 single-pass CRT post-FX (curvature, chromatic aberration, phosphor
       persistence, glitch), canvas fallback
 - [ ] **Effects Intensity slider wired from day one** — never labelled "epilepsy
       safe mode", which implies a guarantee nobody can make
-- [ ] JetBrains Mono subset baked to atlas — **confirm the exact licence grant
+- [x] JetBrains Mono subset baked to atlas — **confirm the exact licence grant
       (OFL 1.1 vs Apache-2.0 depends on distribution) before baking**
 
 ---

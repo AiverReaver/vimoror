@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>vimorror render demo</title>
+    <style>
+      body {
+        background: #111;
+        color: #ddd;
+        font-family: system-ui, sans-serif;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+        padding: 16px;
+      }
+      #grid {
+        border: 1px solid #444;
+      }
+      #hud {
+        display: flex;
+        gap: 24px;
+        font-family: monospace;
+      }
+      #buttons button {
+        margin: 2px;
+        font-family: monospace;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>vimorror render — glyph grid demo</h1>
+    <canvas id="grid" tabindex="0"></canvas>
+    <div id="hud">
+      <div>mode: <span id="mode">normal</span></div>
+      <div>pending: <span id="pending">(none)</span></div>
+    </div>
+    <div id="buttons">
+      <button data-keys="dd">dd</button>
+      <button data-keys="d2w">d2w</button>
+      <button data-keys="ci(">ci(</button>
+      <button data-keys="yyp">yyp</button>
+      <button data-keys="v$d">v$d</button>
+      <button data-keys="gg">gg</button>
+      <button data-keys="G">G</button>
+      <button data-keys="u">u</button>
+      <button data-keys="&lt;C-r&gt;">redo</button>
+    </div>
+    <p>Click the page, then type — real vim-core underneath. Esc for normal mode.</p>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>
