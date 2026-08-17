@@ -1184,6 +1184,39 @@ ours.)
 
 ## M2 — `@vimorror/game`
 
+**`docs/M2-PLAN.md` is the decomposed build plan** — file breakdown, package
+scaffolding, build order (waves A–E), testing strategy, and an explicit
+done-line, same shape as `M1-PLAN.md`. The bullets below stay as the
+compressed tracking checklist; that doc is the plan of record for *how*.
+
+**Two things measured against source while writing it, both of which change
+what M2 has to build and neither of which is visible in the bullets below:**
+
+- **`EngineSnapshot` is missing 8 of the 11 things replay depends on.** Undo
+  tree, redo, dot record, marks, macros, jumplist, `lastFind` and — the one
+  that is a plain gameplay bug rather than a horror concern — **`keyPolicy`**
+  all diverge across a snapshot/restore round trip, measured by building
+  history, restoring, then running the key that consumes it. Only search
+  state and registers survive. A restored mid-stage save therefore runs keys
+  the stage had locked, so key gating silently evaporates on reload. **The
+  director API is not at fault** — injected edits replay byte-identically,
+  since every director mutation really is a pure state transition as
+  designed. This is the deferral the three `[ ]` "not serialized in
+  `EngineSnapshot`" entries above have been pointing at all along, and M2's
+  own done-line (the director determinism test) cannot be stated without
+  closing it. M2 owns that `vim-core` change, exactly as M1 owned the root
+  `tsconfig.json` `lib` addition.
+- **`onCommandResolved` never fires for a single-keystroke command.** Measured:
+  `x`, `j`, `u`, `.` and a whole `iab<Esc>` insert session emit **zero**
+  events, while `dw`/`d2w`/`3x`/`ci(`/`:d<CR>` each emit one.
+  `engine.ts:89` fires only when the pending buffer empties *having held
+  something*, and a one-key command's buffer was never non-empty. This breaks
+  both features built on it: scoring silently undercounts (a stage solved with
+  `xxx` scores **zero** keystrokes), and turn-based entities — "threats tick
+  only when the player acts" — would never tick during Act I's pure `hjkl`
+  navigation, which is precisely the act whose stated mechanic is "something
+  moves only when you do."
+
 - [ ] Zod stage schema (buffer text, entity overlay, `allowedKeys`,
       `teachesKeys`, `par`, win/lose conditions, triggers, story beats,
       per-stage difficulty overrides)
