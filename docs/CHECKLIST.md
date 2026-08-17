@@ -1024,8 +1024,86 @@ screenshot, dirty-cell redraw confirmed by only the edited region changing.
 infra — `glyph-grid.ts` and the demo are canvas/DOM code, manual-verified
 only, per the plan's testing split).
 
-Waves D–E (CRT post-FX, wrap-up) are still open — the bullets below stay
-unchecked until the full milestone (working CRT pipeline) lands.
+**Wave D — CRT post-FX + the knob** `[x]` — `crt-shader.ts`, `canvas-fallback.ts`,
+`pipeline.ts`, plus the demo's intensity slider and forced-fallback pane.
+
+`pipeline.ts` is render's `engine.ts`-equivalent, and the thing that shapes it
+is that **a canvas can only ever hand out ONE context type**: the caller's
+visible canvas becomes the WebGL2 surface (or the fallback's 2D blit target),
+so the glyph grid gets a *private* 2D canvas of the same size that the post-FX
+pass samples as a texture. `draw()` takes viewport-clipped `cells` and maps the
+cursor through `camera.ts`/`cursor-shape.ts`; `effectsIntensity` is a required
+0–1 parameter with no default, since deciding its value (or a
+`prefers-reduced-motion` policy) is M4's comfort layer, not this one's.
+
+`crt-shader.ts` is one fullscreen pass — a `gl_VertexID` triangle, no VBO, no
+attributes — doing curvature, chromatic aberration, scanlines, vignette,
+glitch and phosphor persistence, every one multiplied by `u_intensity`. What
+had to be worked out rather than reasoned from the plan:
+
+- **the phosphor accumulator is copied straight off the default framebuffer**
+  (`copyTexSubImage2D` after the draw, same task, before the browser
+  composites) rather than run as an FBO ping-pong. That is still M1-PLAN's
+  "2-texture" design — grid + accumulator — but keeps it genuinely single-pass
+  instead of needing two FBOs, a second blit program and a swap. Marked with a
+  `ponytail:` comment naming the ceiling: move to FBOs if persistence ever
+  needs to run at a resolution other than the canvas's.
+- **the WebGL2 context must keep its default attributes.** `{alpha: false}`
+  reads like a free win and silently kills persistence: the drawing buffer
+  then has no alpha to source, so the copy into the RGBA8 accumulator raises
+  `INVALID_OPERATION` and the accumulator stays black — a GL error nobody
+  polls, so the symptom is just "the trail vanished." Measured both ways with
+  a scratch probe (default attrs copy fine, `{alpha: false}` does not) and
+  guarded with a comment at the `getContext` call, which is where someone
+  would make the change.
+- **`u_prev` is sampled at the plain screen uv, not the curved one.** The
+  accumulator holds the previous frame's *final, already-distorted* output, so
+  re-reading it through the curvature would warp the ghost a little further
+  every frame and spiral it outward. Sampling flat makes the trail decay in
+  place, which is what a phosphor actually does.
+- the glyph-grid canvas is uploaded with `UNPACK_FLIP_Y_WEBGL` so it lands in
+  the same orientation the accumulator arrives in (copied off the framebuffer,
+  already bottom-up), letting one uv convention serve both samplers.
+- **`GlyphGrid` gained `invalidate()`.** Assigning `canvas.width` on resize
+  blanks the 2D canvas while the dirty-cell cache still claims those pixels
+  are drawn. `diffCells` covers the case where the *cell grid* also changed
+  (dimension mismatch → full redraw), but not a resize that keeps the same
+  rows/cols and only changes pixel size — a DPR change, which M4 will hit —
+  where the diff is empty and the screen would just stay blank.
+
+Verified in-browser through `pnpm dev:render`, numerically rather than
+eyeballed (the demo renders the same frame through two renderers side by side,
+the primary one and a second forced onto the fallback path):
+
+- **intensity 0 is bit-identical to the fallback**, not merely "visually ≈" as
+  the plan's done-line asked: max per-channel difference **0** across all
+  384,000 pixels, identical lit-pixel counts. Every effect scales to identity
+  at 0, and at 0 the fullscreen triangle samples the grid texture at exact
+  texel centres, so `LINEAR` filtering returns the texel unchanged.
+- at intensity 1, each effect confirmed separately: **aberration** 9,619
+  pixels with |R−B| > 40 (0 at intensity 0 — source text is `#e0e0e0`, so any
+  R/B gap is the shader's per-channel uv offset and nothing else);
+  **curvature** a 8.5px relative bow of the top text row measured left-edge vs
+  centre, differenced against the intensity-0 reading so glyph-shape variation
+  cancels; **glitch** 8,774 pixels changing frame-to-frame over a completely
+  static buffer (exactly 0 at intensity 0, confirming the pass is otherwise
+  deterministic); **phosphor** lit-pixel count decaying 16,547 → 14,149 → 218
+  over ten frames after the buffer was emptied, while the fallback pane sat
+  flat at 200.
+- **the fallback path never throws** — exercised both ways, via `forceFallback`
+  and via a genuine `getContext('webgl2') === null` machine (stubbed), at
+  intensity 1, through `draw`/`resize`/`dispose`. Both paths produced identical
+  lit-pixel counts before (15,821) and after (7,697) a resize.
+- `invalidate()` pinned against the case it exists for: a same-size resize
+  where `diffCells` reports nothing recovered all 15,821 lit pixels.
+
+The demo draws on `requestAnimationFrame` rather than per keystroke, since
+persistence and glitch are both time-varying and the post-FX pass has to keep
+running while the buffer is idle. `pnpm typecheck`/`pnpm test` green repo-wide
+(1244 tests, zero new test infra — all three new files are GPU/canvas code,
+manual-verified per the plan's testing split).
+
+Wave E (wrap-up: `index.ts`, final repo-wide green) is still open.
 
 **Owns the decision:** canvas vs DOM, decided against real per-cell animation
 requirements. (PixiJS and CodeMirror 6 cannot both be the surface — Pixi is
@@ -1034,10 +1112,13 @@ ours.)
 
 - [x] Hand-rolled Canvas 2D glyph grid, offscreen font atlas, dirty-cell redraw
 - [x] Camera, cursor shapes per mode
-- [ ] WebGL2 single-pass CRT post-FX (curvature, chromatic aberration, phosphor
+- [x] WebGL2 single-pass CRT post-FX (curvature, chromatic aberration, phosphor
       persistence, glitch), canvas fallback
-- [ ] **Effects Intensity slider wired from day one** — never labelled "epilepsy
-      safe mode", which implies a guarantee nobody can make
+- [x] **Effects Intensity slider wired from day one** — never labelled "epilepsy
+      safe mode", which implies a guarantee nobody can make. Shipped end-to-end
+      as a required, never-defaulted 0–1 `draw()` parameter reaching the shader
+      uniform; the *default value* and any `prefers-reduced-motion` policy stay
+      M4's comfort-settings layer
 - [x] JetBrains Mono subset baked to atlas — **confirm the exact licence grant
       (OFL 1.1 vs Apache-2.0 depends on distribution) before baking**
 

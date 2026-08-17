@@ -14,12 +14,32 @@
         gap: 12px;
         padding: 16px;
       }
-      #grid {
+      canvas {
         border: 1px solid #444;
+        background: #000;
       }
-      #hud {
+      #panes {
+        display: flex;
+        gap: 16px;
+        align-items: flex-start;
+      }
+      #panes figure {
+        margin: 0;
+      }
+      #panes figcaption {
+        font-family: monospace;
+        font-size: 12px;
+        padding-top: 4px;
+        color: #999;
+      }
+      #fallback-pane[hidden] {
+        display: none;
+      }
+      #hud,
+      #controls {
         display: flex;
         gap: 24px;
+        align-items: center;
         font-family: monospace;
       }
       #buttons button {
@@ -29,8 +49,25 @@
     </style>
   </head>
   <body>
-    <h1>vimorror render — glyph grid demo</h1>
-    <canvas id="grid" tabindex="0"></canvas>
+    <h1>vimorror render — CRT pipeline demo</h1>
+    <div id="panes">
+      <figure>
+        <canvas id="grid" tabindex="0"></canvas>
+        <figcaption>primary — path: <span id="path">?</span></figcaption>
+      </figure>
+      <figure id="fallback-pane">
+        <canvas id="grid-fallback"></canvas>
+        <figcaption>forced fallback — no post-FX</figcaption>
+      </figure>
+    </div>
+    <div id="controls">
+      <label
+        >Effects Intensity
+        <input id="intensity" type="range" min="0" max="100" value="60" />
+        <span id="intensity-readout">0.60</span>
+      </label>
+      <label><input id="force-fallback" type="checkbox" checked /> show forced fallback</label>
+    </div>
     <div id="hud">
       <div>mode: <span id="mode">normal</span></div>
       <div>pending: <span id="pending">(none)</span></div>

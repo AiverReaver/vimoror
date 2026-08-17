@@ -35,6 +35,16 @@ export class GlyphGrid {
     this.#cellH = cellH;
   }
 
+  /**
+   * Drops the dirty-cell cache so the next `render()` redraws everything.
+   * Needed after anything that blanks the canvas out from under it — assigning
+   * `canvas.width` on resize being the one that actually happens.
+   */
+  invalidate(): void {
+    this.#prev = NEVER_RENDERED;
+    this.#cursorPos = null;
+  }
+
   render(next: CellBuffer, atlas: FontAtlas, cursor: GridCursor): void {
     const diffs = diffCells(this.#prev, next);
     const redrawn = new Set(diffs.map((d) => `${d.row},${d.col}`));
