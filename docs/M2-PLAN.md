@@ -314,6 +314,10 @@ whole layer sits between a deterministic engine and a replay test.
    26-case build/snapshot/restore/consume sweep, green on every field it
    covered). Re-run it; the finding it did produce was real and high-severity,
    which is the argument for finishing the other four.
+
+   > **Resolved in Wave C (2026-08-18).** The re-run confirmed the argument:
+   > the four missing lenses produced ten real `vim-core` findings on their
+   > own. See "What the adversarial review caught" under Wave C below.
 2. **Wave B — the schema.** `[x]` **Done 2026-08-17.** `schema.ts` +
    `entities.ts` + hand-authored `content/stages/` fixtures + `validate:stages`.
    Done when a human can author a stage as JSON and get a precise error for
@@ -348,9 +352,92 @@ whole layer sits between a deterministic engine and a replay test.
    `act2-grammar-awakens` cursor sits inside `the-aside`'s rectangle, so the
    first reading loses that stage on the first command of its own solution. The
    condition's name (`threat-reaches-cursor`) is the argument for the second.
-3. **Wave C — the loop.** `tick.ts`, `rules.ts`, `gating.ts`, `session.ts`.
-   Done when a fixture stage is winnable and losable head-lessly through
-   `session.feedKeys(...)`, with a locked key rejected in character.
+3. **Wave C — the loop.** `[x]` **Done 2026-08-18.** `tick.ts`, `rules.ts`,
+   `gating.ts`, `session.ts`. Done when a fixture stage is winnable and losable
+   head-lessly through `session.feedKeys(...)`, with a locked key rejected in
+   character.
+
+   Delivered as the four files plus their suites, **1403 tests green**
+   (1344 + 59), `pnpm typecheck`/`validate:stages`/`goldens:verify` (zero
+   golden bytes)/`demo` all clean. The done-line holds one notch stronger
+   than stated: every shipped fixture WINS through
+   `session.feedKeys(stage.solution)`, the honest half of M3's replay gate.
+   The two decisions Wave B handed over and the one this plan kept open are
+   settled — one resolved command is one tick (insert session included, per
+   the rest rule; `CommandResolved` is the tick source, so no second counter
+   exists to drift), entity coordinates stay static under buffer edits, and
+   standing in a threat is safe because threats chase by closing the gap
+   between their own rectangle and the cursor: zero gap means no move, and
+   `reached` requires a move. Lose is evaluated before win on tied ticks.
+   `docs/CHECKLIST.md`'s Wave C section carries the full rule inventory.
+
+   #### What the adversarial review caught
+
+   The review Wave A left unfinished ran to completion in this wave — its four
+   unreported lenses on `engine.ts` plus fresh lenses on the loop code, every
+   finding adversarially verified before being acted on: **16 confirmed, 1
+   refuted, 2 verifier-orphaned findings re-verified by hand, all 18 real ones
+   fixed in the same change.** The ones that overturned this plan's own
+   assumptions:
+
+   - **The gating design as planned soft-locked its own fixture.** Translating
+     `allowedKeys` verbatim into a `KeyPolicy` leaves `<Esc>` lockable, and
+     the policy gate runs before dispatch in EVERY mode — so `act2`'s `i`
+     (allowed for the `di(` it teaches, with `<Esc>` unlisted) trapped the
+     player in insert mode with no rest, no tick, no win and no lose, forever.
+     `<Esc>` is now never lockable (`ALWAYS_ALLOWED`, shared by `gating.ts`
+     and the schema's playability checks so the two surfaces cannot disagree).
+   - **Wave A's rejected-key rule had a hole its own table could not show.**
+     `feed()` classified the fed key as rejected whenever ANY `KeyRejected`
+     appeared in the event stream — but `@a`, `.` and `:normal` surface their
+     INNER keys' rejections through the same stream, so a macro halted by a
+     locked key mutated the buffer and then resolved NOTHING: a free edit, no
+     keystroke cost, no tick. Only the fed key's own rejection resolves
+     nothing now, and a halted replay resolves as the failed command it is.
+   - **The forfeit rule was right only at rest.** A rejection mid-visual kept
+     the discarded half-command's keys (`v`, `f`, locked key, `d` resolved a
+     three-keystroke `vfd` that never ran), and the mutation test proved the
+     mid-insert half ("its keys keep counting") had zero coverage. A rejection
+     now forfeits exactly `pending.keyBuffer` — which holds every key of the
+     half-typed command, count digits and register prefix included.
+   - **A mid-insert snapshot's undo tree pointed at a different buffer.**
+     Inside an insert (or `:s ... c`) session the buffer mutates ahead of the
+     block's `pushUndo`, so the saved lines belonged to NO node: a restored
+     `u` stepped to the wrong buffer and the saved text was unreachable by
+     redo. `snapshot()` now mints the missing node — keyed on being MID-BLOCK,
+     not on the lines/node mismatch alone, because `injectUndoEntry` creates
+     exactly that mismatch at rest on purpose and must round-trip as-is (the
+     restore-side first attempt broke that test within minutes).
+   - **`injectEdit` had two desyncs of the class its own comment forbids:**
+     it shifted marks/jumps/pcmark but not `lastVisual`/`visualStart` (`gv`
+     after an injection deleted text the player never selected), and it
+     re-clamped the cursor with normal mode's rule, pulling a live `v$`
+     selection one character short — the same defect `restore()` had already
+     fixed on the snapshot path.
+   - **Two pre-existing `vim-core` bugs surfaced by the fresh lenses**, fixed
+     with real-Vim verification: `v$<Esc>` left a normal-mode cursor ON the
+     end-of-line NUL (measured: real Vim 9.1's `v$<Esc>x` deletes the last
+     character; ours no-op'd), and `qa@aq` then `@a` — 7 keystrokes any player
+     can type — recursed `step()` into an uncaught RangeError. The macro halt
+     added a 17th `InvalidReason` (`recursive-macro`), which proved the
+     `REJECTION_LINES` totality guard exactly as designed: `gating.ts` refused
+     to compile until the in-fiction line existed.
+   - **Six proven-by-mutation test holes** (each mutant ran green against the
+     full suite before its killing test was added): per-command instead of
+     per-key session keystroke counting, `RuleContext` wired to the authored
+     entity array instead of the live one, rectangle threats never reaching
+     with their BODY, mid-replace restore, the `v$o` anchor clamp, and a
+     mid-walk jumplist idx. Plus `expandKeySpecs` crashing on a spec named
+     `toString` (prototype lookup, now `Object.hasOwn`) and `session.feed`
+     dropping `BufferSaved`/`QuitRequested` — which `types.ts` documents as
+     existing precisely because zero-I/O core delegates `:w`/`:q` to the host,
+     and this stream is their only conduit.
+
+   The through-line, same as Wave A's: **on this surface, wrong looks exactly
+   like right.** Every confirmed finding produced a working, non-throwing
+   engine (bar the one crash) — and the review's verify pass earned its cost
+   the other way too, refuting one plausible-sounding test-strength claim that
+   a real test already covered.
 4. **Wave D — the dials.** `difficulty.ts`, `hints.ts`, `scoring.ts`,
    `gentle.ts`. Done when the identical solution scores differently across the
    three difficulties and the clean-run flag survives a hint request breaking
@@ -422,6 +509,13 @@ rendering.
   per-keystroke tick genuinely disagree. Two constraints Wave A already fixed
   in place: a **rejected** key never resolves and so can never tick, and a
   **failed** command does resolve and therefore does tick.
+
+  > **Settled in Wave C (2026-08-18):** one resolved command is one tick, the
+  > insert session included. A world that advances per typed character makes
+  > `i` lethal near a threat — punishing the exact mode beginners live in —
+  > and the rest rule keeps the tick on core's own resolution unit, so no
+  > second keystroke counter exists to drift. Cheap to revisit: the tick
+  > source is one subscription point in `session.ts`.
 - Whether hints live in the stage data or are derived entirely from the
   recorded solution. Deferred to Wave D, when M3's recorder shape is closer.
 
