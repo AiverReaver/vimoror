@@ -366,15 +366,47 @@ is a ceiling for the milestone that authors big stages.
      whole page — `kind: "walls"` threw out of a React effect and unmounted the
      tree, destroying the issues pane that was about to name the typo. The
      checklist lists all six plus the mutation-sweep test gaps.
-3. **Wave C — structured editing, the whole schema authorable.** Metadata
-   panel, palette + paint-on-grid for entities, condition and beat editors.
-   Done when: **every field `schema.ts` accepts is reachable from the UI**
-   (the drift guard is the schema itself: a field added to `stageShape` later
-   should force an editor change, which is why the panels build off the
-   `StageInput` type rather than hand-listed field names), every
+3. **Wave C — structured editing, the whole schema authorable. DONE
+   2026-08-19.** Metadata panel, palette + paint-on-grid for entities, condition
+   and beat editors. Done when: **every field `schema.ts` accepts is reachable
+   from the UI** (the drift guard is the schema itself: a field added to
+   `stageShape` later should force an editor change, which is why the panels
+   build off the `StageInput` type rather than hand-listed field names), every
    `formatIssues` path renders next to something an author can find, and a
    stage goes from `blankStage()` to exported-and-valid without hand-editing
    JSON.
+
+   **All met.** `docs/CHECKLIST.md`'s M3 Wave C section carries the full writeup
+   — 1572 tests (from 1544), zero golden bytes changed, demo 4/4, nothing touched
+   outside `apps/editor/` — and the parts that change how a reader should take
+   this plan are:
+
+   - **The drift guard could not be "the panels build off the `StageInput`
+     type".** A panel is not introspectable, so nothing about being typed on
+     `StageInput` forces a FIELD to have an input rendered for it. It is spelt
+     instead as a conditional type: each pane exports `EDITS`, the fields it owns,
+     and `app.tsx` asserts the four lists cover `keyof StageDraft` — verified to
+     fail on purpose. `draft.ts`'s `FIELD_ORDER` guard is the other half (the
+     field must also be EXPORTED), so the pair covers both silent failures.
+   - **`CONDITION_KINDS` is hand-listed in `draft.ts`, guarded the same way**,
+     because a Zod `discriminatedUnion` exports no runtime member list and done-item
+     6 forbids adding one to `schema.ts`.
+   - **Fourteen fields needed ONE reducer action**, `field-set`, as a mapped type
+     over `StageDraft`. The plan's file breakdown implied per-collection actions
+     ("reducer actions are vitest-testable where they carry logic"); the one that
+     carries logic turned out to be exactly one, `entity-painted`.
+   - **`fields.tsx` is the one unplanned file** — six form primitives, because the
+     alternative is thirty hand-written label/input pairs each with its own idea of
+     what an empty box means, and that decision is the only non-cosmetic thing on
+     the surface (an empty box is an ABSENT field, which is what keeps `allowedKeys`
+     able to say "ungated" and `options` able to stop materializing a default).
+   - **The spawn is typed, not painted.** The plan's checkbox lists it under
+     overlay painting; a paint tool for it would need a palette entry that places
+     no entity, and the failure it matters for (a spawn off the buffer) reports
+     precisely from two number boxes.
+   - Judgment call #2 (**where issues render**) is decided: **one issues pane keyed
+     by path**, as specced. Eighteen paths from one malformed file all landed next
+     to a field an author can find, so inline-per-field never had to earn itself.
 4. **Wave D — playtest + the recorder.** `keyboard.ts`, `recorder.ts`,
    `play-pane.tsx`. Playtest constructs a fresh `GameSession` from the parsed
    draft at the picked difficulty and feeds real keystrokes; recording is the
@@ -483,10 +515,12 @@ M2's Wave E filed them.
   it, which is the accepted cost of "never colour alone" reaching pixels. M4
   still owns the *shipped* look when it lifts the file. Cheap to change: one
   pure function.
-- **Where issues render** — one issues pane keyed by path (as specced) vs
-  inline per-field messages. Wave C decides; the requirement is only that
-  every issue is visible with enough path to find its field. Inline-per-field
-  is strictly more wiring for the same information, so it must earn itself.
+- ~~**Where issues render**~~ — **decided at Wave C: one issues pane keyed by
+  path, as specced.** Eighteen `formatIssues` paths from one deliberately
+  malformed file all landed next to a field an author can find, so
+  inline-per-field — strictly more wiring for the same information — never had to
+  earn itself. The path prefix in a `<pre>` is what makes `beats.1.on.entity`
+  findable at all.
 - **How much the playtest surfaces** — beats, rejection lines and outcome in
   an event log (as specced) vs a fuller in-fiction presentation. The log is
   enough for an authoring tool; anything richer is M4's presentation arriving

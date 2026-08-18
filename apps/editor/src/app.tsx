@@ -11,31 +11,50 @@
  * the exact moment the issues pane starts talking about it. Only the spawn
  * prefers the parse, because that is where `cursor`'s default is resolved and the
  * editor must not carry a second copy of it.
+ *
+ * **The compile-time guard below is Wave C's done-line.** "Every field
+ * `schema.ts` accepts is reachable from the UI" is not a property a test can
+ * assert — a panel is not introspectable — so it is spelt as an exhaustiveness
+ * check over the four panes' own `EDITS` lists. Add a field to `stageShape` and
+ * this file stops compiling until a pane claims it; `draft.ts`'s `FIELD_ORDER`
+ * guard covers the other half, that the field also gets EXPORTED. Between them, a
+ * new schema field cannot be silently unauthorable or silently dropped.
  */
 
 import type { Entity } from '@vimorror/game';
 import { useReducer, useState } from 'react';
 
-import { BufferPane } from './buffer-pane.tsx';
-import { exportStage, parseDraft, readDraft, stageFileName } from './draft.ts';
+import { BufferPane, EDITS as BUFFER_EDITS } from './buffer-pane.tsx';
+import { ConditionsPanel, EDITS as CONDITION_EDITS } from './conditions-panel.tsx';
+import { exportStage, listOf, parseDraft, readDraft, stageFileName, type DraftEntity, type StageDraft } from './draft.ts';
+import { EntitiesPanel, EDITS as ENTITY_EDITS } from './entities-panel.tsx';
 import { FIXTURES } from './fixtures.ts';
 import { HAS_FILE_PICKERS, openStageFile, saveStageFile } from './files.ts';
 import { GridPane } from './grid-pane.tsx';
 import { IssuesPane } from './issues-pane.tsx';
+import { MetadataPanel, EDITS as METADATA_EDITS } from './metadata-panel.tsx';
 import { drawableEntities } from './stage-cells.ts';
 import { initialState, reduce, textFromBuffer } from './store.ts';
+
+type AuthoredField =
+  | (typeof BUFFER_EDITS)[number]
+  | (typeof METADATA_EDITS)[number]
+  | (typeof ENTITY_EDITS)[number]
+  | (typeof CONDITION_EDITS)[number];
+
+const _everyFieldIsAuthorable: Exclude<keyof StageDraft, AuthoredField> extends never ? true : never = true;
 
 export function App() {
   const [state, dispatch] = useReducer(reduce, undefined, initialState);
   const [notice, setNotice] = useState<string | undefined>(undefined);
 
-  const { draft, selection } = state;
+  const { draft, selection, tool } = state;
   const parse = parseDraft(draft);
 
-  // `Array.isArray` because `readDraft` admits a file whose `entities` is not one;
+  // `listOf` because `readDraft` admits a file whose `entities` is not an array;
   // `drawableEntities` because it also admits entities that are individually
   // unrenderable, and a throw in the grid takes the issues pane down with it.
-  const entities: readonly Entity[] = drawableEntities(Array.isArray(draft.entities) ? draft.entities : []);
+  const entities: readonly Entity[] = drawableEntities(listOf<DraftEntity>(draft.entities) as readonly Entity[]);
   const spawn = parse.ok ? parse.stage.cursor : draft.cursor;
 
   function load(text: string, from: string): void {
@@ -115,28 +134,20 @@ export function App() {
           spawn={spawn}
           selection={selection}
           onSelect={(id) => dispatch({ kind: 'entity-selected', id })}
+          tool={tool}
+          onPaint={(from, to) => dispatch({ kind: 'entity-painted', from, to })}
         />
       </main>
 
+      <section className="panels">
+        <MetadataPanel draft={draft} dispatch={dispatch} />
+        <EntitiesPanel draft={draft} selection={selection} tool={tool} dispatch={dispatch} />
+        <ConditionsPanel draft={draft} dispatch={dispatch} />
+      </section>
+
       <footer>
         <IssuesPane issues={parse.ok ? undefined : parse.issues} />
-        <div className="pane">
-          <h2>selection</h2>
-          <p className="note">
-            {selection === undefined
-              ? 'click an entity on the grid.'
-              : describe(entities.find((e) => e.id === selection))}
-          </p>
-        </div>
       </footer>
     </div>
   );
-}
-
-function describe(entity: Entity | undefined): string {
-  if (entity === undefined) return 'that entity is gone.';
-  const to = entity.to === undefined ? '' : ` to ${entity.to.line}:${entity.to.col}`;
-  return `${entity.kind} "${entity.id}" — ${entity.glyph} at ${entity.at.line}:${entity.at.col}${to}${
-    entity.label === undefined ? '' : ` (${entity.label})`
-  }`;
 }

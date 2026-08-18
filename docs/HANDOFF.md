@@ -1,4 +1,4 @@
-# HANDOFF — M0 + M1 + M2 complete, **M3 Waves A–B done** (2026-08-18)
+# HANDOFF — M0 + M1 + M2 complete, **M3 Waves A–C done** (2026-08-19)
 
 Read this first when continuing work. The plan of record is `MergedPlan.md`;
 the tracking doc is `docs/CHECKLIST.md`; the harness gospel is
@@ -674,7 +674,8 @@ non-blocking. Worth doing early in whatever comes after M0:
     and outcome are identical either way — which is what lets one player's
     replay reproduce under another's comfort settings.
 - **M3 (`apps/editor`) has its plan: `docs/M3-PLAN.md`**, waves A–E, same shape
-  as M1's and M2's. **Waves A and B are done as of 2026-08-18.** Wave A was the
+  as M1's and M2's. **Waves A, B and C are done — A and B on 2026-08-18, C on
+  2026-08-19.** Wave A was the
   two debts M3 rests on, both in packages rather than `apps/`: `keys.ts`'s
   `render`/`tokenize` round trip (see the `keys.ts` bullet under "Engine
   architecture notes" above) and `schema.ts`'s `StageInput` export, the AUTHORED
@@ -689,6 +690,48 @@ non-blocking. Worth doing early in whatever comes after M0:
   round trip; the plan's five verified-against-source facts are still the part
   worth reading before picking them up — two of them REMOVE work the older plan
   docs still list (the stage validator already shipped; no Zustand).
+- **The four Wave C facts a newcomer would otherwise rediscover the hard way**,
+  all measured rather than assumed:
+  - **"Every schema field is reachable from the UI" cannot be a test, so it is a
+    conditional type — and the plan's own answer for it does not work.** The plan
+    said the guard is that "the panels build off the `StageInput` type rather than
+    hand-listed field names", but a panel is not introspectable: being typed on
+    `StageInput` forces nothing about whether a given FIELD has an input rendered
+    for it, and a test can only check the list it already knows. So each pane
+    exports `EDITS` (the fields it owns, `satisfies readonly (keyof StageDraft)[]`)
+    and `app.tsx` asserts the four lists cover `keyof StageDraft` between them,
+    verified to fail on purpose. It is half of a pair: `draft.ts`'s `FIELD_ORDER`
+    guard already forces a new field to be EXPORTED, so a field added to
+    `stageShape` can be neither silently unauthorable nor silently dropped from
+    every save. `CONDITION_KINDS` needs the same treatment for the same reason —
+    a Zod `discriminatedUnion` exports no runtime member list, and M3 may not add
+    one to `schema.ts`.
+  - **An empty input box is an ABSENT field, and exactly one field makes that
+    load-bearing.** `allowedKeys` omitted is ungated while `allowedKeys: []` is
+    rejected outright, so `specsOrAbsent` maps an empty textarea to `undefined` and
+    the editor can never emit the one value of that field that is never right. The
+    rule generalises for free everywhere else, and it is what keeps `options` from
+    materializing: `withOption` returns `undefined` once the last override is
+    cleared, so the export never carries an `"options": {}` the author is not
+    writing. The alternative — substituting a `0` or an empty array — invents a
+    value the author did not choose and reports a different error about it.
+  - **A `<select>` whose value matches no option silently renders the FIRST one.**
+    Measured in the browser on a hand-edited file: a `lose` condition that was
+    `null` displayed `cursor-on`, the editor asserting a kind nothing in the draft
+    said. One branch in `ChoiceField` covers both real cases — a missing value
+    shows the field's placeholder (or `(unset)`), an unmatched one shows
+    `<value> (unknown)` — which is also what keeps a stale entity reference visible
+    while the issues pane complains about it, instead of quietly reading as the
+    first entity in the list.
+  - **A list field off a hand-edited FILE need not be a list, and the fix must not
+    filter.** `readDraft` admits `{"win": 3}` on purpose (the schema reports it on
+    the next render), so `listOf` substitutes `[]` rather than letting a panel's
+    `.map` throw and take the issues pane down with it — Wave B's blank-page lesson
+    on four new panels. But it never DROPS a malformed member, because the panels
+    write back by index and dropping one would renumber the survivors and send the
+    next edit to the wrong one; the item-level reads are guarded individually
+    (`entity.at?.line`) so a malformed entity can still be edited rather than only
+    skipped the way `drawable` skips it for drawing.
 - **The five Wave B facts a newcomer would otherwise rediscover the hard way**,
   all measured rather than assumed:
   - **A malformed entity used to blank the whole editor, and the fix is a

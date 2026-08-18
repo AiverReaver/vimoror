@@ -19,7 +19,8 @@
  * there is no cache here to go stale.
  */
 
-import { formatIssues, safeParseStage, type Stage, type StageInput } from '@vimorror/game';
+import type { Pos } from '@vimorror/core';
+import { formatIssues, safeParseStage, type EntityKind, type Stage, type StageInput } from '@vimorror/game';
 
 /** The authored shape, defaults unmaterialized. */
 export type StageDraft = StageInput;
@@ -192,4 +193,227 @@ export function readDraft(text: string): StageDraft {
 function hasBufferLines(raw: unknown): raw is StageDraft & { buffer: string[] } {
   const buffer = (raw as { buffer?: unknown } | null | undefined)?.buffer;
   return Array.isArray(buffer) && buffer.every((line) => typeof line === 'string');
+}
+
+// ---------------------------------------------------------------------------
+// Wave C — the shapes the panels edit, derived rather than restated
+// ---------------------------------------------------------------------------
+
+/**
+ * Every collection the panels edit, named off `StageDraft` instead of off
+ * `Stage`. The distinction is not cosmetic: `Stage`'s `entities` is
+ * `Entity[]` while the draft's is `Entity[] | undefined`, and a panel typed on
+ * the output shape would quietly promise the author wrote a field they did not.
+ * `NonNullable` unwraps the default's absence exactly once, here.
+ */
+export type DraftEntity = NonNullable<StageDraft['entities']>[number];
+export type DraftCondition = StageDraft['win'][number];
+export type DraftBeat = NonNullable<StageDraft['beats']>[number];
+export type DraftOptions = NonNullable<StageDraft['options']>;
+export type ConditionKind = DraftCondition['kind'];
+
+/**
+ * The condition vocabulary, for the kind picker.
+ *
+ * Hand-listed because `conditionSchema` is a `discriminatedUnion` and exports no
+ * runtime list of its members, and M3 may not add one (its done-list holds
+ * `schema.ts` to the single `StageInput` line Wave A added). The guard below is
+ * what makes the copy safe: add a fifth condition kind to the union and this
+ * file stops compiling until the picker offers it, which is the same trick
+ * `FIELD_ORDER` uses above and the same drift `schema.ts`'s own
+ * `satisfies Record<keyof EditorOptions, ...>` prevents.
+ */
+export const CONDITION_KINDS = [
+  'cursor-on',
+  'buffer-equals',
+  'keystrokes-over',
+  'threat-reaches-cursor',
+] as const;
+
+const _everyConditionKindIsOffered: Exclude<ConditionKind, (typeof CONDITION_KINDS)[number]> extends never
+  ? true
+  : never = true;
+
+/**
+ * A list field off a hand-edited FILE need not be a list at all.
+ *
+ * `readDraft` admits `{"win": 3}` on purpose — the schema is the authority and
+ * says `win: Expected array, received number` on the very next render — so every
+ * panel that maps over one of these must survive it. Same door, one room further
+ * in, as `stage-cells.ts`'s `drawable`: a `.map` on a number throws out of
+ * render, React unmounts the tree, and the issues pane about to explain the
+ * problem goes with it.
+ *
+ * It substitutes and never FILTERS. The panels write back by index
+ * (`replaceAt(win, i, …)`), so dropping a malformed member would renumber the
+ * survivors and send an edit to the wrong one.
+ */
+export function listOf<T>(value: unknown): readonly T[] {
+  return Array.isArray(value) ? (value as readonly T[]) : [];
+}
+
+export function replaceAt<T>(list: readonly T[], index: number, item: T): T[] {
+  return list.map((existing, i) => (i === index ? item : existing));
+}
+
+export function removeAt<T>(list: readonly T[], index: number): T[] {
+  return list.filter((_, i) => i !== index);
+}
+
+/**
+ * Set one top-level field, where `undefined` means **remove it** rather than
+ * store an explicit `undefined`.
+ *
+ * That is the whole input-type decision applied to editing: `exportStage` drops
+ * an `undefined`-valued key either way, so the two spellings ship identical JSON
+ * — but they are not identical in the draft, and `allowedKeys` is the field that
+ * proves it. An author who un-gates a stage must leave the draft with no
+ * `allowedKeys` at all, because `[]` is rejected and a present-but-undefined
+ * value is what a later `Object.hasOwn`-style check would read as "gated".
+ * Clearing a REQUIRED field takes the same route on purpose: the field goes
+ * absent and the schema says `par: Required`, which is a true statement about
+ * what the author has written.
+ */
+export function withField(draft: StageDraft, field: keyof StageDraft, value: unknown): StageDraft {
+  const next: Record<string, unknown> = { ...draft };
+  if (value === undefined) delete next[field];
+  else next[field] = value;
+  return next as StageDraft;
+}
+
+/**
+ * The same rule one level down, plus the part that keeps `options` honest: an
+ * options object with nothing overridden comes back `undefined`, so the field
+ * itself goes absent.
+ *
+ * Without that, clearing the last override would leave `"options": {}` in the
+ * export — which parses to the same seven values today and freezes NOTHING, but
+ * it is a field the author is not writing, and the import→export identity test is
+ * the thing that would catch it drifting.
+ */
+export function withOption(
+  options: DraftOptions | undefined,
+  key: keyof DraftOptions,
+  value: number | boolean | undefined,
+): DraftOptions | undefined {
+  const next: Record<string, unknown> = { ...options };
+  if (value === undefined) delete next[key];
+  else next[key] = value;
+  return Object.keys(next).length === 0 ? undefined : (next as DraftOptions);
+}
+
+/**
+ * An empty key-spec textarea means the field is ABSENT.
+ *
+ * For `allowedKeys` that is the difference between an ungated stage and one the
+ * schema rejects outright: `[]` "permits no keys at all" and is an error, while
+ * omission is how core spells `KeyPolicy.allowed === undefined`. So the editor
+ * cannot emit `[]` at all — the one value of this field that is never right — and
+ * the rule lives here rather than in the panel because it is a fact about the
+ * document, testable without a DOM.
+ *
+ * A single empty line is what an empty `<textarea>` splits to (`''.split('\n')`
+ * is `['']`), so this is that one shape and no other: two blank lines really are
+ * two empty specs, and the schema says so.
+ */
+export function specsOrAbsent(lines: readonly string[]): string[] | undefined {
+  return lines.length === 1 && lines[0] === '' ? undefined : [...lines];
+}
+
+/**
+ * A free id derived from a prefix — `wall`, then `wall-2`, `wall-3`.
+ *
+ * Shared by entities and beats because `stageSchema` rejects a duplicate in
+ * either ("a condition naming it would be ambiguous"), and an editor that hands
+ * out `wall` twice makes the author fix a problem the editor caused.
+ */
+export function nextId(prefix: string, taken: readonly string[]): string {
+  if (!taken.includes(prefix)) return prefix;
+  for (let n = 2; ; n += 1) {
+    const candidate = `${prefix}-${n}`;
+    if (!taken.includes(candidate)) return candidate;
+  }
+}
+
+/**
+ * Two grid cells to an entity's corners.
+ *
+ * `at` is the minimum on EACH AXIS independently and `to` the maximum, which is
+ * what `schema.ts` demands ("must be at or after `at` on both axes — a
+ * rectangle's far corner, not an arbitrary second point") and what `occupies`
+ * means by a `<C-v>`-shaped block. Dragging up-and-left is the ordinary way to
+ * paint a rectangle, so normalising here is what stops the editor from emitting
+ * the one shape the schema rejects.
+ *
+ * A single cell yields **no `to` at all**, not a degenerate `to === at`. Both
+ * occupy the same one cell, so this is a statement about the exported JSON: a
+ * one-cell goal reads as `at` alone, the way every hand-authored fixture writes
+ * it.
+ */
+export function rectFrom(a: Pos, b: Pos): { readonly at: Pos; readonly to?: Pos } {
+  const at = { line: Math.min(a.line, b.line), col: Math.min(a.col, b.col) };
+  const to = { line: Math.max(a.line, b.line), col: Math.max(a.col, b.col) };
+  return at.line === to.line && at.col === to.col ? { at } : { at, to };
+}
+
+/**
+ * The glyph a freshly painted entity starts with — the "never colour alone"
+ * invariant pre-satisfied, since `glyph` is required and an author dropped into a
+ * form with an empty one reads a schema error they did nothing to earn.
+ *
+ * These are authoring defaults, so they live here rather than beside
+ * `ENTITY_SKIN`: that table is the SKIN (what the preview paints), this is
+ * content (what gets written to the file and can be changed per entity).
+ */
+export const DEFAULT_GLYPH: Record<EntityKind, string> = {
+  goal: 'X',
+  wall: '#',
+  threat: '?',
+  pickup: '*',
+};
+
+export function blankEntity(
+  kind: EntityKind,
+  rect: { readonly at: Pos; readonly to?: Pos },
+  taken: readonly string[],
+): DraftEntity {
+  return { id: nextId(kind, taken), kind, ...rect, glyph: DEFAULT_GLYPH[kind] };
+}
+
+/**
+ * A condition of the picked kind, valid on arrival wherever that is possible.
+ *
+ * `entity` is passed in rather than defaulted to `''` because a `cursor-on` with
+ * no entity can never fire and the schema says so twice (`min(1)` on the string,
+ * then `no entity with id ""`). The caller hands over the selected entity, or the
+ * first one drawn — so adding a win condition to a stage that already has a goal
+ * is one click and zero errors.
+ */
+export function blankCondition(kind: ConditionKind, entity = ''): DraftCondition {
+  switch (kind) {
+    case 'cursor-on':
+      return { kind, entity };
+    case 'buffer-equals':
+      return { kind, lines: [''] };
+    case 'keystrokes-over':
+      // The schema's floor is `positive()`, so 1 is the smallest legal budget.
+      return { kind, max: 1 };
+    case 'threat-reaches-cursor':
+      return { kind };
+  }
+}
+
+/**
+ * `startling` is written explicitly rather than left out, because the schema
+ * REQUIRES it and says why: a default of `false` would let an author ship a
+ * startle beat to a player who asked for none. The editor is not the place to
+ * re-introduce the default the schema refused.
+ */
+export function blankBeat(taken: readonly string[], entity?: string): DraftBeat {
+  return {
+    id: nextId('beat', taken),
+    text: 'something moves in the buffer',
+    startling: false,
+    on: blankCondition('cursor-on', entity),
+  };
 }

@@ -91,6 +91,124 @@
         border: 1px solid var(--edge);
         cursor: pointer;
       }
+      /* Wave C's three panels, side by side under the dual pane and each free to
+         scroll on its own — the entities and beats lists have no bounded height,
+         and a page that grows to the tallest of them leaves the other two as
+         stripes at the top. */
+      .panels {
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+      }
+      .panels > .pane {
+        flex: 1 1 0;
+        min-width: 0;
+        max-height: 460px;
+        overflow-y: auto;
+      }
+      .pane h3 {
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--dim);
+        margin: 10px 0 4px;
+        border-top: 1px solid var(--edge);
+        padding-top: 6px;
+      }
+      .field {
+        display: flex;
+        gap: 6px;
+        align-items: baseline;
+        margin-bottom: 4px;
+      }
+      .field-label {
+        flex: 0 0 84px;
+        color: var(--dim);
+        font-family: ui-monospace, monospace;
+      }
+      .field input[type='text'],
+      .field select,
+      .field textarea {
+        flex: 1 1 0;
+        min-width: 0;
+      }
+      .field .num {
+        flex: 0 0 72px;
+      }
+      input,
+      textarea {
+        font: inherit;
+        background: #0b0b0e;
+        color: var(--ink);
+        border: 1px solid var(--edge);
+        padding: 3px 5px;
+      }
+      textarea.lines {
+        font-family: 'JetBrains Mono', ui-monospace, monospace;
+        resize: vertical;
+      }
+      .row {
+        border: 1px solid var(--edge);
+        padding: 5px;
+        margin-bottom: 5px;
+      }
+      .row.selected {
+        border-color: #5fe07a;
+      }
+      .row-head {
+        display: flex;
+        gap: 6px;
+        align-items: baseline;
+      }
+      .row-body {
+        margin-top: 6px;
+      }
+      /* The palette's colours are the preview's, so the armed button and the
+         cells it paints are recognisably the same thing. They are literal rather
+         than read from `ENTITY_SKIN` because this is CSS — and a test asserting a
+         cell against the same table it came from is the self-referential trap the
+         Wave B checklist entry documents, so the duplication is at least visible. */
+      .palette {
+        display: flex;
+        gap: 4px;
+        margin-bottom: 6px;
+      }
+      .palette button {
+        flex: 1 1 0;
+      }
+      .palette .armed {
+        outline: 1px solid currentColor;
+      }
+      .palette .goal.armed {
+        color: #5fe07a;
+        background: #0d3d18;
+      }
+      .palette .wall.armed {
+        color: #c3c9d8;
+        background: #2a2a34;
+      }
+      .palette .threat.armed {
+        color: #ff7b6b;
+        background: #4a0f12;
+      }
+      .palette .pickup.armed {
+        color: #ffd452;
+        background: #3d3208;
+      }
+      .grid.painting {
+        cursor: crosshair;
+      }
+      button.link {
+        flex: 1 1 0;
+        text-align: left;
+        border-color: transparent;
+        background: none;
+        font-family: ui-monospace, monospace;
+      }
+      .condition {
+        flex: 1 1 0;
+      }
       .note {
         color: var(--dim);
         margin: 0;

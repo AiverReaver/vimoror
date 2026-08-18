@@ -27,10 +27,11 @@
  */
 
 import type { Pos } from '@vimorror/core';
-import type { Entity } from '@vimorror/game';
+import type { Entity, EntityKind } from '@vimorror/game';
 import { GlyphGrid, bakeFontAtlas, cursorShapeForMode, type CellBuffer, type FontAtlas } from '@vimorror/render';
 import { useEffect, useRef, useState, type MouseEvent } from 'react';
 
+import { DEFAULT_GLYPH, rectFrom } from './draft.ts';
 import { entityAt, inFrame, stageCells } from './stage-cells.ts';
 
 const CELL_W = 9;
@@ -96,15 +97,32 @@ export type GridPaneProps = {
   readonly spawn: Pos | undefined;
   readonly selection: string | undefined;
   readonly onSelect: (id: string | undefined) => void;
+  /** The armed paint kind, or `undefined` for the plain click-to-select grid. */
+  readonly tool: EntityKind | undefined;
+  readonly onPaint: (from: Pos, to: Pos) => void;
 };
 
-export function GridPane({ lines, entities, spawn, selection, onSelect }: GridPaneProps) {
+/**
+ * The id the in-progress drag rectangle is drawn under. It only has to miss every
+ * real id, and an author cannot type parentheses into one by accident — but even
+ * a collision would only tint the wrong cells for as long as the mouse is down.
+ */
+const GHOST_ID = '(painting)';
+
+export function GridPane({ lines, entities, spawn, selection, onSelect, tool, onPaint }: GridPaneProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const gridRef = useRef<GlyphGrid | null>(null);
   const atlasRef = useRef<FontAtlas | null>(null);
   /** The frame currently on screen, so a click can map a pixel to its cell. */
   const cellsRef = useRef<CellBuffer | null>(null);
   const [atlasState, setAtlasState] = useState<'baking' | 'ready' | string>('baking');
+  /**
+   * The rectangle being swept, while the button is down. It is React state rather
+   * than a ref because it has to REDRAW: a rectangle drag with no feedback is
+   * aiming blind, and the cheapest feedback available is the thing the editor
+   * already does well — one more entity in the array `stageCells` paints.
+   */
+  const [drag, setDrag] = useState<{ readonly from: Pos; readonly to: Pos } | undefined>(undefined);
 
   useEffect(() => {
     void fontAtlas().then(
@@ -133,7 +151,14 @@ export function GridPane({ lines, entities, spawn, selection, onSelect }: GridPa
     // every glyph rather than failing.
     gridRef.current ??= new GlyphGrid(canvas, atlas.cellW, atlas.cellH);
 
-    const cells = stageCells(frameLines(lines), entities, selection);
+    // The ghost is appended, so it paints LAST and sits on top — `stageCells`
+    // treats the array as the author's own z-order, and a rectangle being drawn
+    // over existing walls has to be visible while it is drawn.
+    const ghost: readonly Entity[] =
+      drag === undefined || tool === undefined
+        ? []
+        : [{ id: GHOST_ID, kind: tool, glyph: DEFAULT_GLYPH[tool], ...rectFrom(drag.from, drag.to) }];
+    const cells = stageCells(frameLines(lines), [...entities, ...ghost], selection);
     cellsRef.current = cells;
 
     const width = cells.width * atlas.cellW;
@@ -156,23 +181,65 @@ export function GridPane({ lines, entities, spawn, selection, onSelect }: GridPa
     });
   });
 
-  function selectAtPixel(event: MouseEvent<HTMLCanvasElement>): void {
+  function cellAt(event: MouseEvent<HTMLCanvasElement>): Pos | undefined {
     const canvas = canvasRef.current;
     const cells = cellsRef.current;
-    if (canvas === null || cells === null) return;
+    if (canvas === null || cells === null) return undefined;
 
     // Measured off the LAID-OUT box rather than the pixel dimensions, so a
     // canvas the CSS has scaled still maps a click to the right cell.
     const box = canvas.getBoundingClientRect();
-    const col = Math.floor(((event.clientX - box.left) / box.width) * cells.width);
-    const line = Math.floor(((event.clientY - box.top) / box.height) * cells.height);
-    onSelect(entityAt(entities, { line, col })?.id);
+    return {
+      col: Math.floor(((event.clientX - box.left) / box.width) * cells.width),
+      line: Math.floor(((event.clientY - box.top) / box.height) * cells.height),
+    };
+  }
+
+  /**
+   * One pointer, two jobs, resolved on mouse UP for both: with a tool armed the
+   * gesture paints, and with none it selects. Routing both through the same
+   * event is what keeps a plain click from doing both — a click fires
+   * `mousedown`, `mouseup` AND `click`, so an `onClick` selector left beside a
+   * `mouseup` painter would place an entity and then immediately select whatever
+   * was already under the pointer.
+   */
+  function onDown(event: MouseEvent<HTMLCanvasElement>): void {
+    const cell = cellAt(event);
+    if (tool === undefined || cell === undefined) return;
+    setDrag({ from: cell, to: cell });
+  }
+
+  function onMove(event: MouseEvent<HTMLCanvasElement>): void {
+    if (drag === undefined) return;
+    const cell = cellAt(event);
+    if (cell !== undefined) setDrag({ from: drag.from, to: cell });
+  }
+
+  function onUp(event: MouseEvent<HTMLCanvasElement>): void {
+    const cell = cellAt(event);
+    if (cell === undefined) return;
+    if (tool !== undefined && drag !== undefined) {
+      setDrag(undefined);
+      onPaint(drag.from, cell);
+      return;
+    }
+    onSelect(entityAt(entities, cell)?.id);
   }
 
   return (
     <div className="pane">
       <h2>preview</h2>
-      <canvas ref={canvasRef} className="grid" onClick={selectAtPixel} />
+      <canvas
+        ref={canvasRef}
+        className={tool === undefined ? 'grid' : 'grid painting'}
+        onMouseDown={onDown}
+        onMouseMove={onMove}
+        onMouseUp={onUp}
+        // A button released off the canvas never reaches `onUp`, and a drag left
+        // armed would then re-arm itself on the next hover and paint a rectangle
+        // from wherever the pointer used to be.
+        onMouseLeave={() => setDrag(undefined)}
+      />
       {atlasState === 'ready' ? null : (
         <p className={atlasState === 'baking' ? 'note' : 'bad'}>
           {atlasState === 'baking' ? 'baking the font atlas…' : atlasState}

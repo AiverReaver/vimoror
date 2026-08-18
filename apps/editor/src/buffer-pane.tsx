@@ -14,6 +14,15 @@
 
 import type { ChangeEvent } from 'react';
 
+import type { StageDraft } from './draft.ts';
+
+/**
+ * The one field this pane authors. `app.tsx` asserts the four panes' lists cover
+ * `keyof StageDraft` between them, so a field added to `stageShape` fails the
+ * build until a pane claims it.
+ */
+export const EDITS = ['buffer'] as const satisfies readonly (keyof StageDraft)[];
+
 export type BufferPaneProps = {
   readonly text: string;
   readonly onChange: (text: string) => void;

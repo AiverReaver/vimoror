@@ -13,10 +13,28 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { GameSession, parseStage } from '@vimorror/game';
+import { ENTITY_KINDS, GameSession, parseStage } from '@vimorror/game';
 import { describe, expect, it } from 'vitest';
 
-import { blankStage, exportStage, parseDraft, readDraft, stageFileName } from './draft.ts';
+import {
+  blankBeat,
+  blankCondition,
+  blankEntity,
+  blankStage,
+  CONDITION_KINDS,
+  exportStage,
+  listOf,
+  nextId,
+  parseDraft,
+  readDraft,
+  rectFrom,
+  specsOrAbsent,
+  stageFileName,
+  withField,
+  withOption,
+  type DraftEntity,
+  type StageDraft,
+} from './draft.ts';
 
 const stagesDir = fileURLToPath(new URL('../../../content/stages', import.meta.url));
 
@@ -189,5 +207,164 @@ describe('blankStage', () => {
     const stage = parseStage(blankStage());
     const goal = stage.entities[0]!;
     expect(goal.at.col).toBe(stage.buffer[0]!.length - 1);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Wave C — the shapes the panels build, and the two rules that keep an export
+// honest while they do it
+// ---------------------------------------------------------------------------
+
+describe('the blank factories parse', () => {
+  // Each one is what an author gets from a click, so a factory that lands on an
+  // error is the editor handing them a problem they did not cause. The whole
+  // point of `blankCondition`'s entity argument, and of writing `startling`
+  // explicitly rather than defaulting it.
+  it('a painted entity of every kind', () => {
+    for (const kind of ENTITY_KINDS) {
+      const draft: StageDraft = {
+        ...blankStage(),
+        entities: [...listOf<DraftEntity>(blankStage().entities), blankEntity(kind, { at: { line: 0, col: 0 } }, ['exit'])],
+      };
+      const parse = parseDraft(draft);
+      expect(parse.ok ? 'ok' : parse.issues).toBe('ok');
+    }
+  });
+
+  it('a condition of every kind, once its entity exists', () => {
+    for (const kind of CONDITION_KINDS) {
+      const base = blankStage();
+      const draft: StageDraft = {
+        ...base,
+        // `threat-reaches-cursor` is the one kind that needs a drawn threat
+        // before it can fire, and the schema says so — so the fixture supplies
+        // one rather than the factory pretending the condition is standalone.
+        entities: [...listOf<DraftEntity>(base.entities), blankEntity('threat', { at: { line: 0, col: 0 } }, ['exit'])],
+        lose: [blankCondition(kind, 'exit')],
+      };
+      const parse = parseDraft(draft);
+      expect(parse.ok ? 'ok' : parse.issues).toBe('ok');
+    }
+  });
+
+  it('a beat', () => {
+    const draft: StageDraft = { ...blankStage(), beats: [blankBeat([], 'exit')] };
+    const parse = parseDraft(draft);
+    expect(parse.ok ? 'ok' : parse.issues).toBe('ok');
+    // Not defaulted, and not defaultable: the schema requires the flag because a
+    // forgotten one ships a startle to a player who asked for none.
+    expect(draft.beats?.[0]?.startling).toBe(false);
+  });
+});
+
+describe('rectFrom', () => {
+  it('normalises both axes independently', () => {
+    // Dragging up-and-left is the ordinary way to paint, and `at.col > to.col`
+    // is the one rectangle shape `schema.ts` rejects outright.
+    expect(rectFrom({ line: 3, col: 9 }, { line: 1, col: 2 })).toEqual({
+      at: { line: 1, col: 2 },
+      to: { line: 3, col: 9 },
+    });
+    // Per axis, not by corner: a drag down-and-left is neither corner as given.
+    expect(rectFrom({ line: 1, col: 9 }, { line: 3, col: 2 })).toEqual({
+      at: { line: 1, col: 2 },
+      to: { line: 3, col: 9 },
+    });
+  });
+
+  it('a single cell has no `to` at all', () => {
+    // Both occupy the same one cell, so this is a claim about the exported JSON:
+    // a one-cell goal reads as `at` alone, the way the fixtures write it.
+    expect(rectFrom({ line: 2, col: 4 }, { line: 2, col: 4 })).toEqual({ at: { line: 2, col: 4 } });
+    expect(Object.keys(rectFrom({ line: 2, col: 4 }, { line: 2, col: 4 }))).toEqual(['at']);
+  });
+});
+
+describe('nextId', () => {
+  it('takes the bare prefix first, then numbers', () => {
+    expect(nextId('wall', [])).toBe('wall');
+    expect(nextId('wall', ['wall'])).toBe('wall-2');
+    expect(nextId('wall', ['wall', 'wall-2', 'wall-3'])).toBe('wall-4');
+  });
+
+  it('skips a gap rather than colliding with what is past it', () => {
+    // The taken list is the author's, not the editor's: they may have renamed
+    // `wall-2` and left `wall-3` behind.
+    expect(nextId('wall', ['wall', 'wall-3'])).toBe('wall-2');
+  });
+});
+
+describe('withField', () => {
+  it('removes the key rather than storing undefined', () => {
+    // The distinction the input-type decision rests on: `allowedKeys` present but
+    // undefined is not the same document as `allowedKeys` absent, even though
+    // both export identically today.
+    const gated: StageDraft = { ...blankStage(), allowedKeys: ['hjkl'] };
+    const ungated = withField(gated, 'allowedKeys', undefined);
+    expect(Object.hasOwn(ungated, 'allowedKeys')).toBe(false);
+    expect(exportStage(ungated)).not.toContain('allowedKeys');
+  });
+
+  it('clearing a REQUIRED field reports the gap, not a substituted value', () => {
+    const parse = parseDraft(withField(blankStage(), 'par', undefined));
+    expect(parse.ok).toBe(false);
+    expect(parse.ok ? '' : parse.issues).toMatch(/^ {2}par: /m);
+  });
+
+  it('never mutates the draft it is given', () => {
+    const before = blankStage();
+    const snapshot = structuredClone(before);
+    withField(before, 'title', 'changed');
+    expect(before).toEqual(snapshot);
+  });
+});
+
+describe('withOption', () => {
+  it('overrides one option and leaves the other six unwritten', () => {
+    expect(withOption(undefined, 'shiftwidth', 2)).toEqual({ shiftwidth: 2 });
+  });
+
+  it('the last override cleared takes the whole field with it', () => {
+    // Otherwise the export keeps an `"options": {}` the author is not writing —
+    // harmless to the parse, and exactly the drift the import→export identity
+    // test above exists to catch.
+    expect(withOption({ shiftwidth: 2 }, 'shiftwidth', undefined)).toBeUndefined();
+    expect(withOption({ shiftwidth: 2, expandtab: true }, 'expandtab', undefined)).toEqual({ shiftwidth: 2 });
+  });
+});
+
+describe('specsOrAbsent', () => {
+  it('an empty textarea leaves the stage ungated', () => {
+    // `''.split('\n')` is `['']`, so this is the shape an empty box really has.
+    expect(specsOrAbsent([''])).toBeUndefined();
+  });
+
+  it('never produces the one value the schema rejects', () => {
+    const emptied = withField({ ...blankStage(), allowedKeys: ['hjkl'] }, 'allowedKeys', specsOrAbsent(['']));
+    expect(parseDraft(emptied).ok).toBe(true);
+    // The alternative, spelt out: `[]` is not "no gating", it is "no keys".
+    expect(parseDraft({ ...blankStage(), allowedKeys: [] }).ok).toBe(false);
+  });
+
+  it('keeps a blank line the author actually typed', () => {
+    // Dropping it would delete the newline out from under the caret, since the
+    // textarea's value is derived from state on every render.
+    expect(specsOrAbsent(['hjkl', ''])).toEqual(['hjkl', '']);
+  });
+});
+
+describe('listOf', () => {
+  it('substitutes for a list field that is not a list', () => {
+    // `readDraft` admits this on purpose; the panels map over it on the very next
+    // render, and a throw there unmounts the issues pane that explains it.
+    expect(listOf(3)).toEqual([]);
+    expect(listOf(undefined)).toEqual([]);
+    expect(parseDraft({ ...blankStage(), win: 3 as never }).ok).toBe(false);
+  });
+
+  it('does NOT filter a malformed member out', () => {
+    // The panels write back by index, so dropping a member would renumber the
+    // survivors and send the author's next edit to the wrong one.
+    expect(listOf([null, { kind: 'cursor-on' }])).toHaveLength(2);
   });
 });

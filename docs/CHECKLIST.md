@@ -2259,11 +2259,160 @@ Deliberate deviations from the review, both recorded rather than silently taken:
   `Object.keys({...} satisfies Record<keyof StageDraft, 0>)`. Same drift
   protection, and the version kept needs no cast.
 
+### Wave C — structured editing, the whole schema authorable `[x]`
+
+Done 2026-08-19. `apps/editor/src/{fields,metadata-panel,entities-panel,
+conditions-panel}.tsx` are new; `draft.ts`, `store.ts`, `grid-pane.tsx`,
+`buffer-pane.tsx`, `app.tsx` and `index.html` grew. **1572 tests green** (1544
+after Wave B, +28), `pnpm typecheck` clean, `pnpm goldens:verify` **zero golden
+bytes changed** (1159, isolation verified), `pnpm demo` 4/4, `validate:stages` 3
+valid. Nothing outside `apps/editor/` was touched — no root-config edit, no
+`packages/` edit, so M3's done-item 6 still holds exactly.
+
+The done-line is "every field `schema.ts` accepts is reachable from the UI, every
+`formatIssues` path renders next to something an author can find, and a stage goes
+from `blankStage()` to exported-and-valid without hand-editing JSON." All three
+met, and the first one is now enforced by the compiler rather than by memory —
+see the drift guard below.
+
+**Verified in the browser through the preview tool, authoring a whole stage from
+the blank template with no JSON touched:**
+
+- [x] **The palette arms; the grid places.** A click on `wall` then a drag across
+      the preview produced `wall` at `1:8 … 3:16` — normalised from a
+      down-and-left drag — selected it, and opened its fields. A plain CLICK
+      (no drag) placed a one-cell `threat` at `2:2` with no `to` at all. The drag
+      draws a live ghost rectangle while the button is down, which is one more
+      entity in the array `stageCells` already paints.
+- [x] **Every `formatIssues` path lands next to its field.** Eighteen at once
+      from one deliberately malformed file (`id`/`act`/`title`/`cursor` type
+      errors, `entities.0` null, `entities.1.kind: 'walls'`, `entities.2.at`
+      missing, `win: 3`, `lose.0` null, `beats.0` null, `beats.1.startling`
+      missing, `options.shiftwidth` a string) — **and the page did not blank**,
+      which is the Wave B lesson holding on four new panels.
+- [x] **The two error paths Wave B had to defer are now reachable and were both
+      driven live**: a spawn moved off the buffer reports `cursor: spawn 9:0 is
+      outside the buffer — the engine would silently clamp it`, and the metadata
+      panel is what makes it reachable. Its sibling — clearing ONE axis of a
+      position — reports `cursor.col: Required` rather than snapping to zero.
+- [x] **Gating errors are live per keystroke.** `allowedKeys` of `wj0123456789`
+      against a solution of `l` reported `solution: uses "l", which allowedKeys
+      locks — the stage would reject its own solution` immediately.
+- [x] **A stage authored entirely through the UI parses, plays and exports the
+      authored shape.** Buffer typed, goal repositioned, wall and threat painted,
+      a `threat-reaches-cursor` lose condition, a beat, `allowedKeys` over two
+      lines, `teachesKeys`, `solution: 3j$`, `par: 3`, `expandtab: false` — and
+      `schema valid`. The same route is pinned as a test (below) so it cannot rot.
+
+What building it settled, all measured rather than assumed:
+
+- **"Every schema field is reachable" is not a property a test can assert, so it
+  is a conditional type.** A panel is not introspectable — a test can only check
+  what it already knows to look for, which is the same hand-written list the
+  guard is supposed to protect. So each pane exports `EDITS`, the fields it owns
+  (`satisfies readonly (keyof StageDraft)[]`), and `app.tsx` asserts the four
+  lists cover `keyof StageDraft` between them. Verified to fail on purpose:
+  dropping `'beats'` from `conditions-panel.tsx`'s list breaks the build at
+  `_everyFieldIsAuthorable`. It is the second half of a pair — `draft.ts`'s
+  `FIELD_ORDER` guard already forces a new field to be EXPORTED — so between them
+  a field added to `stageShape` can be neither silently unauthorable nor silently
+  dropped from every save.
+- **`CONDITION_KINDS` had to be hand-listed, because a `discriminatedUnion`
+  exports no runtime member list** and M3's own done-item 6 forbids adding one to
+  `schema.ts`. Guarded the same way, and the guard has a second, independent
+  tripwire: adding a fifth kind to the union also makes `blankCondition`'s switch
+  non-exhaustive under `noImplicitReturns`, so the build fails twice.
+- **Wave C added ONE reducer action for fourteen fields, not fourteen.**
+  `field-set` is a mapped type over `StageDraft`, so `{ field: 'act', value: 'x' }`
+  does not compile, and the array fields (`entities`/`win`/`lose`/`beats`) are
+  rebuilt by the panel and set whole. The only edit carrying real logic is
+  `entity-painted`, because two grid cells become a normalised rectangle and a
+  fresh unique id.
+- **An empty box is an ABSENT field, and that is load-bearing on exactly one
+  field.** `allowedKeys` omitted is ungated; `allowedKeys: []` is rejected
+  outright ("permits no keys at all"). So `specsOrAbsent` maps an empty textarea
+  to `undefined` and the editor can never emit `[]` — the one value of that field
+  that is never right. The same rule generalises harmlessly everywhere else:
+  clearing `par` REMOVES it and the schema says `par: Required`, which is a true
+  statement about what the author has written, where a substituted `0` would
+  invent a value and report a different error about it.
+- **`options` had to clear itself all the way to absent.** `withOption` returns
+  `undefined` once the last override is cleared, so the export does not keep an
+  `"options": {}` the author is not writing — invisible to the parse, and exactly
+  the drift `draft.ts`'s import→export identity test exists to catch.
+- **The `options` grid is a loop over `DEFAULT_OPTIONS` itself**, with the field
+  TYPE taken from each default's own type — so a new `EditorOptions` member
+  becomes authorable with no edit in the editor at all, and there is no second
+  table saying which options are booleans. A three-state select (`default (true)`
+  / `true` / `false`) is what makes "take it back to whatever core says"
+  expressible; a plain checkbox would have written a `false` that happens to match
+  today's default and would stop tracking it tomorrow.
+- **A `<select>` whose value matches no option renders the FIRST one, which is the
+  editor asserting something the draft does not say.** Found in the browser on the
+  malformed file: a `lose` condition that was `null` displayed `cursor-on`. The
+  fix is one branch in `ChoiceField` covering two real states at once — a missing
+  value shows the field's own placeholder (or `(unset)`), and a value that is not
+  in the list shows `<value> (unknown)`, which is what keeps a stale entity
+  reference visible while the issues pane complains about it. Both branches
+  verified live (`exit (unknown)` after deleting the entity; `pick an entity` on a
+  fresh condition with no entities drawn).
+- **The list fields need `listOf`, for Wave B's reason one door further in.**
+  `readDraft` admits `{"win": 3}` on purpose — the schema reports it on the next
+  render — so a `.map` in a panel would throw, unmount the tree and destroy the
+  report. It substitutes and never FILTERS: the panels write back by index, so
+  dropping a malformed member would renumber the survivors and send the next edit
+  to the wrong one. The item-level reads are guarded individually instead
+  (`entity.at?.line`), which is what lets a malformed entity still be *edited*
+  rather than merely skipped the way `drawable` skips it for drawing.
+- **The tool disarms itself the moment it paints.** The grid's other job is
+  selecting, and a tool left armed turns every click meant to pick an existing
+  entity into a new one stacked on top of it. Both jobs resolve on mouse UP for
+  the same reason: a click fires `mousedown`, `mouseup` AND `click`, so an
+  `onClick` selector left beside a `mouseup` painter would place an entity and then
+  immediately select whatever was already underneath.
+- **Renaming a selected entity has to carry the selection with it**, since
+  `selected` is an id match — without it the row collapses under the author
+  mid-edit, on the first keystroke of the new name.
+- **A blank line in a key-spec textarea is KEPT, deliberately.** The value is
+  derived from state on every render, so a rule that dropped the trailing empty
+  entry would delete the newline the author just typed, out from under the caret.
+  The cost is that a trailing blank line reads as `a key spec may not be empty` —
+  the schema's own message, about something genuinely written.
+
+**All 28 new tests passed on the first run, so they were mutation-tested rather
+than trusted** — M2 Wave E's discipline. 14 mutants across `draft.ts` and
+`store.ts` (both `rectFrom` normalisations, the degenerate-`to` rule, `nextId`'s
+prefix check, `withField`'s delete-not-store, `withOption`'s empty-to-absent,
+`specsOrAbsent`, `listOf`'s substitution, `blankBeat`'s `startling`, and five on
+the paint reducer including a no-op that returns a copy and a non-array
+`entities`): **14 dead, 0 survived.** The keystone is `store.test.ts`'s "a whole
+stage authored through the reducer alone" — fifteen dispatched actions, then
+`parseStage` (which throws on any issue), then a real `GameSession` fed the
+authored solution to a win, then the export's key list asserted to still be the
+nine-field authored shape with `cursor` absent and `options` holding only the one
+override.
+
+**One honest edge, not fixed:** the preview pads to an 18-row frame regardless of
+the buffer's length, so painting into the padding produces an entity the schema
+immediately reports as outside the buffer. The message is precise (`entities.1.at:
+1:8 is outside the buffer`) and clamping would silently move an entity away from
+where the author clicked, so the schema stays the one that decides which cells are
+real. Tinting the padding rows is the fix if it ever annoys anyone; it is a
+preview-honesty nicety, not a correctness gap.
+
 - [x] Dual-pane authoring: raw buffer text left, visual grid right, live-synced
-- [ ] Overlay painting: spawn, goal, walls, threats, key-pickups, triggers,
-      story beats
-- [ ] Metadata panel: id, act, `allowedKeys`, `teachesKeys`, par, `:set`
-      options, story beat text. **No difficulty overrides** — Wave E decided
+- [x] Overlay painting: spawn, goal, walls, threats, key-pickups, triggers,
+      story beats. Done at Wave C. The palette arms a kind and the grid places
+      it — click for one cell, drag for a rectangle, normalised on both axes so
+      the editor cannot emit the one shape `schema.ts` rejects. Triggers and story
+      beats are the same thing here as in the schema: one condition vocabulary
+      with three consumers, so `win`, `lose` and a beat's `on` share one editor.
+      **The spawn is typed rather than painted** — two number boxes in the
+      metadata panel, because a paint tool for it would need a fifth palette
+      entry that places no entity, and the reachable failure it was wanted for
+      (a spawn off the buffer) is reported precisely either way.
+- [x] Metadata panel: id, act, `allowedKeys`, `teachesKeys`, par, `:set`
+      options, story beat text. Done at Wave C. **No difficulty overrides** — Wave E decided
       difficulty is a session-level setting only (see its ledger above); a stage
       says "harder" through `par`, a `keystrokes-over` budget, threat placement
       and `allowedKeys`.
