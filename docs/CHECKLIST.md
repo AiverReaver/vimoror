@@ -1892,8 +1892,31 @@ ships. Lands *before* any content is hand-authored — factory before product.
 - [ ] **Solution recorder** — the highest-leverage feature in the plan. Play the
       stage in the editor; your keystrokes become the golden solution. One
       action yields the par score, the hint data *and* a regression test.
-- [ ] Validator — replays every golden solution headlessly through core and
-      asserts a win using only `allowedKeys`; runs in CI over `content/stages/`
+- [x] Validator — replays every golden solution headlessly through core and
+      asserts a win using only `allowedKeys`; runs in CI over `content/stages/`.
+      **Done 2026-08-18, ahead of the rest of M3**, because M2 Wave C's
+      `GameSession` already IS the four steps this needs (build the engine, hang
+      the stage's `KeyPolicy` on it, tick, evaluate `rules.ts`) — hand-rolling
+      them in `tools/validate-stages.ts` would have been a second copy of the
+      loop to drift from. Now in `.github/workflows/ci.yml` next to `typecheck`,
+      which it can be because the gate needs no Vim.
+      **It replays at all three difficulties**, which costs one loop and makes
+      M2's fourth done-line criterion a standing CI check rather than a one-time
+      claim. That was verified worth doing rather than assumed: a stage with a
+      goal three cells out and a threat six cells off **wins on `verymagic` and
+      loses on `magic`/`nomagic`**, because half cadence gives the threat one
+      step in the three ticks the route costs instead of three — a single-preset
+      gate ships that stage. The budget cannot split the presets the same way,
+      since the schema already rejects a solution longer than its own
+      `keystrokes-over`, so threat cadence is the whole mechanism.
+      Two checks deliberately left out: `keystrokes <= par` (the schema rejects
+      an over-par solution and a session counts only RESOLVED commands, so it can
+      never fire) and a `CommandRefused` inside the solution (M3's recorder
+      records real play, and a human route may legitimately contain a failed
+      motion — the spec asks for a win with permitted keys, not a flawless one).
+      Proven to fail on purpose, not just to pass: a non-winning solution and a
+      preset-split stage were both fed to it and both reported with the preset
+      named.
 - [ ] Playtest in place; JSON import/export via File System Access API
 - [ ] **Definition of done:** author a brand-new stage in the editor, record its
       solution, export it, and confirm it loads and is completable in the game

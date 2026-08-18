@@ -24,6 +24,10 @@ jobs:
 
       - run: pnpm typecheck
 
+      # Pure schema + game layer, no Vim: every stage in `content/stages/`
+      # parses, and its shipped solution really wins at all three difficulties.
+      - run: pnpm validate:stages
+
       # Goldens are generated locally against real Vim and committed, so
       # `pnpm test` (vitest) diffs against the committed JSON — no Vim needed
       # here. `pnpm goldens:generate/:verify` and `pnpm test:fuzz` all spawn
