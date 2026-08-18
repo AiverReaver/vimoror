@@ -195,7 +195,19 @@ not a bug fix.
       define. **The decision: core stays viewport-free.** `H M L` need a window
       height + topline supplied by `@vimorror/render` at M1, at which point they
       become a thin motion over data core is handed rather than data core owns.
-      Recorded here so M1 inherits it as an input instead of re-opening it
+      Recorded here so M1 inherits it as an input instead of re-opening it.
+      **Measured 2026-08-18, and it adds a second blocker the decision above
+      could not see: the golden harness cannot measure these three at all.**
+      Under `-es` the window is nominal but never scrolled — after `20G` then
+      `zz` on a 40-line buffer `line('w0')` stays 20 and `line('w$')` says 40 —
+      while real interactive Vim at the same 24-row size reports topline 9 and
+      botline 31. Every value diverges: `H` 9 vs 19, `M` 20 vs 30, `L` 31 vs 40.
+      Same class as the mode goldens, so the route is 4e's: pin the semantics
+      from a pty transcript in a hand-written test rather than authoring a
+      golden family. The semantics are now measured — `H` → topline + count - 1,
+      `L` → botline - count + 1, `M` → the midpoint — and `docs/HANDOFF.md`
+      carries the list still to probe. Nothing consumes these until M4 puts a
+      real camera in front of the engine, so the plumbing stays unbuilt
 - [x] Counts, `x X r`, `u <C-r>`
 - [x] Snapshot undo tree with redo-branch invalidation
 - [x] Engine API: `pending`, `setKeyPolicy`, `onCommandResolved`, `director.*`,
@@ -1821,7 +1833,9 @@ done-line puts out of bounds, or belongs to a milestone that has not started:
       (`pnpm test:fuzz` still exits non-zero over a full 10k run — expected live
       state, not a regression; repeat offenders are visual blockwise register
       TYPE and counted `iw`/`aw` across consecutive blank lines); `H`/`M`/`L`,
-      unblocked since M1 Wave A and still unwritten; `[[ ]]` section motions;
+      unblocked since M1 Wave A and still unwritten — and now known to be
+      **ungoldenable**, so they need 4e's pty-transcript route (measured
+      2026-08-18, see the `H M L` entry in M0 above); `[[ ]]` section motions;
       `o`/`O` with `autoindent`; the blockwise register's WIDTH, which the
       comparator ignores outright. (All also tracked in their own sections
       above; collected here so a Wave E reader sees them once.)

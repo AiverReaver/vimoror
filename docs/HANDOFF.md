@@ -495,9 +495,34 @@ non-blocking. Worth doing early in whatever comes after M0:
   part of the formal "M0 done when" gate, but still undone.
 - `H`/`M`/`L` — unblocked since M1 Wave A locked `Camera`'s `{topline,
   height}` shape, and deliberately kept OUT of M1 (`M1-PLAN.md` explains
-  why: it is pure `vim-core` grammar work touching zero render files). Pick
-  it up whenever `vim-core` is next touched — scratch-probe the boundary
-  semantics, add to `motions.ts`, author a golden family.
+  why: it is pure `vim-core` grammar work touching zero render files).
+  **Two things measured on 2026-08-18 that change how it has to be picked up**,
+  because this entry used to end "author a golden family" and that is not
+  possible:
+  - **`H`/`M`/`L` are UNGOLDENABLE with the current harness** — the same class
+    as the mode goldens, and for the same reason. Under `-es` there is a
+    nominal window (`winheight(0)` reports 23) but it is **never scrolled**:
+    after `20G` then `zz` on a 40-line buffer, `line('w0')` stays at 20 and
+    `line('w$')` reports 40. Driving real interactive Vim through a Python
+    `pty` at the identical 24-row size gives topline 9, botline 31 — and
+    **every value differs**: `H` is 9 interactively against 19 under `-es`,
+    `M` is 20 against 30, `L` is 31 against 40. So the oracle cannot see this
+    feature at all, and the route is 4e's precedent: pin the semantics in a
+    hand-written test off a pty transcript, exactly as the sequential
+    `:s ... c` confirm behaviour is pinned in `semantics.test.ts`.
+  - **The semantics themselves are now measured**, so that probing is done.
+    At topline 9 / botline 31 / `scrolloff=0`: `H` → 9, `M` → 20 (the midpoint
+    of the visible range), `L` → 31, `3H` → 11 (`topline + count - 1`), `3L`
+    → 29 (`botline - count + 1`). Still to probe before writing code:
+    `scrolloff`, first-non-blank landing, clamping at the buffer's own ends,
+    linewise operator composition, and the jumplist/pcmark push these three
+    make as jump motions.
+
+  Worth stating plainly: **nothing consumes `H`/`M`/`L` until M4** puts a real
+  camera in front of the engine, so building the viewport plumbing now is
+  speculative. The measurements above are the part worth having early, and they
+  are recorded so the next attempt does not start by rediscovering that the
+  harness cannot help.
 - M2 (`@vimorror/game`) has its plan: **`docs/M2-PLAN.md`**, waves A–E.
   **All five waves are done — M2 is complete, and all six of its "M2 done when"
   criteria were swept explicitly at Wave E.** A was the `vim-core` debt M2 rests on
