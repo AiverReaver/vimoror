@@ -153,8 +153,55 @@ rediscover by reading the diff.
    check at all and failed unconditionally past the end. Now mirrors
    `moveUp`/`moveDown` exactly.
 
+### The 2026-08-18 triage pass
+
+`tools/goldens/triage.ts` (`pnpm fuzz:triage`) is the tool 4g's instructions
+described but did not build: it sorts mismatches by ATOM COUNT and then
+**minimizes** each one, greedily dropping atoms and then buffer lines for as long
+as the case still diverges, one batched Vim process per round. A random fuzz
+mismatch is a 60-key sequence over a five-line buffer and nearly all of it is
+noise; the first run of this reduced one to **`yaW` on `['   ']`**. `IDS=1` prints
+just the failing ids, for set-diffing a fix (a net count cannot tell "fixed 5,
+broke 2" from "fixed 3").
+
+**One real engine bug fixed from it.** An UNCOUNTED `aw`/`aW` whose forward walk
+runs off the end of the buffer aborts — and real Vim still moves the cursor to
+wherever the walk got to, exactly as the COUNTED overshoot 4g fixed does.
+`textobjects.ts` set `abortCursor` only on the counted path, so `yaW` on a
+whitespace-only line left the cursor at column zero where Vim leaves it on the
+line's last character. The landing is computable rather than guessed:
+`beforeNextWord` never fails and `endWord` fails only when `incPos` reports `-1`,
+which happens only at the buffer's last position — so a failed walk always
+stopped there. Measured over `['   ']`, `['     ']`, `['ab  ']` and
+`['   ', '   ']`: 0:2, 0:4, 0:3, 1:2. Six goldens pin it, and all six fail
+without the fix. Set-diffed over a 1500-case sample: **3 fixed, 0 broken.**
+
+**The tell that separates abort from success here is the REGISTER, not the
+cursor**, and it is worth knowing before touching this code: `yaW` on `['   ']`
+aborts and leaves the register untouched, while `yaW` on `['   ', '']` SUCCEEDS
+and writes a charwise register — because **an empty line counts as a word**, so
+the forward walk finds one. Both leave the cursor at 0:0 in a successful-looking
+way, so a probe that reads only the cursor cannot tell them apart. Two cases in
+the hand probe looked like regressions from the fix for exactly this reason:
+they were already failing on the register, and the fix only made the existing
+error visible in a second field.
+
+**Two bugs isolated but NOT fixed**, both minimized and ready to pick up:
+
+- **`aw`/`aW` aborts where Vim succeeds when the walk crosses onto an empty
+  line.** Measured: `['   ', '']` `yaW` yanks charwise in Vim and aborts here;
+  `['   ', '']` `daW` deletes both lines linewise in Vim. The cause is
+  `endWord`'s `skip(CHAR_BLANK)` treating an empty line's NUL as one more blank
+  and walking off the buffer, where Vim's `end_word` takes an `empty` flag that
+  makes an empty line terminate the walk successfully. Needs care at Vim-source
+  level rather than a guess.
+- **A counted `ip` that overshoots CLAMPS instead of aborting** — the same shape
+  as 4g's `iw`/`aw` finding, in the paragraph object. `"09dip` on `['   ']`
+  leaves Vim's buffer untouched and empties ours, writing three registers Vim
+  never writes.
+
 Fuzzing at only a few hundred sequences per run already surfaces further
-candidate mismatches beyond these four, mostly in complex multi-atom
+candidate mismatches beyond these, mostly in complex multi-atom
 compositions (visual blockwise register type/width, `iw`/`aw` across several
 consecutive blank lines with a count) — not yet individually triaged. `pnpm
 test:fuzz` currently exits non-zero over a full 10k run for exactly this
@@ -477,9 +524,11 @@ harness as a permanent, continuously-run tool.
 That revision doesn't make the remaining fuzz mismatches unimportant — just
 non-blocking. Worth doing early in whatever comes after M0:
 
-- **Triage the remaining fuzz candidates.** `pnpm test:fuzz` already found
-  and fixed four real bugs (see "Wave 4g — the fuzz harness" above) but still
-  exits non-zero over a full 10k run. Run it, pick a handful of the shortest
+- **Triage the remaining fuzz candidates.** `pnpm test:fuzz` still exits
+  non-zero over a full 10k run — **1828 mismatches of 10000 at seed 1**,
+  measured 2026-08-18, so this is a campaign rather than a handful. Use
+  `pnpm fuzz:triage`, which minimizes; two already-isolated bugs and the
+  measured method are under "The 2026-08-18 triage pass" above. Run it, pick a handful of the shortest
   remaining mismatches (short atom count = least confounded), and for each
   one determine with a scratch probe against real Vim whether it's a genuine
   engine bug (fix it, add a golden, same as this wave's four) or a

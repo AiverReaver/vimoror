@@ -1831,8 +1831,22 @@ done-line puts out of bounds, or belongs to a milestone that has not started:
 
 - [ ] **`vim-core`, from M0's handoff:** triage the remaining fuzz candidates
       (`pnpm test:fuzz` still exits non-zero over a full 10k run — expected live
-      state, not a regression; repeat offenders are visual blockwise register
-      TYPE and counted `iw`/`aw` across consecutive blank lines); `H`/`M`/`L`,
+      state, not a regression; **1828 mismatches of 10000 at seed 1, measured
+      2026-08-18**, so it is a campaign rather than a handful). **First pass done
+      2026-08-18**: `tools/goldens/triage.ts` (`pnpm fuzz:triage`) is the
+      minimizing tool 4g's instructions described but never built — it sorts by
+      atom count and then greedily drops atoms and buffer lines, turning a 60-key
+      sequence into `yaW` on `['   ']`, with an `IDS=1` mode for set-diffing a fix
+      (a net count cannot tell "fixed 5, broke 2" from "fixed 3"). One real engine
+      bug fixed and pinned with six goldens that all fail without it: an
+      UNCOUNTED `aw`/`aW` walk that runs off the buffer aborts, and real Vim still
+      moves the cursor to where the walk stopped, exactly as the COUNTED overshoot
+      4g fixed does. Two more isolated and not fixed — `aw`/`aW` aborting where
+      Vim SUCCEEDS once the walk crosses onto an empty line (an empty line counts
+      as a word), and a counted `ip` that clamps instead of aborting. The trap
+      worth carrying: **the register, not the cursor, is what separates abort from
+      success here**, so a cursor-only probe reads two different behaviours as the
+      same. `docs/HANDOFF.md`'s "The 2026-08-18 triage pass" has the measurements; `H`/`M`/`L`,
       unblocked since M1 Wave A and still unwritten — and now known to be
       **ungoldenable**, so they need 4e's pty-transcript route (measured
       2026-08-18, see the `H M L` entry in M0 above); `[[ ]]` section motions;

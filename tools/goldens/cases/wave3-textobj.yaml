@@ -76,6 +76,48 @@ cases:
     buffer: ['slw)cj', 'd{]ry']
     cursor: [1, 1]
     keys: '"_9diw'
+  # An UNCOUNTED `aw`/`aW` walk can run off the end of the buffer too, and it
+  # takes the same cursor rule as the counted overshoot above — the engine set
+  # `abortCursor` only on the counted path until the fuzz triage of 2026-08-18
+  # minimized a mismatch down to a single atom. `aw` on blanks walks FORWARD
+  # looking for a word, so a buffer with no word left anywhere aborts, while
+  # `iw` succeeds on the blank run itself and never reaches this.
+  - id: textobj/yaW-whitespace-only-line-aborts-but-moves
+    note: >
+      aborts (register untouched — the tell that separates this from a
+      successful yank, since a success would also leave the cursor at column
+      one) and yet the cursor lands on the line's LAST character, wherever the
+      failed forward walk got to
+    buffer: '   '
+    cursor: [1, 1]
+    keys: 'yaW'
+  - id: textobj/yaw-whitespace-only-line-aborts-but-moves
+    note: the small-word twin — same rule, same landing
+    buffer: '   '
+    cursor: [1, 1]
+    keys: 'yaw'
+  - id: textobj/daW-whitespace-only-line-mints-nothing
+    note: not-found aborts the operator, so no undo node and no buffer change
+    buffer: '   '
+    cursor: [1, 1]
+    keys: 'daW'
+  - id: textobj/yaW-abort-walks-across-lines-to-the-buffer-end
+    note: >
+      the walk crosses line breaks looking for a word, so with none anywhere the
+      landing is the LAST line's last character, not this line's
+    buffer: ['   ', '  ', ' ']
+    cursor: [1, 1]
+    keys: 'yaW'
+  - id: textobj/yaW-abort-from-a-later-line
+    note: the landing is where the walk stopped, not the line it started on
+    buffer: ['ab', '   ']
+    cursor: [2, 1]
+    keys: 'yaW'
+  - id: textobj/yaW-trailing-blanks-with-no-word-after
+    note: cursor starts ON the trailing blanks, so the forward walk finds nothing
+    buffer: 'ab  '
+    cursor: [1, 3]
+    keys: 'yaW'
   - id: textobj/d2aw
     note: each extra count adds a whole word WITH its whitespace
     buffer: 'alpha beta gamma'

@@ -11,12 +11,18 @@
  * different thing entirely: a degenerate region, which runs the operator over
  * nothing — that is why `ci(` on `()` still enters insert mode.
  *
- * `abortCursor` is set only for a counted `iw`/`aw` that runs off the end of
- * the buffer before the count is satisfied — measured against real Vim: the
- * whole command aborts (same as any other not-found object) but the cursor
- * still lands wherever the internal word-walk got to before giving up,
- * rather than staying put. Every other object kind leaves it unset, which
- * keeps the ordinary "aborted command doesn't move the cursor" behavior.
+ * `abortCursor` is set for an `iw`/`aw` whose word-walk runs off the end of the
+ * buffer — measured against real Vim: the whole command aborts (same as any
+ * other not-found object) but the cursor still lands wherever the internal walk
+ * got to before giving up, rather than staying put. Every other object kind
+ * leaves it unset, which keeps the ordinary "aborted command doesn't move the
+ * cursor" behavior.
+ *
+ * Wave 4g set this for the COUNTED overshoot only, and the fuzz triage of
+ * 2026-08-18 found the uncounted first walk had the same rule and was missing
+ * it: `yaW` on a whitespace-only line aborts in both, and real Vim leaves the
+ * cursor on the line's last character while this engine left it at column zero.
+ * See `wordObject`.
  */
 
 import {
@@ -51,6 +57,12 @@ const BRACKETS: Record<string, readonly [string, string]> = {
 export type ObjectResult = { readonly range: OperatorRange } | { readonly range: null; readonly abortCursor?: Pos };
 
 const notFound: ObjectResult = { range: null };
+
+/** The last position a normal-mode cursor can occupy — where a failed forward walk stops. */
+function lastBufferPos(lines: Lines): Pos {
+  const line = lastLine(lines);
+  return { line, col: Math.max(0, lineAt(lines, line).length - 1) };
+}
 
 export function textObject(lines: Lines, cursor: Pos, kind: ObjectKind, obj: string, count: number): ObjectResult {
   const include = kind === 'a';
@@ -182,7 +194,20 @@ function wordObject(lines: Lines, cursor: Pos, include: boolean, big: boolean, c
   };
 
   let end = extend(cursor);
-  if (end === null) return { range: null };
+  // The FIRST walk can fail too, not just a counted one, and it takes the same
+  // cursor rule — found by fuzz triage, minimized to a single atom: `yaW` on
+  // `['   ']` aborts, and real Vim lands the cursor on column 2 while this
+  // returned a bare `null` and left it at column 0. `aw`/`aW` on blanks walks
+  // forward looking for a word, so a buffer with no word left anywhere fails,
+  // while `iw`/`iW` succeed on the blank run itself and never reach this.
+  //
+  // `extend` can only fail by running off the END of the buffer:
+  // `beforeNextWord` returns a `Pos` unconditionally, and `endWord` returns null
+  // exactly when `incPos` reports `-1`, which happens only at the last position.
+  // So "wherever the walk got to" IS the buffer's last position — measured over
+  // `['   ']`, `['     ']`, `['ab  ']` and `['   ', '   ']`, whose landings are
+  // 0:2, 0:4, 0:3 and 1:2 respectively.
+  if (end === null) return { range: null, abortCursor: lastBufferPos(lines) };
 
   // A count that runs off the end of the buffer before it is satisfied fails
   // the WHOLE object, exactly like `di(` with no enclosing bracket — measured

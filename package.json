@@ -15,6 +15,7 @@
     "validate:stages": "node tools/validate-stages.ts",
     "test": "vitest run",
     "test:fuzz": "node tools/goldens/fuzz.ts",
+    "fuzz:triage": "node tools/goldens/triage.ts",
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.json --pretty",
     "dev:render": "vite packages/render/demo --port 5175"

@@ -434,6 +434,180 @@
     }
   },
   {
+    "id": "textobj/yaW-whitespace-only-line-aborts-but-moves",
+    "buffer": [
+      "   "
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "yaW",
+    "groups": [
+      "yaW"
+    ],
+    "note": "aborts (register untouched — the tell that separates this from a successful yank, since a success would also leave the cursor at column one) and yet the cursor lands on the line's LAST character, wherever the failed forward walk got to\n",
+    "encodedKeys": "yaW",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "   "
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "textobj/yaw-whitespace-only-line-aborts-but-moves",
+    "buffer": [
+      "   "
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "yaw",
+    "groups": [
+      "yaw"
+    ],
+    "note": "the small-word twin — same rule, same landing",
+    "encodedKeys": "yaw",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "   "
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "textobj/daW-whitespace-only-line-mints-nothing",
+    "buffer": [
+      "   "
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "daW",
+    "groups": [
+      "daW"
+    ],
+    "note": "not-found aborts the operator, so no undo node and no buffer change",
+    "encodedKeys": "daW",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "   "
+      ],
+      "cursor": [
+        1,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "textobj/yaW-abort-walks-across-lines-to-the-buffer-end",
+    "buffer": [
+      "   ",
+      "  ",
+      " "
+    ],
+    "cursor": [
+      1,
+      1
+    ],
+    "keys": "yaW",
+    "groups": [
+      "yaW"
+    ],
+    "note": "the walk crosses line breaks looking for a word, so with none anywhere the landing is the LAST line's last character, not this line's\n",
+    "encodedKeys": "yaW",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "   ",
+        "  ",
+        " "
+      ],
+      "cursor": [
+        3,
+        1
+      ],
+      "error": "",
+      "curswant": 1
+    }
+  },
+  {
+    "id": "textobj/yaW-abort-from-a-later-line",
+    "buffer": [
+      "ab",
+      "   "
+    ],
+    "cursor": [
+      2,
+      1
+    ],
+    "keys": "yaW",
+    "groups": [
+      "yaW"
+    ],
+    "note": "the landing is where the walk stopped, not the line it started on",
+    "encodedKeys": "yaW",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "ab",
+        "   "
+      ],
+      "cursor": [
+        2,
+        3
+      ],
+      "error": "",
+      "curswant": 3
+    }
+  },
+  {
+    "id": "textobj/yaW-trailing-blanks-with-no-word-after",
+    "buffer": [
+      "ab  "
+    ],
+    "cursor": [
+      1,
+      3
+    ],
+    "keys": "yaW",
+    "groups": [
+      "yaW"
+    ],
+    "note": "cursor starts ON the trailing blanks, so the forward walk finds nothing",
+    "encodedKeys": "yaW",
+    "expect": {
+      "registers": {},
+      "buffer": [
+        "ab  "
+      ],
+      "cursor": [
+        1,
+        4
+      ],
+      "error": "",
+      "curswant": 4
+    }
+  },
+  {
     "id": "textobj/d2aw",
     "buffer": [
       "alpha beta gamma"
