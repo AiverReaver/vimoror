@@ -27,10 +27,6 @@ const NAMED_TO_CHAR: Record<string, string> = {
   '<Tab>': '\t',
   '<BS>': '\x08',
   '<Del>': '\x7f',
-  '<Space>': ' ',
-  '<Bar>': '|',
-  '<Bslash>': '\\',
-  '<lt>': '<',
   '<Nul>': '\x00',
 };
 
@@ -43,6 +39,20 @@ const CHAR_TO_NAMED: Record<string, string> = {
   '\x7f': DEL,
 };
 
+/**
+ * Notation → canonical token. The five at the bottom resolve to the PLAIN
+ * CHARACTER a keyboard delivers rather than to a second named token for the
+ * same key: `<lt>` IS `<` and `<Space>` IS a space. **Two tokens for one key
+ * is the bug M3 Wave A came here to remove**, and it bit in both directions —
+ * `<lt>` was `isPrintable`-false, locked by a `{printable}` policy and unknown
+ * to normal mode's un-indent operator, while `<Space>` was the mirror image:
+ * hand-written notation drove the space motion and a real spacebar press,
+ * arriving as `' '`, did nothing at all.
+ *
+ * `tools/goldens/keynotation.ts` has always resolved all five to characters
+ * (`<gt>` included, which this side used to THROW on), so this is the two
+ * deliberately-separate parsers agreeing on behaviour, not a new rule.
+ */
 const CANONICAL_ALIASES: Record<string, string> = {
   '<esc>': ESC,
   '<cr>': CR,
@@ -53,11 +63,14 @@ const CANONICAL_ALIASES: Record<string, string> = {
   '<tab>': TAB,
   '<bs>': BS,
   '<del>': DEL,
-  '<space>': '<Space>',
-  '<bar>': '<Bar>',
-  '<bslash>': '<Bslash>',
-  '<lt>': '<lt>',
+  // `<Nul>` stays named: no key produces it and nothing consumes it, so there
+  // is no keyboard spelling for it to disagree with.
   '<nul>': '<Nul>',
+  '<space>': ' ',
+  '<bar>': '|',
+  '<bslash>': '\\',
+  '<lt>': '<',
+  '<gt>': '>',
 };
 
 /** Tokenize authoring notation such as `ci(X<Esc>` into canonical tokens. */
@@ -118,9 +131,18 @@ function canonicalizeNamed(token: string): KeyToken {
   const shift = /^<s-(.+)>$/.exec(lower);
   if (shift) return `<S-${shift[1]!}>`;
 
+  // Rejecting is the point — silently typing `<Escape>` into a buffer as eight
+  // characters is the failure this file exists to prevent, and no heuristic can
+  // tell that typo from an intentional literal. But `tokenize` is a trust
+  // boundary for stage AUTHORS too (`schema.ts` runs it over `solution`,
+  // `allowedKeys` and `teachesKeys`, and M3's editor shows them the result), and
+  // "add it to keys.ts" is useless advice to someone who just hand-wrote
+  // `i<div>` and wanted a literal `<`. Name the escape first, for them.
   throw new Error(
-    `unknown key notation ${token}. Add it to packages/vim-core/src/keys.ts ` +
-      `AND tools/goldens/keynotation.ts.`,
+    `unknown key notation ${token}. For a literal '<', write <lt> — ` +
+      `${token} reads as the name of a key. If ${token} really is a key this ` +
+      `engine should know, add it to packages/vim-core/src/keys.ts AND ` +
+      `tools/goldens/keynotation.ts.`,
   );
 }
 
@@ -141,7 +163,27 @@ export function literalOf(token: KeyToken): string | undefined {
   return ctrl ? String.fromCharCode(ctrl[1]!.charCodeAt(0) - 96) : undefined;
 }
 
-/** Render tokens back to notation, for `ResolvedCommand.keys` and hints. */
+/**
+ * Render tokens back to notation — the exact INVERSE of `tokenize`, for
+ * `ResolvedCommand.keys` and hints. The inverse property is what lets M3's
+ * recorder turn keys an author actually played into a `stage.solution` that
+ * replays as played; a naive `join('')` broke it on one token, a literal `<`,
+ * which swallowed whatever followed into a bracketed name. Both halves of that
+ * were measured: `['i','<','d','i','v','>']` came back out as an unknown-key
+ * THROW, and `['<','c','r','>']` came back — silently, which is worse — as a
+ * single press of `<CR>`.
+ *
+ * Escaped only when the rendered SUFFIX already holds a `>` for the `<` to
+ * reach, which is exactly when `tokenize` would misread it. So `<<`, `<G` and
+ * `di<` still render as themselves and the un-indent operator keeps displaying
+ * the way a player typed it, rather than as `<lt><lt>`. Built right-to-left
+ * because that suffix is the thing being tested.
+ */
 export function render(tokens: readonly KeyToken[]): string {
-  return tokens.join('');
+  let out = '';
+  for (let i = tokens.length - 1; i >= 0; i -= 1) {
+    const token = tokens[i]!;
+    out = (token === '<' && out.includes('>') ? '<lt>' : token) + out;
+  }
+  return out;
 }

@@ -470,6 +470,18 @@ function safeExpand(specs: readonly string[]): Set<KeyToken> {
 // ---------------------------------------------------------------------------
 
 export type Stage = z.infer<typeof stageSchema>;
+
+/**
+ * The AUTHORED shape — every `.default()` still unmaterialized, `allowedKeys`
+ * still able to be absent. `Stage` is this schema's OUTPUT, and M3's editor
+ * needs its INPUT: a document model built on `Stage` would bake all seven
+ * `options`, `cursor`, and four empty arrays into every exported stage, freezing
+ * core's *current* defaults into content that never asked for them — and it
+ * could not represent `allowedKeys` at all, since the parse has already
+ * collapsed "omitted" (ungated) into the same `undefined` as everything else,
+ * while `[]` is rejected outright.
+ */
+export type StageInput = z.input<typeof stageSchema>;
 export type Entity = Stage['entities'][number];
 export type EntityKind = (typeof ENTITY_KINDS)[number];
 export type Condition = Stage['win'][number];

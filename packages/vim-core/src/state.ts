@@ -357,7 +357,7 @@ function changedSpan(before: Lines, after: Lines, from: number, to?: number): En
 
 const MOTION_KEYS = new Set([
   'h', 'l', '0', '^', '$', 'j', 'k', 'G', '+', '-', '_',
-  'w', 'W', 'b', 'B', 'e', 'E', '%', ';', ',', '<BS>', '<Space>', '<CR>',
+  'w', 'W', 'b', 'B', 'e', 'E', '%', ';', ',', '<BS>', ' ', '<CR>',
   '{', '}', '(', ')', 'n', 'N',
 ]);
 
@@ -405,7 +405,9 @@ function resolveMotion(
     case '<BS>':
       return M.moveLeft(ctx);
     case 'l':
-    case '<Space>':
+    // The spacebar, as a keyboard delivers it. `keys.ts` canonicalizes `<Space>`
+    // notation to this same plain character, so both spellings land here.
+    case ' ':
       return M.moveRight(ctx);
     case '0':
       return M.moveLineStart(ctx);

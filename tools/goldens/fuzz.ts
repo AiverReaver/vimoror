@@ -117,12 +117,25 @@ const FIND_MOTION = fc.tuple(fc.constantFrom('f', 'F', 't', 'T'), FINDCHAR).map(
 const MOTION = fc.tuple(COUNT, fc.oneof(SIMPLE_MOTION, FIND_MOTION, fc.constantFrom(';', ','))).map(([c, m]) => c + m);
 
 const OBJECT = fc.tuple(fc.constantFrom('i', 'a'), fc.constantFrom('w', 'W', '"', "'", '(', '{', '[', 'p')).map(([k, o]) => k + o);
-// `>`/`<` (shift) are deliberately excluded: `keys.ts`'s tokenizer treats a
-// bare `<` as the start of `<...>` notation and pairs it with the FIRST `>`
-// anywhere later in the same rendered string — which, once other atoms are
-// concatenated after it, is very often a stray `>` from an unrelated atom,
-// not this one's own. Already well covered by wave2-indent/wave3-visualops.
-const OPERATOR = fc.constantFrom('d', 'y', 'gu', 'gU', 'g~');
+/**
+ * The shift operators, un-indent spelled `<lt>` — **the exclusion M3 Wave A
+ * lifted.** These used to be omitted because a BARE `<` starts `<...>` notation
+ * and pairs with the first `>` anywhere later in the concatenated string, very
+ * often a stray one from an unrelated atom. `<lt>` sidesteps that entirely
+ * (it is self-closing), and it only became usable at Wave A: before it,
+ * `keys.ts` canonicalized `<lt>` to the alien token `'<lt>'`, which
+ * `OPERATORS` does not contain — measured, `<lt>ip` left the buffer un-shifted
+ * and typed a literal `p`, while `keynotation.ts` sent a real `<` to Vim and
+ * Vim un-indented. That mismatch would have been the fuzzer reporting its own
+ * spelling, not an engine bug.
+ *
+ * Verified against real Vim before enabling, both spellings and all four
+ * forms: `<lt><lt>` matches bare `<<` exactly, and `<lt>j`, `<lt>ip`, `Vj<lt>`,
+ * `>>` and `>><lt><lt>` all agree. Composition then found real divergences
+ * immediately (count-on-shift, `<` over a tab-indented line, `3<lt>aw`'s
+ * cursor) — which is the blind spot this removes.
+ */
+const OPERATOR = fc.constantFrom('d', 'y', 'gu', 'gU', 'g~', '>', '<lt>');
 const DOUBLED = fc.constantFrom('dd', 'yy', 'guu', 'gUU', 'g~~');
 
 /** count + register + operator + (motion | text object), or a doubled form. */
@@ -173,8 +186,9 @@ const visualAtom: fc.Arbitrary<string> = fc.tuple(
   fc.constantFrom('v', 'V', '<C-v>'),
   fc.array(MOTION, { minLength: 1, maxLength: 3 }),
   fc.oneof(
-    // No `>`/`<` here either — same bare-bracket hazard as OPERATOR above.
-    fc.constantFrom('d', 'y', 'x', '~', 'u', 'U', 'gu', 'gU', 'g~', 'D', 'X', 'Y', 'p', 'P', 'o', '<Esc>'),
+    // `>`/`<lt>` included since M3 Wave A — see OPERATOR above for why the
+    // spelling matters and what was measured before turning them on.
+    fc.constantFrom('d', 'y', 'x', '~', 'u', 'U', 'gu', 'gU', 'g~', 'D', 'X', 'Y', 'p', 'P', 'o', '<Esc>', '>', '<lt>'),
     visualInsertOp,
   ),
 ).map(([enter, moves, op]) => enter + moves.join('') + op);

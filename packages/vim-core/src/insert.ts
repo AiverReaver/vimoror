@@ -159,7 +159,6 @@ export function openLine(lines: Lines, cursor: Pos, where: 'below' | 'above'): I
 export function insertLiteral(key: KeyToken, cursor: Pos, opts: EditorOptions): string | null {
   if (key === '<CR>' || key === '<NL>') return '\n';
   if (key === '<Tab>') return tabText(cursor, opts);
-  if (key === '<Space>') return ' ';
   if (key.length === 1 && key >= ' ' && key !== '\x7f') return key;
   return null;
 }

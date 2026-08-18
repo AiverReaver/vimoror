@@ -248,6 +248,18 @@ artifact and excluded.
   as `commit()`**: `o`/`O` open their line long before `<Esc>`, so a shift
   deferred to `finishInsert` would compare two buffers that both already
   contain the new line.
+- `keys.ts`: **one key is one token, and the plain character wins.** `<lt>`,
+  `<Space>`, `<Bar>`, `<Bslash>` and `<gt>` are notation ALIASES that resolve to
+  `<`, `' '`, `|`, `\` and `>` — not named tokens of their own — because a
+  keyboard delivers the character and a second token for the same key diverges
+  from real Vim on whichever side is not the one the engine checks. Adding a
+  named alias for a key that already has a printable spelling re-introduces
+  that bug; `tools/goldens/keynotation.ts` resolves all five the same way, and
+  the two parsers must agree on behaviour even though they share no code.
+  `render` is the exact INVERSE of `tokenize` (M3's recorder depends on it) and
+  escapes a literal `<` as `<lt>` — but **only when the rendered suffix holds a
+  `>` for it to reach**, so `<<` still displays as `<<` in a hint. Fixed at M3
+  Wave A; `docs/CHECKLIST.md`'s M3 section has the measurements.
 - `dot.ts`: the `.` record — resolved-command tokens **plus** raw insert
   keystrokes. Count digits are stripped from the tokens and stored separately
   (`Pending.dotKeys` is maintained alongside `keyBuffer` for exactly this),
@@ -533,8 +545,12 @@ non-blocking. Worth doing early in whatever comes after M0:
   one determine with a scratch probe against real Vim whether it's a genuine
   engine bug (fix it, add a golden, same as this wave's four) or a
   fuzzer-alphabet artifact (exclude the offending combination from
-  `fuzz.ts`, document why, same as this wave's `<`/`>` and `COUNT+'0'`
-  exclusions). Two patterns worth checking first, since they showed up
+  `fuzz.ts`, document why, same as this wave's `COUNT+'0'` exclusion). Note
+  that the `<`/`>` exclusion this list used to name alongside it is **gone as of
+  M3 Wave A** — `tokenize` now resolves `<lt>` to `'<'`, which is a self-closing
+  spelling with no bare bracket to mis-pair, so the shift operators are fuzzed
+  again and immediately added real finds (count-on-shift multiplying the indent,
+  `<` over a tab-indented line) to this same backlog. Two patterns worth checking first, since they showed up
   repeatedly: visual blockwise register TYPE (not just the
   already-documented width) coming back linewise/charwise where real Vim
   keeps it blockwise, and `iw`/`aw` with a count spanning several consecutive
@@ -657,6 +673,16 @@ non-blocking. Worth doing early in whatever comes after M0:
     toggle filter at the emission point only, so buffer, ticks, entities, score
     and outcome are identical either way — which is what lets one player's
     replay reproduce under another's comfort settings.
+- **M3 (`apps/editor`) has its plan: `docs/M3-PLAN.md`**, waves A–E, same shape
+  as M1's and M2's. **Wave A is done as of 2026-08-18** — the two debts M3 rests
+  on, both in packages rather than `apps/`: `keys.ts`'s `render`/`tokenize`
+  round trip (see the `keys.ts` bullet under "Engine architecture notes" above)
+  and `schema.ts`'s `StageInput` export, the AUTHORED shape an editor must edit
+  instead of the parsed `Stage`. Zero golden bytes changed and the fuzz
+  mismatch count is unmoved at a fixed seed. Waves B–E are the editor app
+  itself, and the plan's five verified-against-source facts are the part worth
+  reading before picking it up — two of them REMOVE work the older plan docs
+  still list (the stage validator already shipped; no Zustand).
 - **The adversarial review Wave A left unfinished is now done** — re-run at
   Wave C with its four missing lenses plus fresh ones on the loop code: 16
   confirmed findings (every one adversarially verified, plus 2 re-verified by

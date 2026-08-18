@@ -94,7 +94,8 @@ function resolveNamedKey(inner: string, whole: string): string {
   }
 
   throw new Error(
-    `unknown key notation <${inner}> in ${JSON.stringify(whole)}. ` +
-      `Add it to tools/goldens/keynotation.ts AND packages/vim-core/src/keys.ts.`,
+    `unknown key notation <${inner}> in ${JSON.stringify(whole)}. For a literal ` +
+      `'<' in a case's keys, write <lt>. If <${inner}> really is a key, add it to ` +
+      `tools/goldens/keynotation.ts AND packages/vim-core/src/keys.ts.`,
   );
 }

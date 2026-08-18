@@ -1906,8 +1906,142 @@ done-line puts out of bounds, or belongs to a milestone that has not started:
 
 ## M3 — `apps/editor` (the stage editor)
 
+**`docs/M3-PLAN.md` is the decomposed build plan** — file breakdown, package
+scaffolding, build order (waves A–E), testing strategy, and an explicit
+done-line, same shape as `M1-PLAN.md`/`M2-PLAN.md`. The bullets below stay as
+the compressed tracking checklist; that doc is the plan of record for *how*.
+Two things it verified against source that the bullets cannot show: `vim-core`'s
+`render()` is not an inverse of `tokenize()` (a recorded solution containing a
+literal `<` either throws or silently becomes a named key — M3's one `vim-core`
+debt, Wave A), and the editor must author the schema's INPUT type, not the
+parsed `Stage`, or every export bakes the defaults in and `allowedKeys` loses
+its omitted-means-ungated reading.
+
 Shares `@vimorror/render` with the game, so what you author is exactly what
 ships. Lands *before* any content is hand-authored — factory before product.
+
+### Wave A — the debts M3 rests on `[x]`
+
+Done 2026-08-18, before any `apps/editor` file exists. Two debts, three source
+files, one new test file; **`goldens:verify` re-run and zero golden bytes
+changed** (1159 goldens, isolation verified), `pnpm demo` still 4/4,
+`validate:stages` still green, repo tests 1473 → 1483.
+
+- [x] **`render` is now `tokenize`'s exact inverse** (`packages/vim-core/src/keys.ts`).
+      It was `tokens.join('')`, and the recorder is what turns that into a bug:
+      one recording has to become a `stage.solution` that replays as played.
+      Both failure halves were measured against the shipped code before touching
+      it, not taken from the plan — `['i','<','d','i','v','>','<Esc>']` rendered
+      to `i<div><Esc>` and tokenizing that **threw** "unknown key notation
+      `<div>`", so legal play failed its own schema check; and `['<','c','r','>']`
+      rendered to `<cr>` and came back as **one `<CR>`**, four printable
+      characters silently becoming a press of Enter with nothing thrown anywhere.
+      The escape is `<lt>`, Vim's own notation, spent **only when the rendered
+      SUFFIX already holds a `>` for the `<` to reach** — which is exactly when
+      `tokenize` would misread it. Unconditional escaping was the one-line
+      version and was rejected on measurement, not taste: `render`'s single
+      caller is `engine.ts:206` producing `ResolvedCommand.keys`, which feeds the
+      ghost HUD and `Hint.keys`, so `<<` would have displayed as `<lt><lt>` in a
+      hint teaching the un-indent operator. Built right-to-left because the
+      suffix is the thing being tested; five lines, and `<<`, `2<<`, `<G`, `<j`,
+      `di<` and `<C-v>jl<` all still render as themselves.
+- [x] **One key is now one token** — the same root cause as the above, in the
+      other direction, and the reason this wave touched `state.ts` and
+      `insert.ts` at all. `<lt>`, `<Space>`, `<Bar>` and `<Bslash>` each
+      canonicalized to a SECOND token for a key a keyboard already delivers as a
+      plain character, and it bit both ways round:
+      - `tokenize('<lt>')` yielded the alien token `'<lt>'` (measured), for which
+        `isPrintable` is false, a `{printable}` policy would have **locked** it,
+        and normal mode did not know it as the un-indent operator.
+      - `<Space>` was the mirror image, and the worse of the two because it was
+        *reachable*: the space motion existed only for the NAMED token
+        (`state.ts`'s `MOTION_KEYS` and `resolveMotion`), so hand-written
+        `<Space>` notation moved right and **a real spacebar press, arriving as
+        `' '`, did nothing at all** — a divergence from real Vim waiting for
+        Wave D's `keyboard.ts` and every recorded solution containing a space.
+      Fixed at the funnel: all four (plus `<gt>`, which this side used to THROW
+      on while the harness accepted it) resolve to the plain character, the four
+      now-unreachable `NAMED_TO_CHAR` entries are deleted, `MOTION_KEYS`/
+      `resolveMotion` take `' '`, and `insert.ts`'s `<Space>` line is gone as
+      dead — `insertLiteral`'s printable branch already returned `' '`.
+      Direction was not a coin-flip: folding a typed `' '` UP to `'<Space>'`
+      instead would have made every typed space `isPrintable`-false and therefore
+      **locked by `{printable}`**, soft-locking any insert-mode stage. Choosing
+      the character also makes `keys.ts` agree with `tools/goldens/keynotation.ts`,
+      which has always resolved all five that way — two deliberately-independent
+      parsers agreeing on behaviour, which is the whole point of keeping them
+      separate.
+      One golden turned out to already exercise this: `visualops/visual-p-named-register`
+      plays `v iw"ap` with a bare space, and passed today only by luck — the
+      ignored space would have moved within the same word, and `iw` then selects
+      `def` either way. It still passes, which is why the byte count is zero.
+      `<Nul>` is deliberately left named (`'<Nul>'` from notation, ``'<C-`>'`` from
+      a raw `\x00`): nothing produces it, nothing consumes it, and both spellings
+      round-trip, so there is no disagreement to fix.
+- [x] **`schema.ts` exports `StageInput`** (`z.input<typeof stageSchema>`, one
+      type line plus its comment) — the AUTHORED shape M3's document model needs,
+      defaults unmaterialized and `allowedKeys` still able to be absent. Verified
+      by typecheck rather than assumed: a stage object with no `options`, no
+      `cursor`, no `entities` and no `allowedKeys` satisfies `StageInput` and is
+      **rejected** by `Stage`.
+- [x] Pinned in a new `packages/vim-core/src/keys.test.ts` (10 tests, green on
+      the first run): the fast-check inverse property at 2000 runs over an
+      alphabet **weighted 4:1 toward `<` and `>`** — a uniform draw over
+      printables spends nearly its whole budget on cases that were never broken —
+      plus the two named regressions, the `<<`-stays-readable set, and the four
+      cases the property is structurally blind to. It cannot see the one-key-two-
+      tokens bug at all, because each of those tokens round-trips to *itself*:
+      only the engine can see it, by doing nothing when the spacebar is pressed.
+
+- [x] **`fuzz.ts`'s `>`/`<` exclusion is LIFTED — Wave A is what unblocked it.**
+      This was first written up here as a thing Wave A did *not* unblock, on the
+      reasoning that the exclusion blames `tokenize` while the fix lives in
+      `render`. That reasoning was wrong, and the measurement is what caught it:
+      `tokenize` DID change — its alias table now resolves `<lt>` to `'<'` —
+      and `<lt>` is a self-closing spelling of the un-indent operator with no
+      bare bracket for a stray `>` to pair with, which is the entire hazard the
+      exclusion existed for.
+      **Proved before enabling, not after.** With the pre-Wave-A `keys.ts`
+      stashed back in, `<lt>` was the alien token `'<lt>'` that `OPERATORS` does
+      not contain, so `<lt><lt>` left the buffer un-shifted and `<lt>ip` typed a
+      literal **`p`** while Vim un-indented — the fuzzer would have been
+      reporting its own spelling as an engine bug. With the fix in, all seven
+      hand-picked forms agree with real Vim: `<lt><lt>` matches bare `<<`
+      exactly, and `<lt>j`, `<lt>ip`, `Vj<lt>`, `>>` and `>><lt><lt>` all match.
+      `>` and `<lt>` are now in `OPERATOR` and in `visualAtom`'s op list.
+      **The blind spot was real.** A shift-only alphabet over the same oracle
+      found 28 divergences in 300 sequences — a *lower* rate than the fuzzer's
+      general ~16%, so this is a genuine surface rather than a broken spelling —
+      and they are real engine bugs, minimized far enough to name: a count on a
+      shift multiplying the indent (`3>ip`, `3>3b`) where Vim's count belongs to
+      the MOTION, `<` over a tab-indented line under `expandtab`, and
+      `3<lt>aw`'s abort cursor. **They join the carried-forward triage backlog,
+      not this wave** — Wave A's scope is the round trip, and `test:fuzz` was
+      already expected non-zero. Of 62 mismatches in a 400-sequence fixed-seed
+      run, **23 now involve a shift operator**. The before/after counts (65 → 62)
+      are deliberately NOT presented as an improvement: widening the alphabet
+      changes the whole draw, so the two runs are different sequences and only
+      the rate is comparable.
+- [x] **`tokenize('i<div><Esc>')` still throws, and that is still correct** — no
+      heuristic can separate a hand-written `<div>` from the `<Escape>` typo the
+      throw exists to catch, and accepting it would put literal text in a buffer,
+      which is the one failure this file is for. What was wrong was the MESSAGE:
+      "add it to `packages/vim-core/src/keys.ts`" is useless advice to the person
+      who actually hits this, because `tokenize` is a trust boundary for stage
+      AUTHORS (`schema.ts` runs it over `solution`/`allowedKeys`/`teachesKeys`,
+      and M3's editor renders the result to them). It now names the `<lt>` escape
+      first and keeps the add-a-key advice second, and `keynotation.ts`'s
+      independent copy of the message got the same treatment so the pair stays
+      parallel.
+      The round trip the recorder actually depends on was verified end to end
+      against a live engine — token stream → `render` → `feedKeys` into a FRESH
+      engine, matching on buffer and cursor for `<div>`, `<cr>`, an inserted
+      space, `<<` and `d `.
+- [x] The `' '` motion change is fuzz-neutral, measured rather than assumed
+      since a motion-table edit deserves it: `' '` reaches the fuzz alphabet only
+      as a `FINDCHAR` (`f `/`r `), never as a bare motion, and 400 sequences at
+      `VIMORROR_FUZZ_SEED=1` gave **65 mismatches both before and after** on the
+      unchanged alphabet.
 
 - [ ] Dual-pane authoring: raw buffer text left, visual grid right, live-synced
 - [ ] Overlay painting: spawn, goal, walls, threats, key-pickups, triggers,
