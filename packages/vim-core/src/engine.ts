@@ -77,6 +77,13 @@ export type EngineSnapshot = {
   readonly visualStart: Pos | undefined;
   /** What `gv` reselects. */
   readonly lastVisual: { readonly mode: Mode; readonly start: Pos; readonly end: Pos } | undefined;
+  /**
+   * Keys spent on the command currently in flight — recorded ONLY for a
+   * mid-visual save, the one in-flight command a restore actually resumes. See
+   * `#pendingKeys`; recording it in any other state would carry a value
+   * `restore()` then discards, which is a round-trip that is not idempotent.
+   */
+  readonly pendingKeys: readonly KeyToken[] | undefined;
 };
 
 export type PendingView = {
@@ -92,9 +99,31 @@ export class VimEngine {
   #commandListeners: ((c: ResolvedCommand) => void)[] = [];
   /**
    * Keys fed since the last resolved command — an insert session's whole body
-   * included, since that session IS the command. Transient like
-   * `state.pending`, and deliberately not snapshotted for the same reason: a
-   * restore lands at rest, so there is no half-typed command to carry.
+   * included, since that session IS the command.
+   *
+   * Snapshotted, but restored ONLY when the in-flight command survives the
+   * restore, which is exactly the visual case: `restore()` deliberately keeps
+   * visual mode and its anchor, so a mid-visual save comes back mid-command and
+   * has to come back mid-COUNT too. Found by M2 Wave E's session-level replay
+   * test — this field used to be dropped outright on the premise that "a
+   * restore lands at rest", which Wave A's own visual-mode preservation had
+   * already made false: a restored `v$` then `d` resolved a ONE-keystroke `d`
+   * where the live engine resolved a three-keystroke `v$d`, so the buffer
+   * reproduced byte-identically and the SCORE did not.
+   *
+   * Every other mid-command state (insert, replace, an `awaiting` accumulator,
+   * a half-typed operator) restores to rest with its half-command discarded, so
+   * its keys are forfeited with it — the same rule `feed()` applies to the keys
+   * of a command aborted by a rejected key.
+   *
+   * That rule is reused rather than restated for the ONE overlap: `restore()`
+   * rebuilds `pending` empty even in visual mode, so a selection carrying a
+   * half-typed motion or count (`vf` waiting on a character, `v2`) loses that
+   * half. Exactly `pending.keyBuffer` is dropped from what gets recorded —
+   * count digits and register prefix included, which is what that buffer holds
+   * — leaving the keys spent OUTSIDE the pending, which is precisely what the
+   * rejection path forfeits too. So `vf` records `v`, and nothing anywhere
+   * counts a key whose command did not survive.
    */
   #pendingKeys: readonly KeyToken[] = [];
 
@@ -315,6 +344,17 @@ export class VimEngine {
             },
       visualStart: s.visualStart,
       lastVisual: s.lastVisual,
+      // Recorded only where `restore()` resumes the command these keys belong
+      // to. Anywhere else the half-command is discarded on restore and its keys
+      // go with it, so recording them would make a mid-command save
+      // re-snapshot differently after a round trip — caught by `session.test`'s
+      // locked-key property, which reads the whole snapshot as its canary.
+      // Minus `pending.keyBuffer`, since `restore()` rebuilds the pending empty
+      // even in visual mode: a half-typed motion or count inside the selection
+      // does not survive either, so its keys go the way a rejected key's do.
+      pendingKeys: isVisual(s.mode)
+        ? this.#pendingKeys.slice(0, this.#pendingKeys.length - s.pending.keyBuffer.length)
+        : undefined,
     };
   }
 
@@ -357,6 +397,9 @@ export class VimEngine {
       visualStart: anchor === undefined || !isVisual(mode) ? undefined : clamp(s.lines, anchor, true),
       lastVisual: s.lastVisual,
     };
+    // Only the visual case restores mid-command (see `#pendingKeys`); every
+    // other in-flight command was just discarded above, and its keys go with it.
+    if (isVisual(mode) && s.pendingKeys !== undefined) engine.#pendingKeys = [...s.pendingKeys];
     return engine;
   }
 }

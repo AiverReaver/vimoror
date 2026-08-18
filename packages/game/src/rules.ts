@@ -53,7 +53,16 @@ export function evalCondition(c: Condition, ctx: RuleContext): boolean {
   }
 }
 
-export function evaluate(stage: Pick<Stage, 'win' | 'lose'>, ctx: RuleContext): Outcome {
+/**
+ * `lose` is taken as its own readonly list rather than off the stage, because
+ * it is not always the stage's: `difficulty.ts` hands the session a FILTERED
+ * one (an unenforced keystroke budget is simply absent), which is how a
+ * difficulty dial changes an outcome without this file learning it exists.
+ */
+export function evaluate(
+  stage: { readonly win: readonly Condition[]; readonly lose: readonly Condition[] },
+  ctx: RuleContext,
+): Outcome {
   const fired = stage.lose.find((c) => evalCondition(c, ctx));
   if (fired !== undefined) return { status: 'lost', by: fired };
   if (stage.win.every((c) => evalCondition(c, ctx))) return { status: 'won' };

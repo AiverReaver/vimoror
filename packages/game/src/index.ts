@@ -3,4 +3,8 @@ export * from './entities.ts';
 export * from './tick.ts';
 export * from './rules.ts';
 export * from './gating.ts';
+export * from './difficulty.ts';
+export * from './hints.ts';
+export * from './scoring.ts';
+export * from './gentle.ts';
 export * from './session.ts';

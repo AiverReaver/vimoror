@@ -1,4 +1,4 @@
-# HANDOFF — M0 + M1 complete, M2 Waves A–C done (2026-08-18)
+# HANDOFF — M0 + M1 complete, **M2 complete** (2026-08-18)
 
 Read this first when continuing work. The plan of record is `MergedPlan.md`;
 the tracking doc is `docs/CHECKLIST.md`; the harness gospel is
@@ -47,8 +47,12 @@ reader with no context.
 pnpm goldens:generate && pnpm test && pnpm typecheck && pnpm goldens:verify
 ```
 
-  **1153 goldens, 1221 tests, isolation verified** (every case re-run in its own
-  Vim process and diffed). Nothing is mid-flight.
+  **1153 goldens, isolation verified** (every case re-run in its own Vim process
+  and diffed). Nothing is mid-flight. The golden count is unchanged since M0 —
+  M1 and M2 added no goldens, and each of their waves re-ran `goldens:verify`
+  and confirmed **zero golden bytes changed**. The repo-wide TEST count has
+  grown with them, from M0's 1221 to **1467** at M2 Wave E; the per-wave
+  arithmetic is in `docs/CHECKLIST.md`.
 
   `pnpm test:fuzz` is separate from the above and NOT yet clean over a full
   10k-sequence run — it's a live differential tool, not a committed-golden
@@ -424,6 +428,25 @@ artifact and excluded.
     selection stops short of the line end cannot see this.
   - a restored `undoState.current` naming a node the save does not contain makes
     every `u` a silent no-op; `rebuildUndo` falls back to the fresh root.
+  - **the fourth, added at M2 Wave E: a mid-visual restore lands MID-COMMAND, so
+    the keys already spent on the selection have to come back too.**
+    `#pendingKeys` was dropped outright on the premise that "a restore lands at
+    rest" — which the visual-mode preservation two bullets up had already
+    falsified. A restored `v$` then `d` resolved a ONE-keystroke `d` where the
+    live engine resolved a three-keystroke `v$d`: buffer, cursor, mode and
+    registers all identical, and the SCORE silently cheaper, so a stage saved
+    mid-selection came back refunded. `pendingKeys` is now in `EngineSnapshot`
+    and is recorded **only in visual mode** — recording it in any other
+    half-typed state (insert, replace, an `awaiting` accumulator, a bare count or
+    operator) carries a value `restore()` then discards, which breaks round-trip
+    idempotence; `session.test.ts`'s locked-key property catches that within one
+    run, its counterexample being a bare `2` followed by a locked key. Every
+    other in-flight command forfeits its keys with the half-command itself, the
+    same rule `feed()` applies to a command aborted by a rejected key — and that
+    rule is REUSED for the one overlap rather than restated: `restore()` rebuilds
+    `pending` empty even in visual mode, so a selection holding a half-typed
+    motion or count (`vf`, `vj2`) loses that half as well, and exactly
+    `pending.keyBuffer` is sliced off what gets recorded. `vf` records `v`.
 - The blockwise register's WIDTH is not modelled — the comparator maps any
   `\x16…` type to `blockwise` and ignores the width, so a width-only divergence
   would not be caught today.
@@ -476,20 +499,90 @@ non-blocking. Worth doing early in whatever comes after M0:
   it up whenever `vim-core` is next touched — scratch-probe the boundary
   semantics, add to `motions.ts`, author a golden family.
 - M2 (`@vimorror/game`) has its plan: **`docs/M2-PLAN.md`**, waves A–E.
-  **Waves A, B and C are done.** A was the `vim-core` debt M2 rests on
+  **All five waves are done — M2 is complete, and all six of its "M2 done when"
+  criteria were swept explicitly at Wave E.** A was the `vim-core` debt M2 rests on
   (`EngineSnapshot`'s missing history and `CommandResolved` never firing for a
   one-key command); B is the stage schema — `packages/game/src/{schema,
   entities,index}.ts`, three hand-authored `content/stages/` fixtures, and
   `pnpm validate:stages`; C is the loop — `tick.ts`, `rules.ts`, `gating.ts`,
   `session.ts`, every fixture now WINNING through `session.feedKeys(stage.
-  solution)` head-lessly. `docs/CHECKLIST.md`'s M2 section carries what
-  building each taught. Wave C settled its three inherited decisions — one
+  solution)` head-lessly; D is the dials — `difficulty.ts`, `hints.ts`,
+  `scoring.ts`, `gentle.ts`; E is the wrap-up — `GameSession.snapshot()`/
+  `restore()`, the director-determinism test one layer up, and the two open
+  decisions. `docs/CHECKLIST.md`'s M2 section carries what building each taught. Wave C settled its three inherited decisions — one
   resolved command is one tick (insert session included), entity coordinates
   stay static under buffer edits, and standing in a threat is safe because
   `reached` requires the threat to have MOVED onto the cursor (zero chase gap
   → no move → no reach) — plus one of its own: lose is evaluated before win
-  on the same tick. **Wave D (the dials — `difficulty.ts`, `hints.ts`,
-  `scoring.ts`, `gentle.ts`) is next.**
+  on the same tick. `docs/M2-PLAN.md`'s Wave E entry and `docs/CHECKLIST.md`'s
+  "Wave E — wrap-up, and the open-item ledger" hold **every** open item Waves
+  A–D found, deferred or left behind, split into what Wave E closed and what is
+  deliberately carried past M2. **The second list is where to start on whatever
+  comes next**; nothing in it belongs to M2.
+- **The three Wave E facts a newcomer would otherwise rediscover the hard way:**
+  - **`GameSession.snapshot()`/`restore()` splits state into AUTHORED and
+    EVOLVED, and that split is the whole design.** Evolved state is carried: the
+    engine, the LIVE entity positions, the four tallies, the outcome, the fired
+    beats, and the difficulty and comfort settings — nine things a reload used
+    to drop in silence, three of them added by Wave D. Authored state is NOT:
+    `win`/`lose`/`beats`/`par`/`solution`/`allowedKeys` are re-read from the
+    `Stage` the host passes to `restore()`, so a stage corrected in M3's editor
+    re-gates an old save instead of a stale policy living on inside it. `#lose`
+    is re-derived by the ordinary constructor rather than becoming a tenth
+    carried field. `stageId` guards the seam and **throws** — the one loud
+    failure on a surface where everything else fails quietly, because a play
+    restored onto the wrong stage runs perfectly and evaluates the wrong
+    conditions. `#firedBeats` is a `Set` and JSONs to `{}`, so it travels as an
+    array; only a re-snapshot-and-diff test sees that class of failure, which is
+    why the keystone has one.
+  - **The keystone test earned its cost on its first run**, finding the
+    mid-visual keystroke refund written up under "Known open edges" above. The
+    shape of it matters more than the fix: every test that already existed
+    compared buffer, cursor, mode and registers, and all four matched. What
+    diverged was the resolved command's COUNT — which is why the session-level
+    test compares **event streams** rather than end state alone (ticks, threat
+    moves and beats all travel in the stream, so one equality pins the tick
+    count, the live entity positions and the fired-beat set at once). And
+    because all 23 new tests passed immediately, they were **mutation-tested**
+    rather than trusted: 17 mutants, 16 dead on the first sweep, and the lone
+    survivor — the key-policy re-derive, indistinguishable from copying — got
+    the one test that separates them. The sweep ended at 19 mutants, zero holes.
+  - **Both Wave E decisions came out "don't build it", and the measurements are
+    the argument.** No per-stage difficulty override: difficulty is the PLAYER's
+    choice, no dial would consume a stage-level one, and "this stage is harder"
+    is already authorable in `par`, a `keystrokes-over` budget, threat placement
+    and `allowedKeys`. And a replay can still hide an undo from the clean-run
+    flag — but the surface is `@`/`:normal` and **not** `.` (measured: `xxu`
+    then `.` repeats the `x`, since an undo is not a change and never enters the
+    dot record), recording counts its own `u` normally (`qauq` is three resolved
+    commands, so only the REPLAY is opaque), and the tempting
+    `undoState.current` watch was measured and rejected: it catches a macro body
+    of a bare `u` and misses `xu` outright, because the pointer returns to the
+    very node it started from while the buffer really was edited and really
+    undone. The real fix is core surfacing a replay's inner resolved commands.
+- **The four Wave D facts a newcomer would otherwise rediscover the hard way**,
+  all measured rather than assumed:
+  - **A keystroke budget is a hard fail on `nomagic` ALONE.** `MergedPlan.md`'s
+    difficulty table says Normal scores it "not enforced", so the DEFAULT
+    session no longer loses to `keystrokes-over` — a behaviour change to Wave
+    C, whose two budget tests now name the preset. It reaches `rules.ts` as a
+    FILTERED lose list, never a branch: that is what "difficulty is pure
+    modifier config" means in practice.
+  - **Core already clamps the positions "motions clamp instead of failing"
+    names.** `w` past the last word lands on the last character and reports no
+    failure at all; `3w` overshooting does the same; `l` at EOL and `h` at
+    column 0 have nowhere else to go. So `verymagic`'s motion dial only
+    swallows the in-character LINE — the command still resolves, still costs,
+    still ticks — and it silences an aborted operator (`dfz`) with it.
+  - **Undo detection reads the command SHAPE, and a register prefix reaches
+    undo.** `"au` really undoes (the register is ignored, as in real Vim) and
+    resolves as `"au`, so `isUndoCommand` strips counts AND register prefixes
+    in any order. `U` is an unknown key here and `:undo` an unknown command, so
+    the complete list is `u`, `<C-r>`, `g-`, `g+`.
+  - **A suppressed beat is marked FIRED.** Gentle Mode and the jump-scare
+    toggle filter at the emission point only, so buffer, ticks, entities, score
+    and outcome are identical either way — which is what lets one player's
+    replay reproduce under another's comfort settings.
 - **The adversarial review Wave A left unfinished is now done** — re-run at
   Wave C with its four missing lenses plus fresh ones on the loop code: 16
   confirmed findings (every one adversarially verified, plus 2 re-verified by

@@ -237,7 +237,9 @@ whole layer sits between a deterministic engine and a replay test.
 
 - **`schema.ts`** — the Zod stage schema and its inferred TypeScript types.
   Buffer text, entity overlay, `allowedKeys`, `teachesKeys`, `par`, win/lose
-  conditions, triggers, story beats, per-stage difficulty overrides. Exports
+  conditions, triggers, story beats, per-stage `:set` options. (This bullet read
+  "per-stage difficulty overrides" until Wave E, which **decided against the
+  field** — difficulty is session-level only; see Wave E below.) Exports
   `parseStage(unknown): Stage` (throws with a readable path) and
   `safeParseStage`. **This file is the contract M3's editor writes against and
   M5/M6 author against** — it is the highest-consequence file in the
@@ -438,12 +440,226 @@ whole layer sits between a deterministic engine and a replay test.
    engine (bar the one crash) — and the review's verify pass earned its cost
    the other way too, refuting one plausible-sounding test-strength claim that
    a real test already covered.
-4. **Wave D — the dials.** `difficulty.ts`, `hints.ts`, `scoring.ts`,
-   `gentle.ts`. Done when the identical solution scores differently across the
-   three difficulties and the clean-run flag survives a hint request breaking
-   it.
-5. **Wave E — wrap-up.** `index.ts`, the director-determinism test, repo-wide
-   green.
+4. **Wave D — the dials.** `[x]` **Done 2026-08-18.** `difficulty.ts`,
+   `hints.ts`, `scoring.ts`, `gentle.ts`. Done when the identical solution
+   scores differently across the three difficulties and the clean-run flag
+   survives a hint request breaking it.
+
+   Delivered as the four files plus their suites, **1444 tests green**
+   (1403 + 41), `pnpm typecheck`/`validate:stages`/`goldens:verify` (zero
+   golden bytes)/`demo` all clean, and nothing changed outside
+   `packages/game/`. Both halves of the done-line are one test each: the
+   IDENTICAL 21-key run on `act1-four-directions` is won-but-never-clean on
+   `verymagic`, won-and-clean on `magic`, and LOST to the budget on `nomagic`;
+   and the clean flag survives wandering and a failed motion, then breaks on
+   the first hint request. `docs/CHECKLIST.md`'s Wave D section carries the
+   full rule inventory; four things worth pulling up here because they changed
+   this plan's own assumptions:
+
+   - **The default difficulty no longer enforces a keystroke budget.**
+     `MergedPlan.md`'s table is explicit — Normal scores the budget "not
+     enforced", only Hard hard-fails — so `keystrokes-over` is live on
+     `nomagic` alone, and Wave C's two budget-loss tests now name that preset.
+     This is the dial that changes an OUTCOME, and it is expressed as a
+     FILTERED lose list so `rules.ts` never learns difficulty exists.
+   - **"Motions clamp instead of failing" was almost entirely already true**,
+     measured before the dial was written: core already clamps every POSITION
+     the table names (`w` past the last word lands on the last character and
+     reports no failure at all), and `l` at EOL / `h` at column 0 have nowhere
+     a clamp could put them. What was left to ease is the failure LINE — so
+     Easy's motion dial is cosmetic, the command still resolves, costs and
+     ticks, and an aborted operator (`dfz`) is silenced with it. Real
+     pre-dispatch clamping would need a second motion implementation in the
+     game layer, which is the drift trap `dot.ts` exists to avoid.
+   - **Hints are derived from the recorded solution** — the open call this plan
+     deferred to Wave D, settled that way so one recording stays
+     authoritative — and are matched by STATE rather than typed keys. That is
+     what lets a player who reached the same place by another route (`jjj$`
+     where the solution says `G$`) still be on the path, and what makes a hint
+     say `di(` instead of `d`.
+   - **"Hints cost score" is the clean-run flag itself**, not a second point
+     economy: on `verymagic` the hint is always on screen, so a `verymagic` run
+     is never clean. That is what makes the identical solution score
+     differently without difficulty touching keystrokes or par.
+
+   The self-review caught two of its own: **a register prefix reaches undo**
+   (`"au` really undoes and resolves as `"au`, so a check stripping only
+   `{count}` let a player keep a clean run by typing a register they never
+   used), and **a hint requested after the outcome latched changed a finished
+   run's score** — `feed` froze a decided session and `hint()` did not.
+5. **Wave E — wrap-up.** `[x]` **Done 2026-08-18.** `index.ts`, the
+   director-determinism test, repo-wide green — plus the open-item ledger below,
+   which is everything Waves A–D found, deferred or left behind. Nothing in it is
+   lost, but not all of it is Wave E's: the second list is explicitly out of
+   scope, because M2's own done-line forbids changing anything outside
+   `packages/game/` and `content/`.
+
+   Delivered as `GameSession.snapshot()`/`restore()` + `SessionSnapshot`, the
+   keystone test plus a case per lost field, and both open decisions recorded
+   where the code lives. **1467 tests green** (1444 + 23), `pnpm typecheck`/
+   `validate:stages`/`goldens:verify` (zero golden bytes)/`demo` all clean.
+   `docs/CHECKLIST.md`'s Wave E section carries the full inventory; four things
+   worth pulling up here because they changed this plan's own assumptions:
+
+   - **The keystone found a `vim-core` defect on its first run, and it was this
+     plan's own Wave A premise that was wrong.** A mid-visual snapshot restored
+     the selection perfectly and **refunded the keystrokes it had cost** — a
+     restored `v$` then `d` resolved a one-keystroke `d` against the live
+     engine's three-keystroke `v$d`. `engine.ts` dropped `#pendingKeys` because
+     "a restore lands at rest", which Wave A's own decision to preserve visual
+     mode *with its anchor* had already falsified: that IS landing mid-command.
+     So the buffer reproduced byte-identically and the score did not, which is
+     M2's done-line failing on the half no earlier test compared. Fixed by
+     carrying `pendingKeys` — recorded **only in visual mode**, because
+     recording it everywhere broke round-trip idempotence and Wave C's existing
+     locked-key property caught that within one run.
+   - **The nine lost fields resolved into an authored-vs-evolved split**, which
+     answered more than it was asked: evolved state is carried, authored state is
+     re-read from the `Stage` the host passes to `restore()`, so a stage
+     corrected in M3's editor re-gates an old save instead of a stale policy
+     persisting in it. `stageId` guards the seam and **throws** — the one loud
+     failure on a surface where everything else fails quietly.
+   - **All 23 new tests passed on the first run, so they were mutation-tested
+     rather than trusted.** 17 mutants on the first sweep, 16 dead; the lone
+     survivor was the key-policy re-derive, indistinguishable from copying until
+     a test restored a save onto a stage whose `allowedKeys` had been corrected.
+     Ended at 19 mutants and zero holes, the extra ones covering the refined
+     recording rule the self-review added.
+   - **Both open decisions came out "don't build it", with the measurements to
+     back it.** No per-stage difficulty override (it is the player's choice, no
+     dial would consume it, and "this stage is harder" is already authorable in
+     `par`/budget/threats/`allowedKeys`). And a replay can still hide an undo:
+     the surface is `@`/`:normal` and NOT `.` (measured — `xxu` then `.` repeats
+     the `x`, since an undo never enters the dot record), recording counts its
+     own `u` normally, and the tempting `undoState.current` watch was measured
+     and rejected for catching a bare-`u` body while missing `xu` outright.
+
+   #### Wave E's own work
+
+   > **All six done 2026-08-18.** The list is left as written — it is the
+   > decomposition Wave E was handed — with the two genuine open questions (5
+   > and 6) answered inline below and everything the work turned up recorded in
+   > the wave entry above and `docs/CHECKLIST.md`'s Wave E section.
+
+   1. **The director-determinism test, one layer up.** The milestone keystone:
+      a scripted session mixing player keys with `director.*` injections,
+      snapshotted mid-run, restored, replayed and diffed byte-for-byte. Wave A
+      wrote the `vim-core` half (`engine.test.ts`); this is the same test
+      through `session.feedKeys` with a stage attached. Two assertions Wave A's
+      experience says to include, because the engine-level suite needed both:
+      **re-snapshot the restored session and compare JSON strings** (the only
+      thing that catches a `Map`/`Set` reaching JSON as `{}`) and **exercise a
+      `$`-in-visual selection** (the only shape that catches a cursor clamped
+      on restore).
+   2. **`GameSession` has no `snapshot`/`restore`, and that blocks item 1.**
+      Found while assembling this ledger, and it is Wave A's finding one layer
+      up: the ENGINE round-trips now, but the session wrapped around it does
+      not. Nine pieces of state would silently vanish — `#entities` (the LIVE
+      threat positions; the authored array is all that would come back, so
+      every threat teleports to where the author drew it), `#keystrokes`,
+      `#ticks` (which decides threat cadence parity on `verymagic`'s half
+      speed, so a restore at the wrong parity moves threats on the wrong
+      turns), `#undos`, `#hintsShown` (a clean flag that lies), `#outcome`,
+      `#firedBeats` (every beat armed to fire a second time), and the
+      difficulty and comfort settings. Wave A's traps apply verbatim:
+      `#firedBeats` is a `Set` and `JSON.stringify` renders it `{}`, so the
+      only test that sees the failure is a re-snapshot-and-diff. M4's
+      `localStorage` save (`schemaVersion` in payload) is the consumer, and
+      Wave D made this worse by adding three of the nine fields.
+   3. **Confirm `index.ts` is complete and consumed.** It is flat and every
+      suite imports through it (Wave D added `difficulty`/`hints`/`scoring`/
+      `gentle`); Wave E's job is only to keep that true and check nothing new
+      is missing.
+   4. **Sweep the six "M2 done when" criteria explicitly**, including the last
+      one — nothing changed outside `packages/game/` and `content/` except the
+      Wave A `vim-core` debt. As built through Wave D that still holds: Wave D
+      touched only `packages/game/` (`rules.ts`'s `evaluate` now takes its
+      `lose` list as a readonly parameter rather than off the stage, which is
+      how a filtered list reaches it without `rules.ts` learning that
+      difficulty exists).
+   5. **Decide the per-stage difficulty override.** This plan's `schema.ts`
+      bullet lists "per-stage difficulty overrides" and M3's metadata panel
+      names them again — and the schema as built has no such field. Its
+      `options` are `:set` options and say so explicitly ("This is NOT
+      difficulty"). Wave B was right not to invent it and Wave D did not need
+      it, so Wave E decides: add the field, or record that difficulty is a
+      session-level setting only and correct the M3 bullet. A plan that names
+      a field nobody built is the kind of drift M3's editor would discover the
+      expensive way.
+
+      > **Decided in Wave E (2026-08-18): no field.** Difficulty is
+      > session-level only, recorded in `schema.ts` beside the `options` block
+      > that already said "This is NOT difficulty", and M3's metadata-panel
+      > bullet in `docs/CHECKLIST.md` is corrected. Difficulty is the PLAYER's
+      > choice about challenge, next to comfort's about tolerance, and a stage
+      > that forces `nomagic` takes back a setting the player made for
+      > themselves. Nothing would consume it either: all four of
+      > `difficulty.ts`'s dials are session-level, so an override would have to
+      > COMPOSE with the player's, and composing means ruling on who wins with
+      > no consumer to justify either answer. What an author actually wants —
+      > *this stage is harder* — is already authorable in `par`, a
+      > `keystrokes-over` budget, threat placement and `allowedKeys`.
+   6. **Decide whether a replay can hide an undo.** `scoring.ts`'s
+      `isUndoCommand` reads the command SHAPE, so an undo inside `@a`, `.` or
+      `:normal` is invisible to the clean-run flag — `@a` resolves as `@a`,
+      whatever its body did. Narrow (a stage must permit `q`/`@` or
+      `:normal`), and the fix is not a parser in the game layer: core would
+      have to surface a replay's inner resolved commands. Wave E's call is
+      whether that is worth doing now or stays the marked `ponytail:` ceiling
+      it is today.
+
+      > **Decided in Wave E (2026-08-18): it stays the ceiling** — with the
+      > surface measured rather than assumed, which shrank it twice and killed
+      > the obvious shortcut. **`.` cannot hide an undo**: `xxu` then `.`
+      > repeats the `x`, because an undo is not a change and never enters the
+      > dot record, so this item's own list of three is really two (`@` and
+      > `:normal`). **Recording cannot hide one either**: `qauq` resolves as
+      > three commands (`qa`, `u`, `q`) and that `u` counts like any other, so
+      > the hole opens on the second `@a` onward. And the cheap in-layer fix —
+      > watching `undoState.current` move to a node that already existed — was
+      > measured and **rejected**: it catches a macro body of a bare `u` and
+      > misses `xu` entirely, because the pointer returns to the very node it
+      > started from while the buffer really was edited and really undone. A
+      > detector that silently covers half its cases is worse than a named
+      > ceiling, and the real fix is the core change this item already names.
+
+   #### Carried forward, explicitly NOT Wave E
+
+   Listed here so nothing is lost, with where each one actually belongs. Wave E
+   must not absorb them: every item below changes a file M2's done-line puts
+   out of bounds, or belongs to a milestone that has not started.
+
+   - **`vim-core`, from M0's own handoff:** triage the remaining fuzz
+     candidates (`pnpm test:fuzz` still exits non-zero over a full 10k run —
+     expected live state, not a regression; the two repeat offenders are visual
+     blockwise register TYPE and `iw`/`aw` counted across consecutive blank
+     lines); `H`/`M`/`L`, unblocked since M1 Wave A locked `Camera`'s
+     `{topline, height}` and still unwritten; `[[ ]]` section motions; `o`/`O`
+     with `autoindent`; the blockwise register's WIDTH, which the golden
+     comparator ignores outright.
+   - **Harness, from M0:** `curswant` is captured in every golden and compared
+     in none (needs virtual-column plus MAXCOL handling); mode goldens are
+     unreachable without a pty oracle; undo-block goldens still depend on
+     author-declared `keys:` boundaries.
+   - **Mechanics deliberately left inert at Wave C:** walls and pickups are
+     overlay data and `cursor-on` targets and nothing more — a wall blocks no
+     motion today, which is a content-milestone decision rather than a bug, and
+     `act1-four-directions` ships one that its solution never touches. The
+     real-time threat opt-in ("a handful of late stages") is future work in the
+     same place.
+   - **Undo budgets** — `MergedPlan.md`'s difficulty table has "unlimited" /
+     "limited per stage" / `'undolevels'=-1`, and Wave D modelled none of it
+     because core has no undo limit and the schema has no field to carry one.
+     It wants both, not a modifier that lies about them.
+   - **Docs still unwritten since M0:** `docs/curriculum.md` (which owns the
+     single reconciled act/skill/beat table), `docs/story-bible.md`,
+     `docs/stage-schema.md`.
+   - **Marked `ponytail:` ceilings, all deliberate, none urgent:** the hint path
+     is replayed per request (memoize per stage if a long recorded solution
+     makes it measurable); the undo tree stores a whole buffer per node, so a
+     long session's save grows with edits × buffer size; `verymagic`'s motion
+     dial silences the failure line rather than clamping before dispatch, which
+     would need a second motion implementation in the game layer.
 
 ## Testing
 
@@ -486,9 +702,12 @@ a rejected key never advances the tick.
    mechanics and story intact.
 6. Nothing changed outside `packages/game/` and `content/` except the Wave A
    `vim-core` debt (findings 1 and 2), which this plan states as owned. As
-   built, that is exactly three files: `engine.ts` (the work), `state.ts` (one
-   `export` keyword on `isVisual`, reused rather than duplicated) and
-   `index.ts` (barrel re-exports for the types `EngineSnapshot` now names).
+   built, that is exactly **four** files — this criterion said three until Wave E
+   swept it and found its own accounting had forgotten the test: `engine.ts` (the
+   work), `engine.test.ts` (its pins, created by Wave A and extended by Wave E,
+   and named in the critical-files list below all along), `state.ts` (one
+   `export` keyword on `isVisual`, reused rather than duplicated) and `index.ts`
+   (barrel re-exports for the types `EngineSnapshot` now names).
 
 **Explicitly NOT in M2:** the stage editor and solution recorder (M3); the
 title screen, comfort-settings UI, save system, audio, Playwright E2E (M4);
@@ -518,6 +737,13 @@ rendering.
   > source is one subscription point in `session.ts`.
 - Whether hints live in the stage data or are derived entirely from the
   recorded solution. Deferred to Wave D, when M3's recorder shape is closer.
+
+  > **Settled in Wave D (2026-08-18):** derived, entirely. A second hint field
+  > in the schema is a second thing to drift from the route the stage actually
+  > ships, and deriving keeps M3's one recording authoritative — it yields par,
+  > the hint data and a regression test from a single action, exactly as
+  > planned. The derivation is a replay of `stage.solution` through a real
+  > engine, matched against live state; `hints.ts` explains the two tiers.
 
 ## Critical files
 

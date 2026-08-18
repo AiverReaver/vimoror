@@ -210,6 +210,23 @@ const beatSchema = z
  * around the engine and never a fork inside it; these are the same `:set`
  * options a player could type themselves.
  *
+ * **And there is no per-stage difficulty override, by decision.** `M2-PLAN.md`'s
+ * own `schema.ts` bullet listed one and M3's metadata panel named it again;
+ * Wave E resolved the drift by recording that difficulty is a SESSION-level
+ * setting only, for three reasons that all point the same way:
+ *
+ * - It is the player's choice about challenge, next to comfort's choice about
+ *   tolerance. A stage that forces `nomagic` takes back a setting the player
+ *   made for themselves, which is the one thing "no penalty, no judgmental
+ *   copy" cannot survive.
+ * - Nothing would consume it. All four of `difficulty.ts`'s dials are
+ *   session-level, so an override would have to COMPOSE with the player's — and
+ *   composing means ruling on whether stage or player wins, with no consumer to
+ *   justify either answer.
+ * - What an author actually wants — *this stage is harder* — is already
+ *   authorable, in `par`, a `keystrokes-over` budget, threat placement and
+ *   `allowedKeys`. Those are content, and they are what content should say it in.
+ *
  * Every option carries core's own default, so an author overrides only what the
  * stage needs while a consumer receives a COMPLETE `EditorOptions` it can hand
  * straight to `new VimEngine(...)`. A `.partial()` here would have typed as

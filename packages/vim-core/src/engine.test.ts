@@ -222,6 +222,91 @@ describe('snapshot round trip preserves history', () => {
     expect(observable(restored)).toEqual(observable(live));
   });
 
+  describe('a mid-visual snapshot resumes the command, keystrokes included', () => {
+    // Found by M2 Wave E's session-level replay test, and invisible to every
+    // test above: they compare buffer, cursor, mode and registers, and all four
+    // already matched. What diverged was the resolved command's COUNT. A
+    // restored `v$` then `d` resolved a one-keystroke `d` where the live engine
+    // resolved a three-keystroke `v$d`, so a stage saved mid-selection refunded
+    // the keys the selection cost — the buffer reproducing byte-identically
+    // while the score did not.
+    const resolvedBy = (e: VimEngine, keys: string) =>
+      e.feedKeys(keys).filter((ev) => ev.type === 'CommandResolved');
+
+    // `[keys held mid-selection, the key that resolves it, keystrokes]`. The
+    // count is spelled out rather than derived from string length, since one
+    // `<C-v>` is five characters and a single keystroke.
+    for (const [build, consume, keystrokes] of [
+      ['v', 'd', 2],
+      ['vjl', 'd', 4],
+      ['v$', 'd', 3],
+      ['V', 'y', 2],
+      ['<C-v>j', 'x', 3],
+    ] as const) {
+      it(`\`${build}\` then \`${consume}\` resolves as one ${keystrokes}-keystroke command`, () => {
+        const live = new VimEngine(['ab', 'cd', 'ef']);
+        live.feedKeys(build);
+        const restored = roundTrip(live);
+
+        const liveResolved = resolvedBy(live, consume);
+        expect(resolvedBy(restored, consume)).toEqual(liveResolved);
+        expect(liveResolved).toEqual([
+          {
+            type: 'CommandResolved',
+            command: { keys: build + consume, keystrokes, shape: build + consume },
+          },
+        ]);
+      });
+    }
+
+    it('a half-typed motion INSIDE the selection is forfeited with the pending', () => {
+      // `restore()` rebuilds `pending` empty even in visual mode, so the `f`
+      // waiting on a character and the `2` waiting on a motion do not survive —
+      // and their keys must not either. Exactly `pending.keyBuffer` is dropped,
+      // which is the same slice a rejected key forfeits, so the two paths cannot
+      // disagree about what a half-typed command costs.
+      for (const [build, kept] of [
+        ['vf', ['v']],
+        ['v2', ['v']],
+        // Still MID-command: `vj2d` would resolve outright (a count is ignored
+        // for a visual `d`), so the count has to be the last key held.
+        ['vj2', ['v', 'j']],
+        ['v"a', ['v']],
+        ['vjl', ['v', 'j', 'l']],
+      ] as const) {
+        const live = new VimEngine(['abc', 'def']);
+        live.feedKeys(build);
+        expect(live.snapshot().pendingKeys, build).toEqual(kept);
+        expect(JSON.stringify(roundTrip(live).snapshot()), build).toEqual(JSON.stringify(live.snapshot()));
+      }
+    });
+
+    it('every OTHER in-flight command forfeits its keys, and records none', () => {
+      // The half-command itself is discarded on restore (insert session, an
+      // `awaiting` accumulator, a half-typed operator), so its keys go with it —
+      // the same rule a key rejection follows. Recording them anyway would make
+      // a mid-command save re-snapshot differently after a round trip, which is
+      // what `session.test.ts`'s locked-key property caught.
+      for (const build of ['2', 'd', '"a', '2"a3', 'f', 'iXY', 'R', ':%s/a/b/gc<CR>', '/ab']) {
+        const live = new VimEngine(['ab', 'cd']);
+        live.feedKeys(build);
+        expect(live.snapshot().pendingKeys, build).toBeUndefined();
+        expect(roundTrip(live).snapshot().pendingKeys, build).toBeUndefined();
+      }
+    });
+
+    it('a half-typed NORMAL-mode command still re-snapshots to identical JSON', () => {
+      // The idempotence half, restricted to the states whose MODE also survives:
+      // insert and replace deliberately restore as normal, so their snapshots
+      // differ by that one field by design and cannot be compared whole.
+      for (const build of ['2', 'd', '"a', '2"a3', 'f']) {
+        const live = new VimEngine(['ab', 'cd']);
+        live.feedKeys(build);
+        expect(JSON.stringify(roundTrip(live).snapshot()), build).toEqual(JSON.stringify(live.snapshot()));
+      }
+    });
+  });
+
   describe('a visual `$` keeps its end-of-line cursor across a round trip', () => {
     // `$` is the only motion that parks the cursor ON the end-of-line NUL, and
     // an inclusive selection ending there takes the LINE BREAK — which is why

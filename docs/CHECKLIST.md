@@ -1569,6 +1569,281 @@ all 18 real ones fixed in the same change. The ones worth knowing about later:
       and mid-replace restore, the `v$o` anchor clamp and a mid-walk jumplist
       idx each had zero coverage. All pinned now.
 
+### Wave D — the dials `[x]`
+
+`difficulty.ts`, `hints.ts`, `scoring.ts`, `gentle.ts` and their four suites,
+all importing through the barrel. **1444 tests green** (1403 + 41), `pnpm
+typecheck` clean, `pnpm validate:stages` clean, `pnpm goldens:verify` clean with
+zero golden bytes changed, `pnpm demo` 4/4. Nothing changed outside
+`packages/game/`. The done-line holds in one test each: the IDENTICAL 21-key run
+on `act1-four-directions` comes out won-but-never-clean on `verymagic`,
+won-and-clean on `magic`, and LOST to the budget on `nomagic`; and the clean-run
+flag survives wandering and a failed motion, then breaks on the first hint
+request.
+
+**The behaviour change to know about before reading Wave C's entry above: the
+default difficulty (`magic`) no longer enforces a keystroke budget.**
+`MergedPlan.md`'s table is explicit — Easy has "no keystroke budgets", Normal
+scores the budget "not enforced", Hard makes it "a hard fail" — so
+`keystrokes-over` is live on `nomagic` alone. Wave C's two budget-loss tests now
+construct with `{ difficulty: 'nomagic' }` and say so in place; nothing else
+moved.
+
+- [x] **Difficulty is four values, and `vim-core` never learns any of them.**
+      `enforceBudget` (a FILTERED lose list, so `rules.ts` has no branch),
+      `threatPeriod` (a skipped chase step — half speed is fewer steps, not
+      slower ones; the world still moves only when the player acts), `hints`,
+      and `silenceFailedMotions`. `session.ts` is the only file any of them
+      touch.
+- [x] **"Motions clamp instead of failing" turned out to be almost entirely
+      already true**, measured before writing the dial: core already clamps
+      every POSITION the table names — `w` past the last word lands on the last
+      character and reports NO failure at all, and `3w` overshooting does the
+      same — while `l` at EOL, `h` at column 0 and `j` on the last line have
+      nowhere a clamp could put them. So Easy's dial is the in-character failure
+      LINE and nothing else: the command still resolves, still costs its
+      keystrokes and still ticks at every difficulty. Two consequences stated in
+      the file rather than discovered later: the easing is cosmetic, and an
+      aborted OPERATOR reports `motion-failed` too (`dfz`), so Easy silences that
+      as well. Real pre-dispatch clamping would need a second motion
+      implementation in the game layer — the exact drift trap `dot.ts` exists to
+      avoid — so it is a marked `ponytail:` ceiling, not a plan.
+- [x] **Hints are derived from the recorded solution, never authored twice.**
+      `M2-PLAN.md` left "in the stage data or derived from the solution" open for
+      this wave; deriving keeps one recording authoritative (M3's recorder then
+      yields par, hints and a regression test from one action, as planned).
+- [x] **A hint is chosen by STATE, not by typed keys.** The solution is replayed
+      once through a real `VimEngine`, capturing buffer + cursor after each
+      RESOLVED command — so a hint says `di(` rather than `d`, an insert session
+      is one step exactly as it is one tick, and a player who reached the same
+      place by another route (`jjj$` where the solution says `G$`) is still on
+      the path. A key-prefix hint would have declared them lost at keystroke one.
+      Two tiers: exact match (buffer AND cursor) takes the LAST such state, a
+      buffer-only match takes the FIRST; with neither, `undefined`, because the
+      honest answer to a buffer edited off the route is `u`, not a keystroke from
+      a path the player is not on.
+- [x] **"Hints cost score" IS the clean-run flag** — no second point economy to
+      invent, tune or explain. On `verymagic` hints are always on screen, so a
+      `verymagic` run is never clean; that is what makes the identical solution
+      score differently across the three presets, without difficulty touching
+      keystrokes or par.
+- [x] **Undo is detected by command SHAPE**, which is what `shape` is for: `3u`
+      and `u` are one entry. Measured, so the list is complete rather than
+      guessed — `U` is rejected as an unknown key and `:undo`/`:u` resolve as
+      unknown commands, so neither belongs; `u`, `<C-r>`, `g-`, `g+` do.
+- [x] **Comfort is filtered at the EMISSION point, and a suppressed beat is
+      still marked fired.** Gentle Mode and the jump-scare toggle change WHICH
+      beats a player sees and nothing else — same buffer, same ticks, same
+      entities, same score, same outcome, same event stream once beats are set
+      aside (a fast-check property over all four comfort combinations). That is
+      what lets one player's replay reproduce under another's comfort settings.
+      Gentle Mode also implies the narrower toggle: a player who turned it on has
+      not consented to startle by leaving the other switch where it was.
+- [x] `startling` stays REQUIRED in the schema (Wave B's call) and this is why:
+      the whole comfort filter is one predicate over authored data, never a
+      switch buried in a renderer.
+- [x] **Deliberately not modelled: the table's undo dials** ("unlimited" /
+      "limited per stage" / `'undolevels'=-1`). Core has no undo limit and the
+      stage schema has no field to carry one, so there is nothing to switch —
+      marked as a `ponytail:` ceiling that wants a schema field and a core
+      option, not a modifier that lies about both.
+
+**What the self-review caught** (same lens as Wave C's, on the new files):
+
+- [x] **A register prefix reaches undo, and slipped past the shape check.**
+      Measured: `"au` really does undo — the register is ignored, exactly as in
+      real Vim — and resolves with the shape `"au`, as do `2"au` and `"a2u`.
+      A check that stripped only `{count}` let a player keep a clean run by
+      typing a register they never used. `isUndoCommand` now strips counts and
+      register prefixes in any order.
+- [x] **A hint request after the outcome latched would have changed a finished
+      run's score.** `feed` freezes a decided session; `hint()` did not, so a
+      post-mortem hint on a loss screen kept charging the clean flag. Frozen
+      now — and since `hintFor` is pure and exported, a loss screen can still
+      show the route without touching the score.
+
+### Wave E — wrap-up, and the open-item ledger `[x]`
+
+**`docs/M2-PLAN.md`'s Wave E entry is the decomposed version of this list**, with
+the reasoning for each item. The boxes below are the tracking half. Everything
+Waves A–D found, deferred or left behind is in one of the two lists — the second
+one deliberately NOT Wave E's, because M2's own done-line forbids changing
+anything outside `packages/game/` and `content/`.
+
+**Done 2026-08-18.** Delivered as `GameSession.snapshot()`/`restore()` plus
+`SessionSnapshot` in `session.ts`, the keystone test and a case per lost field in
+`session.test.ts`, and two decisions recorded where the code lives (`scoring.ts`,
+`schema.ts`). **1467 tests green** (1444 + 23), `pnpm typecheck` (root and
+package-scoped) clean, `pnpm validate:stages` clean, `pnpm goldens:verify` clean
+with **zero golden bytes changed**, `pnpm demo` 4/4.
+
+**The headline is a `vim-core` defect the keystone test found on its first run,
+and it is Wave A's own lesson landing one more time: wrong looked exactly like
+right.** A mid-visual snapshot restored the selection perfectly — right buffer,
+right cursor on the end-of-line NUL, right mode, right registers — and **refunded
+the keystrokes the selection had cost**. Measured: a restored `v$` then `d`
+resolved a ONE-keystroke `d` where the live engine resolved a three-keystroke
+`v$d`. `engine.ts` dropped `#pendingKeys` on the stated premise that "a restore
+lands at rest", which **Wave A's own visual-mode preservation had already made
+false** — restoring visual mode with its anchor is by definition landing
+mid-command. So a stage saved mid-selection came back cheaper than it was played,
+and M2's done-line ("reproduces byte-identically") failed on the score while
+passing on the buffer. Every test above it compares buffer/cursor/mode/registers
+and all four already matched.
+
+The fix is `pendingKeys` in `EngineSnapshot`, and the interesting half is the
+condition on it. Recording it unconditionally **broke round-trip idempotence** —
+caught immediately by Wave C's existing locked-key property test, whose
+counterexample was a bare `2` followed by a locked `x`: the snapshot carried keys
+that `restore()` then discarded, so a mid-command save re-snapshotted
+differently. It is now recorded **only in visual mode**, the one in-flight
+command a restore actually resumes; every other half-typed command (insert,
+replace, an `awaiting` accumulator, a half-typed operator or count) is discarded
+on restore and its keys go with it — the same forfeit rule `feed()` already
+applies to a command aborted by a rejected key.
+
+That forfeit rule is **reused rather than restated** for the one overlap, which
+the self-review caught: `restore()` rebuilds `pending` empty even in visual mode,
+so a selection carrying a half-typed motion or count (`vf` waiting on a
+character, `vj2` waiting on a motion) loses that half too. Exactly
+`pending.keyBuffer` is dropped from what gets recorded — count digits and
+register prefix included, since that is what the buffer holds — leaving the keys
+spent OUTSIDE the pending, which is precisely the slice a rejected key forfeits.
+So `vf` records `v`, and no path anywhere counts a key whose command did not
+survive. Pinned as its own five-row case; a mutant that skips the slice, and one
+that is off by one, both die on it.
+
+**The mutation sweep ended at 19 mutants and zero holes**, the four extra ones
+covering the refined recording rule (not recorded, recorded outside visual,
+recorded without the forfeit, forfeit off by one).
+
+**The new tests were mutation-tested rather than trusted**, since all of them
+passed on the first run: 17 mutants, one per field and per rule (`entities` handing back
+the authored array, `ticks` restored to 0, `firedBeats` emptied, each tally
+zeroed, the outcome forgotten, difficulty and comfort defaulted, the `stageId`
+guard removed, the engine not restored, `pendingKeys` dropped / not recorded /
+recorded unconditionally). **16 died on the first sweep. One survived** — the
+key-policy re-derive, because the engine snapshot already carries a policy, so
+nothing distinguished re-deriving from copying. The distinguishing case is the
+one the line exists for and now has a test: a stage **corrected between save and
+load** must re-gate the old save.
+
+Wave E's own work:
+
+- [x] **The director-determinism test, one layer up** — the milestone keystone.
+      A scripted session mixing player keys with `director.*` injections,
+      snapshotted mid-run, restored, replayed, diffed byte-for-byte. Wave A
+      wrote the `vim-core` half; this is the same test through
+      `session.feedKeys` with a stage attached. Both assertions Wave A's suite
+      needed are in: **re-snapshot and compare JSON strings** (`#firedBeats` is
+      the `Set` here, and the script fires a beat so the set is really
+      non-empty), and **a `$`-in-visual selection** — which is what found the
+      keystroke refund above. The replayed tail is compared as **event streams**
+      rather than end state alone, which is the strong half: ticks, threat moves
+      and beats all travel in the stream, so one equality pins the tick count,
+      the live entity positions and the fired-beat set at once. One property
+      worth its own case: **a director injection is not a player act** — it
+      edits the buffer and never ticks, so the horror layer cannot kill you.
+- [x] **`GameSession` has no `snapshot`/`restore`, which blocks the test above.**
+      Found while assembling this ledger; it is Wave A's finding one layer up.
+      The engine round-trips now, the session around it does not, and NINE
+      pieces of state would vanish silently: `#entities` (LIVE threat positions
+      — a restore hands back the authored array, so every threat teleports to
+      where the author drew it), `#keystrokes`, `#ticks` (threat cadence parity,
+      so a `verymagic` restore moves threats on the wrong turns), `#undos`,
+      `#hintsShown` (a clean flag that lies), `#outcome`, `#firedBeats` (every
+      beat armed to fire again), plus the difficulty and comfort settings. Wave
+      A's trap applies verbatim — `#firedBeats` is a `Set` and `JSON.stringify`
+      renders it `{}` — so only a re-snapshot-and-diff test sees the failure.
+      M4's `localStorage` save is the consumer, and **Wave D made it worse by
+      adding three of the nine fields.** Built as an **authored-vs-evolved
+      split**, which is the whole design and settled several sub-questions at
+      once: evolved state (engine, LIVE entity positions, the four tallies, the
+      outcome, the fired beats, the two settings) is carried; authored state
+      (`win`/`lose`/`beats`/`par`/`solution`/`allowedKeys`) is **re-read from
+      the `Stage` the host supplies to `restore()`** and never carried, so a
+      stage corrected in M3's editor takes effect on the next load instead of a
+      stale copy persisting inside every save of it. `#lose` is re-derived by
+      the ordinary constructor rather than being a tenth thing to carry and
+      desync. `stageId` is the guard that keeps the two halves honest, and it
+      **throws** — the one loud failure on a surface where everything else fails
+      quietly, because a play restored onto the wrong stage runs perfectly and
+      evaluates the wrong conditions. The `Set` trap needed no rediscovery:
+      `firedBeats` is an array in the payload and a `Set` in the session.
+- [x] **Sweep the six "M2 done when" criteria explicitly**, the sixth included:
+      nothing outside `packages/game/` and `content/` except the Wave A
+      `vim-core` debt. All six hold, with **one correction to the sixth's own
+      accounting**: it enumerated the debt as "exactly three files"
+      (`engine.ts`, `state.ts`, `index.ts`) and forgot `engine.test.ts`, which
+      Wave A created and Wave E extended. Four files, all named in
+      `M2-PLAN.md`'s critical-files list from the start. Criterion 4 re-checked
+      structurally as well as behaviourally: `grep` for
+      `verymagic|nomagic|gentle|comfort|difficult` across `packages/vim-core/src`
+      returns **zero** non-test hits, so "zero branches inside `vim-core`" is
+      not merely untested but unreachable.
+- [x] **Confirm `index.ts` is complete and consumed** — all ten modules
+      exported, and all eleven suites import through it, `session.test.ts`
+      included (`SessionSnapshot` and `stageKeyPolicy` reach it that way). Wave
+      E added no module, so the barrel needed no edit.
+- [x] **Decide the per-stage difficulty override: NOT adding it.** Difficulty is
+      a session-level setting only, recorded in `schema.ts` next to the `options`
+      block that already said "This is NOT difficulty", and M3's metadata-panel
+      bullet below is corrected. Three reasons, all pointing the same way: it is
+      the **player's** choice about challenge, sitting beside comfort's choice
+      about tolerance, and a stage that forces `nomagic` takes back a setting the
+      player made for themselves — the one thing "no penalty, no judgmental copy"
+      cannot survive; **nothing would consume it**, since all four of
+      `difficulty.ts`'s dials are session-level, so an override would have to
+      COMPOSE with the player's and composing means ruling on who wins with no
+      consumer to justify either answer; and what an author actually wants —
+      *this stage is harder* — is **already authorable** in `par`, a
+      `keystrokes-over` budget, threat placement and `allowedKeys`, which is
+      where content should say it.
+- [x] **Decide whether a replay can hide an undo: yes, and it stays a named
+      ceiling.** Measured rather than assumed, which shrank the surface twice.
+      **`.` cannot hide one** — `xxu` then `.` repeats the `x`, because an undo
+      is not a change and never enters the dot record, so the ledger's list of
+      three (`@a`, `.`, `:normal`) is really two. **Recording cannot hide one
+      either**: `qauq` resolves as three commands (`qa`, `u`, `q`) and that `u`
+      is counted like any other, so the hole opens on the second `@a` onward.
+      And **the cheap fix was measured and rejected**: watching `undoState.
+      current` move to a node that already existed catches a macro body of a
+      bare `u` and misses `xu` entirely — measured, the pointer returns to the
+      very node it started from, so the buffer was really edited and really
+      undone with nothing to see. A detector that silently covers half its cases
+      is worse than a named ceiling. The real fix is core surfacing a replay's
+      inner resolved commands, which M2's done-line puts out of bounds.
+
+Carried forward, explicitly **not** Wave E — each one changes a file M2's
+done-line puts out of bounds, or belongs to a milestone that has not started:
+
+- [ ] **`vim-core`, from M0's handoff:** triage the remaining fuzz candidates
+      (`pnpm test:fuzz` still exits non-zero over a full 10k run — expected live
+      state, not a regression; repeat offenders are visual blockwise register
+      TYPE and counted `iw`/`aw` across consecutive blank lines); `H`/`M`/`L`,
+      unblocked since M1 Wave A and still unwritten; `[[ ]]` section motions;
+      `o`/`O` with `autoindent`; the blockwise register's WIDTH, which the
+      comparator ignores outright. (All also tracked in their own sections
+      above; collected here so a Wave E reader sees them once.)
+- [ ] **Harness, from M0:** `curswant` captured in every golden and compared in
+      none; mode goldens unreachable without a pty oracle; undo-block goldens
+      dependent on author-declared `keys:` boundaries.
+- [ ] **Walls and pickups stay inert** (Wave C's deliberate call) — overlay data
+      and `cursor-on` targets, nothing more. A wall blocks no motion today;
+      `act1-four-directions` ships one its solution never touches. The real-time
+      threat opt-in is future work in the same place.
+- [ ] **Undo budgets** — `MergedPlan.md`'s "unlimited" / "limited per stage" /
+      `'undolevels'=-1`. Wave D modelled none of it: core has no undo limit and
+      the schema no field to carry one. It wants both, not a modifier that lies
+      about them.
+- [ ] **Docs unwritten since M0:** `docs/curriculum.md`, `docs/story-bible.md`,
+      `docs/stage-schema.md` (tracked in "Docs written at M0" above too).
+- [ ] **Marked `ponytail:` ceilings** — the hint path is replayed per request
+      (memoize if a long recorded solution makes it measurable); the undo tree
+      stores a whole buffer per node, so a save grows with edits × buffer size;
+      `verymagic`'s motion dial silences the failure line rather than clamping
+      before dispatch, which would need a second motion implementation.
+
 ### The rest of M2
 - [x] Key gating — rejected *in character*, never a silent no-op (Wave C,
       `gating.ts` + `session.ts`)
@@ -1576,17 +1851,28 @@ all 18 real ones fixed in the same change. The ones worth knowing about later:
       everything deterministic and replayable, and a thing that moves only when
       you do is scarier than one on a timer. A handful of late stages opt into
       real-time. (Wave C, `tick.ts` — the real-time opt-in stays future work)
-- [ ] Difficulty presets as pure modifier config — `:set verymagic` / `magic` /
-      `nomagic`
-- [ ] Hints — diff live state against the golden-solution prefix
-- [ ] Scoring: keystrokes vs par, plus a "clean run" flag (no undo, no hints)
-- [ ] Gentle Mode — all mechanics and story intact, startle beats and look-away
+- [x] Difficulty presets as pure modifier config — `:set verymagic` / `magic` /
+      `nomagic` (Wave D, `difficulty.ts` — and the budget is a hard fail on
+      `nomagic` ALONE, which changed the default session's behaviour)
+- [x] Hints — diff live state against the golden-solution prefix (Wave D,
+      `hints.ts` — matched by STATE, grouped by resolved command, derived from
+      the recorded solution rather than authored twice)
+- [x] Scoring: keystrokes vs par, plus a "clean run" flag (no undo, no hints)
+      (Wave D, `scoring.ts` — the flag IS the "hints cost score" mechanic)
+- [x] Gentle Mode — all mechanics and story intact, startle beats and look-away
       tricks disabled. Framed like Celeste's Assist Mode: no penalty, no
-      judgmental copy.
-- [ ] Separate jump-scare toggle, for dread without startle
-- [ ] **Director determinism test:** a replay containing injected edits must
+      judgmental copy. (Wave D, `gentle.ts` — filtered at the emission point, so
+      buffer, ticks, entities, score and outcome are identical either way. The
+      look-away tricks themselves are director-driven and arrive with the
+      horror layer at M4.)
+- [x] Separate jump-scare toggle, for dread without startle (Wave D,
+      `gentle.ts` — independent of Gentle Mode, which also implies it)
+- [x] **Director determinism test:** a replay containing injected edits must
       reproduce byte-identically from its snapshot. If horror breaks replay, the
-      director API is wrong.
+      director API is wrong. (Wave E — `GameSession.snapshot()`/`restore()` came
+      first, and writing the test immediately caught a `vim-core` defect that
+      reproduced the buffer byte-identically and the SCORE not at all; see the
+      ledger above.)
 
 ---
 
@@ -1598,8 +1884,11 @@ ships. Lands *before* any content is hand-authored — factory before product.
 - [ ] Dual-pane authoring: raw buffer text left, visual grid right, live-synced
 - [ ] Overlay painting: spawn, goal, walls, threats, key-pickups, triggers,
       story beats
-- [ ] Metadata panel: id, act, `allowedKeys`, `teachesKeys`, par, difficulty
-      overrides, story beat text
+- [ ] Metadata panel: id, act, `allowedKeys`, `teachesKeys`, par, `:set`
+      options, story beat text. **No difficulty overrides** — Wave E decided
+      difficulty is a session-level setting only (see its ledger above); a stage
+      says "harder" through `par`, a `keystrokes-over` budget, threat placement
+      and `allowedKeys`.
 - [ ] **Solution recorder** — the highest-leverage feature in the plan. Play the
       stage in the editor; your keystrokes become the golden solution. One
       action yields the par score, the hint data *and* a regression test.
