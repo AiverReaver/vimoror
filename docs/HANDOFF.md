@@ -1,4 +1,4 @@
-# HANDOFF — M0 + M1 complete, **M2 complete** (2026-08-18)
+# HANDOFF — M0 + M1 + M2 complete, **M3 Waves A–B done** (2026-08-18)
 
 Read this first when continuing work. The plan of record is `MergedPlan.md`;
 the tracking doc is `docs/CHECKLIST.md`; the harness gospel is
@@ -674,15 +674,85 @@ non-blocking. Worth doing early in whatever comes after M0:
     and outcome are identical either way — which is what lets one player's
     replay reproduce under another's comfort settings.
 - **M3 (`apps/editor`) has its plan: `docs/M3-PLAN.md`**, waves A–E, same shape
-  as M1's and M2's. **Wave A is done as of 2026-08-18** — the two debts M3 rests
-  on, both in packages rather than `apps/`: `keys.ts`'s `render`/`tokenize`
-  round trip (see the `keys.ts` bullet under "Engine architecture notes" above)
-  and `schema.ts`'s `StageInput` export, the AUTHORED shape an editor must edit
-  instead of the parsed `Stage`. Zero golden bytes changed and the fuzz
-  mismatch count is unmoved at a fixed seed. Waves B–E are the editor app
-  itself, and the plan's five verified-against-source facts are the part worth
-  reading before picking it up — two of them REMOVE work the older plan docs
-  still list (the stage validator already shipped; no Zustand).
+  as M1's and M2's. **Waves A and B are done as of 2026-08-18.** Wave A was the
+  two debts M3 rests on, both in packages rather than `apps/`: `keys.ts`'s
+  `render`/`tokenize` round trip (see the `keys.ts` bullet under "Engine
+  architecture notes" above) and `schema.ts`'s `StageInput` export, the AUTHORED
+  shape an editor must edit instead of the parsed `Stage`. Zero golden bytes
+  changed and the fuzz mismatch count is unmoved at a fixed seed. **Wave B is the
+  first `apps/` package** — `apps/editor`, React 19 + Vite on port 5174
+  (`pnpm dev:editor`, with a `.claude/launch.json` entry so it is previewable):
+  the document model (`draft.ts`), the pure stage-to-cells skin
+  (`stage-cells.ts`), File System Access open/save (`files.ts`), the reducer, and
+  the dual pane with live sync. 1544 tests (from 1483), zero golden bytes
+  changed, demo 4/4. Waves C–E are structured editing, the recorder, and the
+  round trip; the plan's five verified-against-source facts are still the part
+  worth reading before picking them up — two of them REMOVE work the older plan
+  docs still list (the stage validator already shipped; no Zustand).
+- **The five Wave B facts a newcomer would otherwise rediscover the hard way**,
+  all measured rather than assumed:
+  - **A malformed entity used to blank the whole editor, and the fix is a
+    RENDERABILITY check, not a validation rule.** `kind: "walls"` — a plausible
+    typo — made `ENTITY_SKIN[kind]` undefined, `skin.fg` threw from inside a
+    `useEffect`, React unmounted the tree, and the issues pane that was about to
+    say `entities.0.kind: Invalid enum value ... received 'walls'` never
+    rendered. Two siblings from the same hole: a missing `at` throws on `.col`,
+    and `glyph: 7` survives all the way to `GlyphGrid`'s
+    `cell.char.charCodeAt(0)`. The guard is `stage-cells.ts`'s `drawable`, at the
+    one point every render routes through — it asks *can this be drawn*, never
+    *is this valid*, because `schema.ts` remains the only authority on the second
+    question and is already reporting on the same draft. `Object.hasOwn` rather
+    than a bare index, for the reason `schema.ts` documents on `KEY_MACROS`:
+    `kind: "toString"` would otherwise find an inherited function and pass.
+  - **The frame is an ALLOCATION, so it needs a bound — and the bound belongs at
+    the end-of-line position, not at a cap.** A hand-edited `col: 1e9` made
+    `padEnd` throw `RangeError: Invalid string length`; `col: 1e6` built eighteen
+    million `Cell`s and then set `canvas.width` past the 65535 a browser accepts.
+    A `MAX_FRAME_COLS` cap fixed the crash and the BROWSER then showed why the
+    cap was the wrong fix: a 512-column frame is a 4608-pixel canvas that
+    squeezed the buffer pane down to its own label. The frame now stops one
+    column past the longest line — the only reason to exceed it is an entity at
+    the legal end-of-line position — so a runaway number cannot size the preview
+    at all. The cap survives for a runaway LINE, which has the same shape and no
+    other bound. The quiet member of the family is a FRACTIONAL col:
+    `line * width + col` becomes a STRING key on the cells array, and the entity
+    then renders with neither tint nor glyph.
+  - **`GlyphGrid`'s cursor is an exact inversion, so it goes INVISIBLE on a
+    mid-grey cell.** The M1 checklist's claim that a `difference` blend is
+    "visible on any `fg`/`bg`" is false: the danger band is roughly 112..143 per
+    channel, where `|c - (255 - c)|` drops to a couple of values. A stage's spawn
+    very often sits on a painted cell, so every `ENTITY_SKIN` background and
+    `TEXT_BG` is dark, and a test asserts the inversion delta against a NUMBER
+    rather than against the table. The companion trap is that a palette test
+    comparing a cell to `ENTITY_SKIN[kind]` is self-referential and passes for
+    any table at all — including one whose foreground equals its own background,
+    where the glyph is still stamped, in the background colour, and "never colour
+    alone" silently becomes colour alone.
+  - **A canvas hands out exactly one context type, and the editor's is 2D.** The
+    visible element goes straight to `GlyphGrid` (no CRT pipeline — that is M4's
+    runtime dress), which means nothing may ever ask that element for WebGL:
+    `getContext('2d')` would then return null and the constructor throws. The two
+    things `pipeline.ts` was doing that a direct consumer must do itself are the
+    cursor mapping and `invalidate()` after **any** `canvas.width` assignment —
+    `diffCells` catches a changed cell grid on its own but not a same-size
+    resize, where the diff is empty and the canvas would simply stay blank.
+    Alongside it: the font atlas is memoised at module scope AND the memo is
+    cleared on failure, because every `bakeFontAtlas` call leaks a `FontFace`
+    into `document.fonts` (a set of OBJECTS, so a duplicate is kept rather than
+    replacing) plus an `OffscreenCanvas` — two of each under `StrictMode`'s
+    double-invoke, and a cached REJECTED promise would make one missing woff2
+    permanent for the life of the page.
+  - **The textarea normalises line breaks, which is a silent data-loss path for
+    content off disk.** A file holding `["a\rb"]` loaded, reported
+    `buffer.0: a buffer line may not contain a newline` correctly — and then the
+    author's first keystroke split that line in two, moving every `cursor` and
+    `entities[].at.line` below it onto different content. That is exactly the
+    renumbering `lineSchema` refuses to do on the author's behalf, so `readDraft`
+    refuses such a file at the door. Not a duplicate of `lineSchema`: the reason
+    is that the editor cannot HOLD the file without changing it. The same door
+    checks only `buffer` — the one field no pane can render without — and asserts
+    the rest of the draft type, which is what `drawable` above covers on the way
+    in.
 - **The adversarial review Wave A left unfinished is now done** — re-run at
   Wave C with its four missing lenses plus fresh ones on the loop code: 16
   confirmed findings (every one adversarially verified, plus 2 re-verified by

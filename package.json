@@ -18,7 +18,8 @@
     "fuzz:triage": "node tools/goldens/triage.ts",
     "test:watch": "vitest",
     "typecheck": "tsc -p tsconfig.json --pretty",
-    "dev:render": "vite packages/render/demo --port 5175"
+    "dev:render": "vite packages/render/demo --port 5175",
+    "dev:editor": "vite apps/editor --port 5174"
   },
   "devDependencies": {
     "@types/node": "^22.10.2",

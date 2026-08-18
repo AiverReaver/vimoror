@@ -320,15 +320,52 @@ is a ceiling for the milestone that authors big stages.
    as `<lt><lt>`. `docs/CHECKLIST.md`'s M3 Wave A section carries the full
    writeup, including why folding the other direction (`' '` up to `'<Space>'`)
    would have soft-locked every insert-mode stage via `{printable}`.
-2. **Wave B — scaffolding + the dual pane, read-only.** The package, the five
-   root edits, `draft.ts`, `stage-cells.ts`, `files.ts`, and the two panes
-   with live sync: open a fixture through the file picker, see its buffer with
-   entity tints/glyphs and spawn cursor on the grid, edit buffer text in the
-   textarea, watch the grid and the issues pane update per keystroke. Done
+2. **Wave B — scaffolding + the dual pane, read-only. DONE 2026-08-18.** The
+   package, the five root edits, `draft.ts`, `stage-cells.ts`, `files.ts`, and
+   the two panes with live sync: open a fixture through the file picker, see its
+   buffer with entity tints/glyphs and spawn cursor on the grid, edit buffer text
+   in the textarea, watch the grid and the issues pane update per keystroke. Done
    when: `act2-grammar-awakens.json` round-trips (fact 3's identity test),
    renders recognizably, and a deliberately-broken edit (a `\n` pasted into a
    line, a spawn moved off the buffer) surfaces the schema's own message
    live.
+
+   **All met, with two corrections to the done-line as written and one unplanned
+   file.** `docs/CHECKLIST.md`'s M3 Wave B section carries the full writeup —
+   1544 tests (from 1483), zero golden bytes changed, demo 4/4 — and the parts
+   that change how a reader should take this plan are:
+
+   - **"A `\n` pasted into a line" is unreachable from the textarea**, by
+     construction: a textarea normalises its own value's line breaks and
+     `bufferFromText` splits on `\n`, so an editor-made edit produces one array
+     entry per line always. It is reachable only from a FILE, and chasing it
+     there found a real data-loss bug — such a file loaded, reported the schema's
+     error correctly, and then had that line split behind the author's back on
+     their first keystroke, renumbering every `cursor` and `entities[].at.line`
+     below it. `readDraft` refuses it at the door now.
+   - **"A spawn moved off the buffer" needs Wave C's metadata panel**, since
+     Wave B's UI edits the buffer and nothing else. The reachable member of that
+     class — an ENTITY pushed out of bounds by shortening the buffer — is what
+     was verified instead.
+   - **`fixtures.ts` is the one unplanned file**, and it exists because the rest
+     of the done-line could not otherwise be verified at all:
+     `showOpenFilePicker` opens a native dialog no automation can drive. It globs
+     `content/stages/*.json` as raw TEXT so a bundled fixture enters through
+     `readDraft`, the same door a picked file uses, rather than adding a second
+     loading path. Its `import.meta.glob` is declared with a file-scoped
+     `/// <reference types="vite/client" />` rather than by widening the root
+     tsconfig's `types`, so fact 5's five-edit ledger stays exact.
+   - **The five root edits are exactly fact 5's list**, plus `pnpm-lock.yaml`,
+     which is the unavoidable consequence of the first `apps/*` package existing.
+     `.github/workflows/ci.yml` is untouched, as specified.
+   - `stageFileName` ended up in `draft.ts` rather than `files.ts`: it is a fact
+     about the document, and `files.ts` reads `window` at module load, so nothing
+     left in that file is reachable from vitest's node environment.
+   - **Six bugs came out of the adversarial review, every one reproduced before
+     being fixed**, the headline being that a single malformed entity blanked the
+     whole page — `kind: "walls"` threw out of a React effect and unmounted the
+     tree, destroying the issues pane that was about to name the typo. The
+     checklist lists all six plus the mutation-sweep test gaps.
 3. **Wave C — structured editing, the whole schema authorable.** Metadata
    panel, palette + paint-on-grid for entities, condition and beat editors.
    Done when: **every field `schema.ts` accepts is reachable from the UI**
@@ -433,10 +470,18 @@ M2's Wave E filed them.
 
 ## Open judgment calls
 
-- **The entity skin in preview** — bg tint + anchor glyph (as specced) vs the
-  glyph repeated across every occupied cell. Wave B decides against the real
-  fixtures on screen; whichever reads better becomes `stage-cells.ts`'s rule,
-  and M4 owns the *shipped* look when it lifts the file. Cheap to change: one
+- ~~**The entity skin in preview**~~ — **decided at Wave B: background tint plus
+  the glyph on the anchor, with selection spelt as an inversion of the same two
+  colours.** Both halves were compared on the real fixtures on screen. The
+  repeated glyph reads a painted rectangle beautifully and a ONE-cell entity not
+  at all — and most goals and pickups are one cell — which also settled why
+  selection could not be a second glyph either. Two things the comparison
+  produced that the question did not anticipate: every background has to be dark,
+  because `GlyphGrid`'s cursor is an exact inversion and goes invisible on a
+  mid-grey cell (band roughly 112..143 per channel, and a spawn very often sits
+  on a painted cell); and the anchor glyph *replaces* the buffer character under
+  it, which is the accepted cost of "never colour alone" reaching pixels. M4
+  still owns the *shipped* look when it lifts the file. Cheap to change: one
   pure function.
 - **Where issues render** — one issues pane keyed by path (as specced) vs
   inline per-field messages. Wave C decides; the requirement is only that

@@ -2043,7 +2043,223 @@ changed** (1159 goldens, isolation verified), `pnpm demo` still 4/4,
       `VIMORROR_FUZZ_SEED=1` gave **65 mismatches both before and after** on the
       unchanged alphabet.
 
-- [ ] Dual-pane authoring: raw buffer text left, visual grid right, live-synced
+### Wave B — scaffolding and the dual pane `[x]`
+
+Done 2026-08-18. The first `apps/` package: `apps/editor/{package.json,index.html,
+vite.config.ts}` plus `src/{draft,stage-cells,files,fsa.d,store,fixtures}.ts` and
+`src/{main,app,buffer-pane,grid-pane,issues-pane}.tsx`, three test files, and the
+five root-config edits fact 5 names. **1544 tests green** (1483 after Wave A, +61),
+`pnpm typecheck` clean, `pnpm goldens:verify` **zero golden bytes changed** (1159,
+isolation verified), `pnpm demo` 4/4, `validate:stages` 3 valid. React 19.2.8 +
+`react-dom` are the repo's first UI dependencies and live in the app's own
+manifest, not the root's — pnpm's isolated layout does not symlink root devDeps
+into `apps/editor/node_modules`.
+
+The done-line, verified in the browser through the preview tool rather than by
+eye, with the canvas's own pixels read back:
+
+- [x] **A fixture opens and renders recognizably.** `act2-grammar-awakens.json`
+      draws its buffer with the threat's rectangle tinted across 0:11..0:25 and
+      `?` on the anchor, the pickup's `*` at 1:0, the goal's `X` at 2:0, and the
+      spawn cursor at 0:0. Checked by sampling the canvas: the modal colour of
+      each of those cells is its exact `ENTITY_SKIN` background with its exact
+      foreground present, the spawn cell reads `#f4f4f1` — the precise inversion
+      of `#0b0b0e` — and the frame is 64x18 cells / 576x324 pixels.
+- [x] **The identity round trip.** Import a fixture, export it unedited, and both
+      the parsed JSON *and its key order* come back equal, over every file in
+      `content/stages/` by `readdirSync`. Written so it cannot pass vacuously: the
+      same export run over a PARSED stage is asserted to gain exactly `cursor`,
+      `entities`, `teachesKeys`, `lose`, `beats` and `options`, which is the
+      failure the input-type decision exists to avoid.
+- [x] **Live sync per keystroke**, and **a broken edit surfaces the schema's own
+      message live** — shortening act2's buffer to one line put three entities out
+      of bounds and the issues pane showed `entities.0.at: 2:0 is outside the
+      buffer` and its three siblings, path-prefixed, verbatim, while the grid kept
+      drawing.
+- [ ] **The native picker itself is unverifiable here, deliberately recorded as
+      such.** `showOpenFilePicker` opens an OS dialog no browser automation can
+      drive, so `files.ts` is exercised only by inspection and by its one pure
+      rule having been moved OUT of it (see below). This is also why
+      `fixtures.ts` exists.
+
+Two corrections to the plan's own Wave B text, both measured:
+
+- **"A `\n` pasted into a line" is unreachable from the textarea, by
+  construction.** A textarea's API value normalises its line breaks, and
+  `bufferFromText` splits on `\n`, so an editor-made edit can only ever produce
+  one array entry per line. The example is reachable only from a FILE — and
+  chasing it there found a real bug, below.
+- **"A spawn moved off the buffer" needs Wave C.** Wave B's UI edits the buffer
+  and nothing else, so the reachable member of that class is an ENTITY pushed out
+  of bounds by shortening the buffer, which is what was verified. The `cursor`
+  input arrives with the metadata panel.
+
+#### What building it taught
+
+- [x] **`@vitejs/plugin-react@latest` cannot be used, and fails confusingly.**
+      6.0.5 peer-depends on `vite: ^8.0.0` — it is a rolldown-vite release — while
+      this repo is on 6.4.3. `^5.2.0` is the newest that accepts vite 6 (peers
+      `^4.2.0 || ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0`). Worth stating that the
+      plugin is optional at all: Vite's own esbuild pass compiles `.tsx` and reads
+      `jsx: "react-jsx"` straight from tsconfig, so the app runs with zero plugins
+      and zero new dev deps. What the plugin buys is React Fast Refresh, which an
+      authoring surface iterated in the browser earns.
+- [x] **No `server.fs.allow` entry, and the reason is worth knowing.** Vite's
+      default is `[searchForWorkspaceRoot(root)]`, which walks up for
+      `pnpm-workspace.yaml` — so with root `apps/editor` the allow-list is the repo
+      root, already covering `packages/**`, `content/**` and
+      `packages/game/node_modules`. Confirmed at runtime, not just in source: the
+      font loads from `/@fs/Users/.../packages/render/assets/fonts/...`.
+- [x] **`GlyphGrid` alone needs exactly two things the pipeline was doing for
+      it** — the cursor mapping (mode to shape, buffer pos to screen) and
+      `invalidate()` after any `canvas.width` assignment. Everything else
+      `pipeline.ts` does is post-FX or the private second canvas it needs because
+      a canvas hands out ONE context type; a direct consumer gives its visible
+      element to `GlyphGrid` and must then never ask that element for WebGL, or
+      `getContext('2d')` returns null and the constructor throws.
+- [x] **The canvas is sized from the `CellBuffer` about to be drawn**, not from
+      constants, so nothing is ever clipped and the resize path and the
+      `invalidate()` path are the same branch. `MIN_COLS`/`MIN_ROWS` are a floor
+      only. DPR is deliberately untouched, matching the M1 demo — the checklist
+      already files that under M4.
+- [x] **The font atlas is memoised at module scope, and the memo is CLEARED on
+      failure.** Every `bakeFontAtlas` call builds a new `FontFace`, adds it to
+      `document.fonts` (a set of OBJECTS, so a duplicate is kept rather than
+      replacing) and allocates an `OffscreenCanvas`, none of it ever released —
+      two of each on the first mount under `StrictMode`'s double-invoke. Verified
+      in the browser: exactly one `JetBrains Mono` FontFace and one canvas after
+      mount. Caching a REJECTED promise was the other half: a moved woff2 would
+      otherwise leave the pane on "baking the font atlas…" forever, with an
+      unhandled rejection as its only trace.
+- [x] **Every entity background is dark because of the cursor's blend, measured
+      before the palette was chosen.** `GlyphGrid` draws its cursor as a
+      `difference` against white — an exact inversion — so a background near
+      mid-grey inverts to within a value or two of itself and **the cursor becomes
+      invisible on it**, danger band roughly 112..143 per channel. The checklist's
+      M1 claim that the cursor is "visible on any `fg`/`bg`" is false at mid-grey.
+      A stage's spawn very often sits on a painted cell, so the four skins are
+      dark-background/bright-foreground and `TEXT_BG` is in the same assertion.
+- [x] **Open judgment call #1 is DECIDED: background tint plus a glyph on the
+      anchor, with selection spelt as an inversion.** Both halves were compared on
+      the real fixtures on screen. The repeated glyph reads a painted rectangle
+      beautifully and a one-cell entity not at all — and most goals and pickups are
+      one cell — so it became the wrong rule for the overlay and the right
+      intuition for why selection could not be a second glyph either. The glyph
+      *replaces* the buffer character under the anchor, which is the accepted cost
+      of "never colour alone" landing in pixels.
+- [x] **`stageFileName` lives in `draft.ts`, not `files.ts`.** It is a fact about
+      the document, and `files.ts` reads `window` at module load — so anything left
+      in that file is unreachable from vitest's node environment. Moving the one
+      pure rule out is what let it be tested at all, and it keeps the FSA surface
+      honestly browser-only.
+- [x] **`fixtures.ts` is unplanned and earns its place.** `import.meta.glob` over
+      `content/stages/*.json` as RAW TEXT, so a bundled fixture enters through
+      `readDraft` — the same door a picked file uses, rather than a second loading
+      path to drift. It exists because the done-line's "open a fixture" cannot
+      otherwise be verified at all. Its cost was one root-tsconfig widening, which
+      was then avoided: a `/// <reference types="vite/client" />` in that one file
+      is honoured whatever `compilerOptions.types` says, so the plan's
+      five-root-edit ledger stays true instead of adding `vite/client` to every
+      package and tool in the repo.
+- [x] **The `FIELD_ORDER` drift guard was proven to fail on purpose.** Dropping
+      `'options'` from the list stops the build with
+      `Type 'true' is not assignable to type 'never'`. `satisfies` cannot express
+      exhaustiveness for an ordered list, which is why it is a conditional type
+      rather than `schema.ts`'s `satisfies Record<keyof EditorOptions, ...>`.
+
+#### Six bugs found by adversarial review, all reproduced before being fixed
+
+The review ran three lenses (correctness, plan fidelity, over-engineering) and
+the three new pure modules were mutation-tested rather than trusted, since all 36
+tests passed on the first run — M2 Wave E's discipline. 68 mutants across the
+three modules; the survivors that were real holes all became assertions.
+
+- [x] **A malformed entity blanked the whole page** — the headline find, and the
+      exact inverse of the invariant `app.tsx` states. Reproduced in the browser
+      with `kind: "walls"`, a plausible typo: `ENTITY_SKIN['walls']` is undefined,
+      `skin.fg` throws from inside a `useEffect`, React unmounts the tree, and the
+      issues pane that was about to say
+      `entities.0.kind: Invalid enum value ... received 'walls'` never renders. Two
+      siblings from the same hole: a missing `at` throws on `.col`, and
+      `glyph: 7` survives to `GlyphGrid`'s `cell.char.charCodeAt(0)`. Fixed at the
+      one point every render routes through — `stage-cells.ts`'s `drawable`, which
+      asks *can this be drawn*, not *is it valid*. `Object.hasOwn` rather than a
+      bare index, for the reason `schema.ts` already documents on `KEY_MACROS`:
+      `kind: "toString"` would otherwise find an inherited function and pass.
+      Re-verified in the browser afterwards — the typo'd entity is skipped, the
+      valid one beside it still draws, and the schema's message is on screen.
+- [x] **A hand-edited column crashed or froze the editor before the issues pane
+      could report it.** `col: 1e9` made `padEnd` throw
+      `RangeError: Invalid string length`; `col: 1e6` built eighteen million
+      `Cell`s and then set `canvas.width` past the 65535 a browser accepts. The
+      first fix was a `MAX_FRAME_COLS` cap, and **the browser then showed why the
+      cap was the wrong fix**: a 512-column frame is a 4608-pixel canvas that
+      squeezed the buffer pane to its own label. The frame now stops at the
+      end-of-line position — one column past the longest line, which is the only
+      reason to exceed it — so a runaway number cannot size the preview at all.
+      The cap survives for a runaway LINE, which has the same shape and no other
+      bound. A fractional `col` was the quiet member of the family: `line * width
+      + col` becomes a STRING key on the cells array, and the entity renders with
+      neither tint nor glyph.
+- [x] **`stageFileName` offered `undefined.json`.** `id` is required in
+      `StageInput` at the TYPE level and absent at RUNTIME for anything `readDraft`
+      admits, so a file opened as `{"buffer": ["hi"]}` had the editor propose — and
+      write — a name `validate:stages` rejects on both counts, which is precisely
+      what deriving the name was supposed to make impossible. A non-string id gave
+      `[object Object].json`.
+- [x] **An opened file with a `\r` inside a line got silently rewritten.** The
+      issues pane correctly showed `buffer.0: a buffer line may not contain a
+      newline` — and then the author's first keystroke split that line in two,
+      because a textarea normalises CR to LF, moving every `cursor` and
+      `entities[].at.line` below it onto different content. That is exactly the
+      renumbering `lineSchema` refuses to do on the author's behalf, so `readDraft`
+      now refuses the file at the door. Not a duplicate of `lineSchema`: the reason
+      is that the editor cannot HOLD such a file without changing it.
+- [x] **A cancelled save left the previous "saved &lt;name&gt;" notice standing**,
+      so the app's only feedback channel kept asserting a save that no longer
+      described the file on disk. The notice is cleared before awaiting a picker.
+- [x] **The font-atlas promise had no rejection path** — see the memo entry above.
+
+Test gaps the mutation sweep found, each now an assertion:
+
+- [x] **The palette was checked against itself.** `expect(cell).toEqual({..., fg:
+      ENTITY_SKIN[kind].fg, ...})` passes for ANY table, including one where a
+      foreground equals its own background — the glyph is still stamped, in the
+      background colour, and "never colour alone" silently becomes colour alone.
+      Both the inversion-delta and the fg-to-bg distance are now asserted against
+      a number, and `TEXT_FG`/`TEXT_BG` are in the same loops.
+- [x] **`inFrame`'s boundary was never tried.** The stray-anchor test used
+      `line: 5` on a one-row buffer, which any comparison rejects; `<=` instead of
+      `<` survived because `line === buffer.height` — the value that actually grows
+      the array past `width * height` — was never used. Changed to `line: 1`.
+- [x] **Selection was only ever tested on a one-cell entity**, so an inversion
+      applied to the anchor stamp alone would have left a picked rectangle reading
+      three-quarters unpicked. A non-anchor cell of a selected `wall` is now pinned.
+- [x] **`frameWidth`'s far-corner term was never load-bearing** in any test, so
+      both deleting it and reading `to.line` instead of `to.col` survived.
+- [x] **`initialState` returning a SHARED object survived** — structurally
+      identical under `toEqual`, and dangerous because the reducer's spreads are
+      shallow. Pinned by reference.
+- [x] **Two export-formatting mutants survived** the identity test, which parses
+      the JSON before comparing: dropping the trailing newline, and dropping the
+      indent entirely. An un-indented export is one unreviewable line in a
+      `content/stages/` diff. Recorded alongside them: an export does NOT reproduce
+      the fixtures' hand-formatting (inline `{ "line": 0, "col": 0 }` becomes three
+      lines) — content and key order match exactly, whitespace does not, and Wave E
+      is where that would change if anyone cares.
+
+Deliberate deviations from the review, both recorded rather than silently taken:
+
+- **Click-to-select stays**, though the over-engineering lens called it Wave C
+  wiring. Without it `stageCells`'s `selectedId` — which the plan's own file spec
+  and test list require — has no consumer outside its test, which is the dead
+  flexibility the same lens objects to; and it is what made judgment call #1
+  decidable on screen instead of in the abstract.
+- **`FIELD_ORDER` stays an array with a conditional-type guard**, not
+  `Object.keys({...} satisfies Record<keyof StageDraft, 0>)`. Same drift
+  protection, and the version kept needs no cast.
+
+- [x] Dual-pane authoring: raw buffer text left, visual grid right, live-synced
 - [ ] Overlay painting: spawn, goal, walls, threats, key-pickups, triggers,
       story beats
 - [ ] Metadata panel: id, act, `allowedKeys`, `teachesKeys`, par, `:set`
@@ -2079,7 +2295,12 @@ changed** (1159 goldens, isolation verified), `pnpm demo` still 4/4,
       Proven to fail on purpose, not just to pass: a non-winning solution and a
       preset-split stage were both fed to it and both reported with the preset
       named.
-- [ ] Playtest in place; JSON import/export via File System Access API
+- [x] JSON import/export via the File System Access API — one stage per file,
+      `<id>.json` derived from the draft so the editor cannot offer a name
+      `validate:stages` would reject. Per-file pickers only; a directory-handle
+      stage browser is a noted ceiling, not built. Split from the playtest half
+      of this bullet, which is Wave D
+- [ ] Playtest in place
 - [ ] **Definition of done:** author a brand-new stage in the editor, record its
       solution, export it, and confirm it loads and is completable in the game
       without touching code

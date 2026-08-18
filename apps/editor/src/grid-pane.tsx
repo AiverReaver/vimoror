@@ -1,0 +1,183 @@
+/**
+ * The visual half of the dual pane: a `<canvas>` this component owns and React
+ * never touches.
+ *
+ * That split is the technology table's rule — React for "menus, dialogue, editor
+ * panels only, never the game grid" — and it is not stylistic. `GlyphGrid` keeps
+ * a dirty-cell cache of what is already on the canvas; a React re-render that
+ * replaced the element would silently invalidate that cache against a blank
+ * surface. So the element is created once and every frame is an imperative
+ * `render()` from an effect.
+ *
+ * `GlyphGrid` alone, with no CRT pipeline — the editor wants clarity, and the
+ * shared-surface claim ("what you author is exactly what ships") is about the
+ * glyph grid, the atlas and the cell geometry, which *are* shared. Curvature and
+ * phosphor are M4's runtime dress. Two consequences of dropping the pipeline,
+ * both checked against it rather than assumed:
+ *
+ * - **The canvas is handed straight to `GlyphGrid`.** `pipeline.ts` needs a
+ *   second, private 2D canvas only because a canvas can hand out exactly one
+ *   context type and its visible one is WebGL2. Nothing here ever asks this
+ *   element for a GL context — and it must not, since that would make
+ *   `getContext('2d')` return null and the constructor throw.
+ * - **No `requestAnimationFrame`.** The demo's loop exists because phosphor
+ *   persistence and glitch bands are time-varying and the post-FX pass has to
+ *   keep running while the buffer is idle. Nothing in `GlyphGrid` reads a clock,
+ *   so a render per commit is exactly right and an idle editor draws nothing.
+ */
+
+import type { Pos } from '@vimorror/core';
+import type { Entity } from '@vimorror/game';
+import { GlyphGrid, bakeFontAtlas, cursorShapeForMode, type CellBuffer, type FontAtlas } from '@vimorror/render';
+import { useEffect, useRef, useState, type MouseEvent } from 'react';
+
+import { entityAt, inFrame, stageCells } from './stage-cells.ts';
+
+const CELL_W = 9;
+const CELL_H = 18;
+const FONT_SIZE_PX = 15;
+
+/**
+ * A floor, not a limit. The frame never shrinks below this, so a one-line stage
+ * does not render as a sliver, and it grows freely for anything longer — the
+ * canvas is sized from the `CellBuffer` it is about to draw, so real content is
+ * never clipped (`stageCells` owns the one ceiling, and says why). `Camera`
+ * scrolling for a stage bigger than the screen is explicitly out of scope for
+ * M3.
+ */
+const MIN_COLS = 64;
+const MIN_ROWS = 18;
+
+/**
+ * Render's woff2 is not in its package `exports`, so it is reached by path —
+ * exactly as `packages/render/demo/main.ts` reaches it. Vite rewrites the URL
+ * and serves the file from outside the app root on its own.
+ */
+const FONT_URL = new URL('../../../packages/render/assets/fonts/JetBrainsMono-Regular.woff2', import.meta.url).href;
+
+/**
+ * Baked once per page, not per mount. Every `bakeFontAtlas` call constructs a
+ * fresh `FontFace`, adds it to `document.fonts` (a set of OBJECTS, so the
+ * duplicate is kept, never replaced) and allocates an `OffscreenCanvas` — none
+ * of which is ever released. Under `StrictMode`'s deliberate double-invoke that
+ * is two of each on the first mount alone.
+ *
+ * The memo is CLEARED on failure. Caching a rejected promise would make one
+ * missing font file permanent for the life of the page: `bakeFontAtlas` awaits
+ * `font.load()`, so a moved or unshipped woff2 rejects, and without the reset a
+ * reload of the pane would replay the same rejection forever.
+ */
+let atlasOnce: Promise<FontAtlas> | undefined;
+
+function fontAtlas(): Promise<FontAtlas> {
+  atlasOnce ??= bakeFontAtlas(FONT_URL, CELL_W, CELL_H, FONT_SIZE_PX).catch((e: unknown) => {
+    atlasOnce = undefined;
+    throw e;
+  });
+  return atlasOnce;
+}
+
+/**
+ * One row per frame row and every row padded to the floor, so `linesToCells`'s
+ * own longest-line width calculation lands on a stable frame instead of jumping
+ * every time the longest line changes.
+ */
+function frameLines(lines: readonly string[]): string[] {
+  const rows = Math.max(MIN_ROWS, lines.length);
+  const out: string[] = [];
+  for (let row = 0; row < rows; row += 1) out.push((lines[row] ?? '').padEnd(MIN_COLS, ' '));
+  return out;
+}
+
+export type GridPaneProps = {
+  readonly lines: readonly string[];
+  readonly entities: readonly Entity[];
+  /** The spawn. `undefined` when the draft has none and does not parse. */
+  readonly spawn: Pos | undefined;
+  readonly selection: string | undefined;
+  readonly onSelect: (id: string | undefined) => void;
+};
+
+export function GridPane({ lines, entities, spawn, selection, onSelect }: GridPaneProps) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const gridRef = useRef<GlyphGrid | null>(null);
+  const atlasRef = useRef<FontAtlas | null>(null);
+  /** The frame currently on screen, so a click can map a pixel to its cell. */
+  const cellsRef = useRef<CellBuffer | null>(null);
+  const [atlasState, setAtlasState] = useState<'baking' | 'ready' | string>('baking');
+
+  useEffect(() => {
+    void fontAtlas().then(
+      (atlas) => {
+        atlasRef.current = atlas;
+        setAtlasState('ready');
+      },
+      // Surfaced rather than swallowed: without this the pane sat on "baking the
+      // font atlas…" with a blank 300x150 canvas and an unhandled rejection in
+      // the console, which reads as slow rather than broken.
+      (e: unknown) => setAtlasState(`the font atlas failed to bake: ${String(e)}`),
+    );
+  }, []);
+
+  // No dependency array: every commit redraws. That is not wasteful — the whole
+  // point of `diffCells` is that an unchanged frame costs one scan and zero
+  // draws — and it is safer than naming dependencies, since `lines` and
+  // `entities` are fresh arrays on most renders anyway.
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const atlas = atlasRef.current;
+    if (canvas === null || atlas === null) return;
+
+    // Cell size must match the atlas's: `#drawCell` reads its SOURCE rect from
+    // the atlas and its DESTINATION from these, and a mismatch silently scales
+    // every glyph rather than failing.
+    gridRef.current ??= new GlyphGrid(canvas, atlas.cellW, atlas.cellH);
+
+    const cells = stageCells(frameLines(lines), entities, selection);
+    cellsRef.current = cells;
+
+    const width = cells.width * atlas.cellW;
+    const height = cells.height * atlas.cellH;
+    if (canvas.width !== width || canvas.height !== height) {
+      canvas.width = width;
+      canvas.height = height;
+      // Assigning either dimension blanks the 2D context while the dirty-cell
+      // cache still claims those pixels are drawn. `diffCells` catches a changed
+      // CELL grid on its own, but not a resize that keeps the same rows and
+      // cols — there the diff is empty and the canvas would simply stay blank.
+      gridRef.current.invalidate();
+    }
+
+    gridRef.current.render(cells, atlas, {
+      pos: spawn !== undefined && inFrame(cells, spawn) ? { row: spawn.line, col: spawn.col } : null,
+      // Wave D swaps this for the live engine's mode; a stage at rest spawns in
+      // normal mode, and the mapping is render's, not a hardcoded shape.
+      shape: cursorShapeForMode('normal'),
+    });
+  });
+
+  function selectAtPixel(event: MouseEvent<HTMLCanvasElement>): void {
+    const canvas = canvasRef.current;
+    const cells = cellsRef.current;
+    if (canvas === null || cells === null) return;
+
+    // Measured off the LAID-OUT box rather than the pixel dimensions, so a
+    // canvas the CSS has scaled still maps a click to the right cell.
+    const box = canvas.getBoundingClientRect();
+    const col = Math.floor(((event.clientX - box.left) / box.width) * cells.width);
+    const line = Math.floor(((event.clientY - box.top) / box.height) * cells.height);
+    onSelect(entityAt(entities, { line, col })?.id);
+  }
+
+  return (
+    <div className="pane">
+      <h2>preview</h2>
+      <canvas ref={canvasRef} className="grid" onClick={selectAtPixel} />
+      {atlasState === 'ready' ? null : (
+        <p className={atlasState === 'baking' ? 'note' : 'bad'}>
+          {atlasState === 'baking' ? 'baking the font atlas…' : atlasState}
+        </p>
+      )}
+    </div>
+  );
+}

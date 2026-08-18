@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>vimorror stage editor</title>
+    <style>
+      /* Styles live here rather than in a stylesheet, matching
+         `packages/render/demo/index.html`. The editor is three panes and a
+         toolbar; a CSS pipeline would be one more thing in the way. */
+      :root {
+        color-scheme: dark;
+        --ink: #d8d8d8;
+        --dim: #8a8a94;
+        --edge: #33333d;
+        --panel: #14141a;
+      }
+      body {
+        margin: 0;
+        background: #0b0b0e;
+        color: var(--ink);
+        font-family: system-ui, sans-serif;
+        font-size: 13px;
+      }
+      .app {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding: 12px;
+      }
+      header {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      header h1 {
+        font-size: 15px;
+        font-weight: 600;
+        margin: 0 8px 0 0;
+      }
+      main,
+      footer {
+        display: flex;
+        gap: 12px;
+        align-items: flex-start;
+      }
+      /* A stage wider than the frame scrolls inside the preview rather than
+         squeezing the buffer pane to nothing — measured with a 512-column
+         frame, which collapsed the textarea to its own label. */
+      main > .pane:last-child {
+        min-width: 0;
+        overflow-x: auto;
+      }
+      main > .pane:first-child {
+        flex: 1 1 340px;
+        min-width: 0;
+      }
+      footer > .pane {
+        flex: 1 1 0;
+        min-width: 0;
+      }
+      .pane {
+        border: 1px solid var(--edge);
+        background: var(--panel);
+        padding: 8px;
+      }
+      .pane h2 {
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--dim);
+        margin: 0 0 6px;
+      }
+      .buffer {
+        width: 100%;
+        box-sizing: border-box;
+        height: 340px;
+        background: #0b0b0e;
+        color: var(--ink);
+        border: 1px solid var(--edge);
+        font-family: 'JetBrains Mono', ui-monospace, monospace;
+        font-size: 13px;
+        line-height: 1.4;
+        padding: 6px;
+        resize: vertical;
+      }
+      .grid {
+        display: block;
+        background: #0b0b0e;
+        border: 1px solid var(--edge);
+        cursor: pointer;
+      }
+      .note {
+        color: var(--dim);
+        margin: 0;
+        font-family: ui-monospace, monospace;
+      }
+      pre {
+        margin: 0;
+        white-space: pre-wrap;
+        font-family: 'JetBrains Mono', ui-monospace, monospace;
+        color: #ffb4a2;
+      }
+      .ok {
+        color: #5fe07a;
+      }
+      .bad {
+        color: #ff7b6b;
+      }
+      button,
+      select {
+        font: inherit;
+        background: #1c1c24;
+        color: var(--ink);
+        border: 1px solid var(--edge);
+        padding: 4px 8px;
+      }
+      button:disabled {
+        color: #55555f;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./src/main.tsx"></script>
+  </body>
+</html>
