@@ -17,10 +17,10 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { tokenize } from '@vimorror/core';
 import { GameSession, parseStage } from '@vimorror/game';
+import { keyTokenFor } from '@vimorror/stage-view';
 import { describe, expect, it } from 'vitest';
 
 import { parseDraft, readDraft, type StageDraft } from './draft.ts';
-import { keyTokenFor } from './keyboard.ts';
 import { arm, record, replayAtPresets, startRecording, type Recording } from './recorder.ts';
 
 const act2Draft = readDraft(

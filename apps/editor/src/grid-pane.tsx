@@ -28,15 +28,11 @@
 
 import type { Mode, Pos } from '@vimorror/core';
 import type { Entity, EntityKind } from '@vimorror/game';
-import { GlyphGrid, bakeFontAtlas, cursorShapeForMode, type CellBuffer, type FontAtlas } from '@vimorror/render';
+import { GlyphGrid, cursorShapeForMode, type CellBuffer, type FontAtlas } from '@vimorror/render';
+import { entityAt, getFontAtlas, inFrame, stageCells } from '@vimorror/stage-view';
 import { useEffect, useRef, useState, type MouseEvent } from 'react';
 
 import { DEFAULT_GLYPH, rectFrom } from './draft.ts';
-import { entityAt, inFrame, stageCells } from './stage-cells.ts';
-
-const CELL_W = 9;
-const CELL_H = 18;
-const FONT_SIZE_PX = 15;
 
 /**
  * A floor, not a limit. The frame never shrinks below this, so a one-line stage
@@ -48,35 +44,6 @@ const FONT_SIZE_PX = 15;
  */
 const MIN_COLS = 64;
 const MIN_ROWS = 18;
-
-/**
- * Render's woff2 is not in its package `exports`, so it is reached by path —
- * exactly as `packages/render/demo/main.ts` reaches it. Vite rewrites the URL
- * and serves the file from outside the app root on its own.
- */
-const FONT_URL = new URL('../../../packages/render/assets/fonts/JetBrainsMono-Regular.woff2', import.meta.url).href;
-
-/**
- * Baked once per page, not per mount. Every `bakeFontAtlas` call constructs a
- * fresh `FontFace`, adds it to `document.fonts` (a set of OBJECTS, so the
- * duplicate is kept, never replaced) and allocates an `OffscreenCanvas` — none
- * of which is ever released. Under `StrictMode`'s deliberate double-invoke that
- * is two of each on the first mount alone.
- *
- * The memo is CLEARED on failure. Caching a rejected promise would make one
- * missing font file permanent for the life of the page: `bakeFontAtlas` awaits
- * `font.load()`, so a moved or unshipped woff2 rejects, and without the reset a
- * reload of the pane would replay the same rejection forever.
- */
-let atlasOnce: Promise<FontAtlas> | undefined;
-
-function fontAtlas(): Promise<FontAtlas> {
-  atlasOnce ??= bakeFontAtlas(FONT_URL, CELL_W, CELL_H, FONT_SIZE_PX).catch((e: unknown) => {
-    atlasOnce = undefined;
-    throw e;
-  });
-  return atlasOnce;
-}
 
 /**
  * One row per frame row and every row padded to the floor, so `linesToCells`'s
@@ -135,7 +102,7 @@ export function GridPane({ lines, entities, spawn, mode, selection, onSelect, to
   const [drag, setDrag] = useState<{ readonly from: Pos; readonly to: Pos } | undefined>(undefined);
 
   useEffect(() => {
-    void fontAtlas().then(
+    void getFontAtlas().then(
       (atlas) => {
         atlasRef.current = atlas;
         setAtlasState('ready');

@@ -52,10 +52,10 @@ import {
   type Entity,
   type SessionEvent,
 } from '@vimorror/game';
+import { keyTokenFor } from '@vimorror/stage-view';
 import { useEffect, useRef, useState, type Dispatch, type KeyboardEvent } from 'react';
 
 import { parseDraft, type DraftParse, type StageDraft } from './draft.ts';
-import { keyTokenFor } from './keyboard.ts';
 import {
   PRESETS,
   arm,

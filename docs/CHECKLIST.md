@@ -2944,6 +2944,71 @@ valid, and no JSON was hand-edited.
 
 ## M4 — `apps/web`
 
+**`docs/M4-PLAN.md` is the decomposed build plan** — file breakdown, package
+scaffolding, build order (waves A–E), testing strategy, and an explicit
+done-line, same shape as `M1-PLAN.md`/`M2-PLAN.md`/`M3-PLAN.md`. The bullets
+below stay as the compressed tracking checklist; that doc is the plan of
+record for *how*. Two things it verified against source that the bullets
+cannot show: the diegetic `:set` needs zero core changes (measured —
+`CommandResolved` carries the full typed keys for known AND unknown ex
+commands, so the title screen is a real `VimEngine` buffer and the shell is
+one interceptor), and the `stage-cells.ts`/`keyboard.ts` lift has no legal
+home in any existing package (game must not depend on render, render must
+not know stages), so M4 creates the repo's fourth package,
+`@vimorror/stage-view`. It also settles the decision M3 left open: **Zustand
+is not taken.**
+
+### Wave A — the lift, and the walls of the app — **done** (2026-08-19)
+
+- [x] **`packages/stage-view` (`@vimorror/stage-view`) exists — the repo's
+      fourth package.** Created because the lift has no legal home anywhere
+      else: `stage-cells.ts` imports from both `@vimorror/game` and
+      `@vimorror/render`, game must not depend on render and render must not
+      know stages, and an app-to-app source import would be an undeclared
+      dependency between two things that are not libraries.
+- [x] `stage-cells.ts` + `keyboard.ts` + both test files **moved with
+      `git mv`, not rewritten** — 32 + 34 tests, byte-identical bodies, only the
+      two header paragraphs that said "the seam M4 lifts" now say it happened.
+- [x] `font.ts` extracted from `grid-pane.tsx`'s inlined `atlasOnce`:
+      `getFontAtlas()`, plus `CELL_W`/`CELL_H` as the one shared geometry.
+      `font.test.ts` pins the semantics that used to live un-pinned inside a
+      React file — a rejection is NOT cached (one missing woff2 would otherwise
+      be permanent for the life of the page) and a success IS. It passed first
+      run, so it was **mutation-tested**: dropping `atlasOnce = undefined` kills
+      it, and so does turning `??=` into `=`.
+- [x] The editor's four import sites repointed (`app.tsx`, `play-pane.tsx`,
+      `grid-pane.tsx`, and `recorder.test.ts` — the fourth the plan's count of
+      three missed). `grid-pane.tsx` loses `CELL_W`/`CELL_H`/`FONT_SIZE_PX`,
+      `FONT_URL`, `atlasOnce` and `fontAtlas()` — pure deletion, one call site
+      changed to `getFontAtlas()`.
+- [x] `apps/web` scaffolding: `package.json` (the four workspace packages +
+      react/react-dom), `index.html`, `vite.config.ts` (react plugin, no
+      `server.fs.allow`), **no `tsconfig.json`** — the root project compiles it.
+      `zod` deliberately NOT declared yet; it arrives with `save.ts` in Wave D.
+- [x] Root: `"dev": "vite apps/web --port 5173"` and a `dev` entry in
+      `.claude/launch.json`. **Playwright deferred to Wave E** — `playwright
+      test` with zero specs exits 1, so adding `playwright.config.ts`, the
+      `@playwright/test` devDependency and the CI `e2e` job in Wave A would ship
+      a red CI job that stays red for three waves. They land with the specs.
+- [x] Walking skeleton at 5173: the atlas bakes out of the package, a frame goes
+      through the lifted `stageCells`, `createRenderer` draws it in a rAF loop at
+      intensity 0. Verified in the browser — **post-fx path `webgl2`**, 64x12
+      cells, canvas 576x216, woff2 served from outside the app root via `@fs`,
+      and `document.fonts.size === 1` under `StrictMode`'s double-invoke, which
+      is the leak the memo exists to prevent, measured rather than assumed.
+- [x] Gates: `pnpm typecheck` clean, `pnpm test` 1630/1630 across 26 files,
+      `pnpm validate:stages` 4/4, `pnpm demo` 4/4, `pnpm goldens:verify` **zero
+      changed bytes**. Editor verified unchanged in the browser — fixture
+      opened, wall painted by drag and deleted, playtest **won at par 8** on
+      `nomagic` with 8 keys through `keyTokenFor`, zero console errors.
+
+Recorded because it cost time: `computer{action:"key"}` sends `comma` and
+`semicolon` as multi-character `event.key` values, which `keyTokenFor` correctly
+drops — the playtest showed 6 keystrokes instead of 8 and an in-fiction "the way
+is shut" for the `fw` that resulted. Send the literal `,` and `;`. This is the
+same class as M3's recorded `computer{action:"type"}` and `shift+g` traps, and
+the third entry in it.
+
 - [ ] Title screen, `:set magic` difficulty selection (diegetic, from the game's
       own command line)
 - [ ] Comfort settings surfaced **before first play**

@@ -28,6 +28,7 @@
  */
 
 import type { Entity } from '@vimorror/game';
+import { drawableEntities } from '@vimorror/stage-view';
 import { useReducer, useState } from 'react';
 
 import { BufferPane, EDITS as BUFFER_EDITS } from './buffer-pane.tsx';
@@ -41,7 +42,6 @@ import { GridPane } from './grid-pane.tsx';
 import { IssuesPane } from './issues-pane.tsx';
 import { MetadataPanel, EDITS as METADATA_EDITS } from './metadata-panel.tsx';
 import { PlayPane, type PlayView } from './play-pane.tsx';
-import { drawableEntities } from './stage-cells.ts';
 import { initialState, reduce, textFromBuffer } from './store.ts';
 
 type AuthoredField =

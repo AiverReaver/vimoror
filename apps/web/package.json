@@ -1,9 +1,9 @@
 {
-  "name": "@vimorror/editor",
+  "name": "@vimorror/web",
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "description": "The stage editor: dual-pane authoring, overlay painting, and the solution recorder.",
+  "description": "The game shell: title screen, stage runner, saves, audio.",
   "dependencies": {
     "@vimorror/core": "workspace:*",
     "@vimorror/game": "workspace:*",

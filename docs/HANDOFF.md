@@ -1,4 +1,4 @@
-# HANDOFF — M0 + M1 + M2 complete, **M3 complete** (2026-08-19)
+# HANDOFF — M0 + M1 + M2 + M3 complete, **M4 Wave A done** (2026-08-19)
 
 Read this first when continuing work. The plan of record is `MergedPlan.md`;
 the tracking doc is `docs/CHECKLIST.md`; the harness gospel is
@@ -53,8 +53,9 @@ pnpm goldens:generate && pnpm test && pnpm typecheck && pnpm goldens:verify
   abort cursor — M1, M2 and M3 have added none, and every wave of all three
   re-ran `goldens:verify` and confirmed **zero golden bytes changed**. The
   repo-wide TEST count has grown with them, from M0's 1221 to **1467** at M2 Wave
-  E and **1629** at M3 Wave E; the per-wave arithmetic is in
-  `docs/CHECKLIST.md`. `pnpm validate:stages` reports **4 stage files valid** —
+  E, **1629** at M3 Wave E and **1630** at M4 Wave A (the one new test is
+  `stage-view`'s `font.test.ts`; the 66 moved tests moved, they did not
+  multiply); the per-wave arithmetic is in `docs/CHECKLIST.md`. `pnpm validate:stages` reports **4 stage files valid** —
   the fourth is M3 Wave E's `act1-word-power`, authored in the editor.
 
   `pnpm test:fuzz` is separate from the above and NOT yet clean over a full
@@ -515,18 +516,45 @@ artifact and excluded.
 
 ## What comes next
 
-**M4 (`apps/web`) is the next milestone, and it needs its own plan before it
-starts** — the same rule `docs/CHECKLIST.md` states for every milestone after M0,
-and the reason `M1-PLAN.md`, `M2-PLAN.md` and `M3-PLAN.md` exist. M4's checklist
-bullets (title screen, diegetic difficulty selection, comfort settings before
-first play, the content note, `localStorage` saves with an in-payload
-`schemaVersion`, procedural WebAudio, the stage runner, Playwright E2E) are a
-deliverable list, not a decomposition. Three things this repo already decided
-that M4 inherits rather than re-litigates: `stage-cells.ts` and `keyboard.ts` are
-**the seams M4 lifts** out of the editor (both were written for it and say so in
-their headers); the CRT pipeline is M4's runtime dress and deliberately absent
-from the editor; and Zustand was left untaken at M3 explicitly so M4 could decide
-it for the game loop.
+**M4 (`apps/web`) is the milestone in flight, against its plan
+`docs/M4-PLAN.md`** (waves A–E, same shape as M1–M3's), written 2026-08-19
+against source rather than the plan docs. **Wave A is done** — the fourth
+package exists and the app's walls stand up; the per-item record is in
+`docs/CHECKLIST.md`'s M4 Wave A block. Four things a newcomer needs from it:
+
+- **`@vimorror/stage-view` is the browser-shared presentation kit**, and the
+  reason it exists rather than living in game or render is a dependency rule,
+  not taste: `stage-cells.ts` needs BOTH, game must not depend on render and
+  render must not know stages. Anything both apps draw with belongs here.
+  `getFontAtlas()` is now the only legal way either app bakes an atlas, and
+  `CELL_W`/`CELL_H` (9x18) are the one shared cell geometry.
+- **The plan said three editor import sites; there were four.**
+  `recorder.test.ts` imports `keyTokenFor` too. Grep, don't count from a doc.
+- **Playwright is NOT wired yet, deliberately.** `playwright test` with no
+  specs exits 1, so `playwright.config.ts`, the `@playwright/test`
+  devDependency and the CI `e2e` job land in Wave E with the specs they run,
+  not in Wave A with the rest of the root edits. `pnpm dev` (5173) and the
+  `launch.json` entry are in.
+- **`computer{action:"key"}` sends `comma`/`semicolon` as multi-character
+  `event.key` values**, which `keyTokenFor` correctly refuses — a browser-driven
+  playtest then silently records fewer keystrokes than you sent. Send the
+  literal `,` and `;`. Third entry in the same class as M3's
+  `computer{action:"type"}` and `shift+g` traps. Its two load-bearing verified facts:
+the diegetic `:set` needs zero core changes — measured on a live engine,
+`CommandResolved` carries the full typed keys for known AND unknown ex
+commands (core's `applyOneSetArg` silently ignores `verymagic`/`magic`/
+`nomagic`), so the title screen is a real `VimEngine` buffer and the shell's
+whole command vocabulary is one interceptor over `command.keys` — and the
+seam lift has no legal home in any existing package (game must not depend on
+render, render must not know stages), so Wave A creates the fourth package,
+`@vimorror/stage-view` (`stage-cells.ts` + `keyboard.ts` moved verbatim, plus
+`font.ts`, the atlas memo extracted from `grid-pane.tsx`). Three things this
+repo already decided that M4 inherits rather than re-litigates: those two
+files were written to be lifted (their headers say so); the CRT pipeline is
+M4's runtime dress and deliberately absent from the editor; and Zustand was
+left untaken at M3 explicitly so M4 could decide it — the plan decides
+**against**: the shell's loop is a rAF callback reading a ref, the editor's
+own proven shape.
 
 **All seven Wave 4 sub-waves are done — Wave 4 as a whole is complete, and so
 are Waves 1–4.** The engine itself has no more waves queued.

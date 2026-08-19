@@ -24,7 +24,10 @@
  * - **Arrows, function keys and the navigation cluster.** Real Vim moves on the
  *   arrows; this game teaches `hjkl`, and inventing a mapping core has no token
  *   for would put a keystroke in a recorded solution that `tokenize` cannot read
- *   back. M4 owns whether the shipped game accepts them.
+ *   back. M4 answered by sharing this file rather than widening it: the runner
+ *   translates keys through exactly this table, so the shipped game does not
+ *   accept them either, and a solution recorded in the editor is playable in the
+ *   game by construction.
  * - **`Alt`/`Meta` chords**, so `Cmd-R` still reloads and `Alt-Tab` still
  *   switches windows. The cost is `AltGr` on a non-US layout, which reports
  *   `ctrlKey && altKey` with the composed character in `event.key` — an author who

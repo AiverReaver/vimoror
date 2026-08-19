@@ -9,9 +9,11 @@
  * call `occupies` too. Nothing here is a rule; it is a skin over rules that live
  * one package down.
  *
- * **This file is the seam M4 lifts** when the game needs the same
- * stage-to-cells drawing. It stays in the editor until that second consumer
- * exists.
+ * **This file is the seam M4 lifted.** It was the editor's until the runner
+ * needed the same stage-to-cells drawing; it moved to this package then, verbatim
+ * and with its tests, because game must not depend on render and render must not
+ * know stages — so neither of them could hold it and an app-to-app source import
+ * would be an undeclared dependency between two things that are not libraries.
  *
  * Two things were measured against render before choosing the palette below,
  * and both shape it:
