@@ -4,12 +4,23 @@
  *
  * Pure, and split out of `runner.tsx` for the reason M4-PLAN.md states as the
  * whole file breakdown — *pure modules that vitest can hold, thin React
- * components the browser verifies* — but also for a specific one. **No shipped
- * stage scrolls.** All four fit inside their own viewport, so `topline` is 0 in
- * every run a person can play today, and the entity shift below is the one piece
- * of Wave B that a browser playtest cannot reach. It is also the piece whose
- * failure is silent: an unshifted entity still draws, still tints, still reads as
- * a wall — on the wrong row.
+ * components the browser verifies* — but also for a specific one, stated
+ * carefully because the loose version of it is wrong.
+ *
+ * A shipped stage CAN scroll: no stage is taller than its viewport as authored,
+ * but play grows the buffer, and `act2-grammar-awakens` permits `y` and `p`, so
+ * `yy` then eight `p` puts the cursor on line 8 of eleven at `topline: 1` —
+ * measured on `verymagic`, where the half-cadence threat does not catch first.
+ * The plain shift is therefore visible by hand: at that `topline` the pickup
+ * authored on buffer line 1 is drawn on frame row 0 and the goal from line 2 on
+ * row 1.
+ *
+ * What a playtest cannot reach is the STRADDLE below, and the reason is
+ * structural rather than lucky: **every rectangle in every shipped stage is a
+ * single row** (`1..1`, `0..0`, `2..2`, `0..0`), so none of them can span a
+ * scroll boundary. That case is unreachable until an author draws a wall two rows
+ * tall, and its failure is silent in the worst way — the entity does not move, it
+ * disappears.
  *
  * `DrawArgs.cells` is documented "already clipped to the viewport by the caller —
  * one row per `camera` row", and that contract has three halves, not one:

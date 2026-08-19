@@ -562,14 +562,22 @@ Six things a newcomer needs from those two waves:
   the **atlas** — `getFontAtlas(scale)` is memoised per integer scale (1..3), the
   backing store comes from `atlas.cellW`, the CSS box from `CELL_W`. Forced to
   scale 2 on a 1x display and measured: 1152x288 behind a 576x144 box.
-- **`frame.ts` is pure because no shipped stage scrolls.** All four fit their own
-  viewport, so `topline` is 0 in every playable run and the entity shift is
-  unreachable from a playtest. It is also where the shift went wrong first:
-  `stage-cells.ts`'s `drawable` refuses a negative `at.line`, so subtracting
-  `topline` and handing it over makes a wall straddling the top edge **vanish**
-  rather than clip. The anchor is clamped to row 0 for a rectangle whose far
-  corner is still visible, and deliberately NOT for a single cell (a goal that
-  scrolls off must go, not stick to the top row).
+- **A shipped stage does scroll, and the clip has one case a playtest still
+  cannot reach.** No stage is taller than its viewport as authored, but play grows
+  the buffer: `act2-grammar-awakens` permits `y` and `p`, so `yy` then eight `p`
+  reaches `topline: 1` on `verymagic` (measured — on `magic` the full-cadence
+  threat catches the cursor first and the stage is lost to
+  `threat-reaches-cursor`). At that `topline` the pickup authored on buffer line 1
+  draws on frame row 0 and the goal from line 2 on row 1, so the plain shift is
+  visible by hand. What is NOT reachable is a rectangle STRADDLING the top edge,
+  and structurally so: every rectangle in all four stages is a single row
+  (`1..1`, `0..0`, `2..2`, `0..0`). That is the case a test caught and a playtest
+  could not, and it is the one that fails silently — `stage-cells.ts`'s `drawable`
+  refuses a negative `at.line`, so subtracting `topline` and handing it over makes
+  such a wall **vanish** rather than clip. The anchor is clamped to row 0 when the
+  far corner is still visible, and deliberately NOT for a single cell (a goal that
+  scrolls off must go, not stick to the top row). `frame.ts` is pure so all of
+  this is testable at all.
 
 The plan itself has two load-bearing verified facts, both still standing:
 the diegetic `:set` needs zero core changes — measured on a live engine,

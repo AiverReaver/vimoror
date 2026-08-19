@@ -47,9 +47,9 @@
  *   recording rather than logging and continuing.
  *
  * The viewport clip that `DrawArgs.cells` requires of its caller lives in
- * `frame.ts`, pure and tested, because no shipped stage scrolls — `topline` is 0
- * in every run a person can play today, so a browser playtest of this wave cannot
- * reach the part of it that matters.
+ * `frame.ts`, pure and tested — a shipped stage really can scroll once play has
+ * grown its buffer, and the one part of the clip no playtest can reach (a
+ * rectangle straddling the top edge) is documented there.
  */
 
 import { render as renderKeys, type Mode } from '@vimorror/core';

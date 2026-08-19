@@ -3039,10 +3039,17 @@ the third entry in it.
       `engine.pending`, camera + DPR. Every one of `:w`, `:q`, a locked-key
       rejection, a beat, a threat chase and the on-request hint's cost was
       verified on screen.
-- [x] `frame.ts` + `frame.test.ts` — the viewport clip, split out pure because
-      **no shipped stage scrolls**: `topline` is 0 in every playable run, so a
-      browser playtest of this wave cannot reach the part that matters. 17 tests,
-      four mutations killed one each.
+- [x] `frame.ts` + `frame.test.ts` — the viewport clip, split out pure so it can
+      be tested at all. 17 tests, four mutations killed one each. **The claim
+      worth stating precisely:** a shipped stage CAN scroll once play has grown
+      its buffer — `act2-grammar-awakens` permits `y`/`p`, and `yy` + `p`x8
+      reaches `topline: 1` on `verymagic`, where the entity shift is visible by
+      hand (pickup from buffer line 1 on frame row 0, goal from line 2 on row 1).
+      What no playtest can reach is a rectangle STRADDLING the top edge, because
+      every rectangle in all four stages is a single row (`1..1`, `0..0`, `2..2`,
+      `0..0`) — and that is precisely the case that fails silently, since
+      `drawable` refuses a negative `at.line` and the entity vanishes rather than
+      clipping. A test caught it; the first implementation had it wrong.
 - [x] `font.ts` grew a per-scale memo (`getFontAtlas(scale)`, `atlasScaleFor`),
       the editor's `getFontAtlas()` unchanged at the default of 1. See the DPR
       note below — this is the one place Wave B departed from the plan.

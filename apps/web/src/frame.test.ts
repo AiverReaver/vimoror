@@ -1,11 +1,11 @@
 /**
- * The viewport clip. Three of these four suites cover something a browser
- * playtest of Wave B cannot reach at all, which is why they exist:
+ * The viewport clip. Most of what is below covers something a browser playtest of
+ * Wave B cannot reach, which is why it exists:
  *
- * - **No shipped stage scrolls.** All four fit inside their own viewport, so
- *   `topline` is 0 in every playable run and the entity shift is dead code as far
- *   as the game is concerned — right up until M5 authors a taller stage, at which
- *   point an unshifted wall draws on the wrong row and still looks like a wall.
+ * - **No shipped stage has a rectangle taller than one row**, so none of them can
+ *   straddle a scroll boundary — the clamp is unreachable by hand until an author
+ *   draws a two-row wall, and its failure mode is the entity vanishing rather
+ *   than moving. (The plain shift, by contrast, IS reachable: see `frame.ts`.)
  * - **No shipped stage is wider than `MIN_COLS`**, so the `longest + 1` widening
  *   and the truncation both only bite on content that does not exist yet.
  * - **The canvas-stability property is invisible when broken.** A frame whose

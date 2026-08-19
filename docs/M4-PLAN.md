@@ -150,6 +150,23 @@ each tagged "M4" at the definition site:
   same-size-resize case where `diffCells` sees nothing — plus a
   `matchMedia('(resolution: …)')` listener so a window dragged between
   monitors re-renders instead of blurring.
+
+  > **CORRECTED AT WAVE B — do not implement the paragraph above as written.**
+  > It is the one fact in this document that was reasoned rather than measured,
+  > and it does not work. `GlyphGrid.#drawCell` blits every cell at
+  > `atlas.cellW` × `atlas.cellH` and nothing else, so sizing the canvas at
+  > `cells × cellSize × dpr` against a 1× atlas draws a 1× frame into a 2×
+  > buffer and leaves three quarters of the canvas blank — `resize()` cannot
+  > help, because there is no scale factor anywhere in the blit for it to
+  > change. **The scale has to reach the ATLAS.** `getFontAtlas(scale)`
+  > (`packages/stage-view/src/font.ts`) is memoised per INTEGER scale 1–3 — a
+  > fractional cell size puts every glyph blit on a fractional pixel boundary,
+  > which is the blur the exercise exists to remove — the backing store is
+  > `cells × atlas.cellW`, and the CSS box stays `cells × CELL_W`. Verified by
+  > forcing scale 2 on a 1× display: 1152×288 behind a 576×144 box, frame
+  > filling it, layout identical to 1×. The `matchMedia` listener is right and
+  > is in, keyed on the raw ratio rather than the integer scale, since a query
+  > pinned at `2dppx` stops firing once the ratio has moved off it.
 - **The viewport clip.** `DrawArgs.cells` is documented "already clipped to
   the viewport by the caller — one row per `camera` row," and `Camera` is
   `{topline, height, width}` with `followCursor` already written. The runner
@@ -158,6 +175,34 @@ each tagged "M4" at the definition site:
   `[topline, topline+height)`, and follows vertically only. No horizontal
   camera: no shipped stage needs one, and the editor authors inside the same
   frame bound.
+
+  > **AMENDED AT WAVE B — this bullet is missing the half that has a bug in
+  > it.** Slicing rows is not the whole clip: `stageCells` indexes entities
+  > against the LINES ARRAY it is handed, not against the buffer, so
+  > **entities must be shifted by `topline` too** or an entity on buffer line 5
+  > draws on frame row 5 instead of the row the player is looking at. Worse,
+  > `stage-cells.ts`'s `drawable` filter refuses a negative `at.line` (its
+  > `isIndex` requires `n >= 0`), so the naive shift makes a rectangle
+  > straddling the top edge **vanish** rather than clip — an invisible wall the
+  > cursor cannot pass. The anchor is therefore clamped to row 0 when the far
+  > corner is still visible (which moves the glyph to the topmost visible row,
+  > keeping "never colour alone" true for a wall continuing off-screen) and
+  > deliberately NOT clamped for a single cell, which must vanish rather than
+  > stick to the top row.
+  >
+  > Two other departures, both cheaper than the text above: the frame is sized
+  > ONCE per stage and each visible row is **sliced as well as padded** to that
+  > width, because padding alone lets a line the player has grown past the
+  > frame widen `stageCells`'s own longest-line measurement and resize the
+  > canvas mid-play; and only the visible rows are built, not the full stage
+  > frame, which falls out of the same sizing for free.
+  >
+  > All of it lives in `apps/web/src/frame.ts`, pure, with `frame.test.ts`.
+  > That split matters: a shipped stage CAN scroll once play has grown its
+  > buffer (`act2-grammar-awakens` permits `y`/`p`; `yy` + `p`×8 reaches
+  > `topline: 1` on `verymagic`), but every rectangle in all four stages is a
+  > single row, so the straddle case is unreachable by hand and only a test
+  > finds it.
 
 The draw loop is `requestAnimationFrame`, not per-keystroke — glitch and
 phosphor are time-varying, which is why the M1 demo already draws that way.
@@ -255,6 +300,11 @@ Pure modules:
   bijection both ways — every manifest id resolves to a file, every stage
   file appears in the manifest — the same both-directions drift guard the
   repo already uses for `EDITS`/`FIELD_ORDER` and the comparator's registers.
+- **`frame.ts`** (added at Wave B, not in the original breakdown) — the
+  viewport clip: `frameGeometry`, `viewportLines`, `shiftEntities`,
+  `frameCells`. Pure, so the one case a playtest cannot reach is still checked.
+  See the amendment under fact 4's viewport-clip bullet for why it exists as a
+  module rather than as three helpers inside `runner.tsx`.
 - **`save.ts`** — fact 3's codec. `SCHEMA_VERSION = 1`; Zod schema over the
   envelope; `loadSave(): Save | undefined` (parse failure, version mismatch,
   storage unavailable → `undefined`, mismatched payloads renamed aside);
@@ -375,6 +425,31 @@ Playwright specs, each in a fresh browser context (clean `localStorage`):
    — and `act1-word-power` visibly loses over budget on `nomagic` while the
    same route wins on `verymagic`, checked by hand in the browser before E2E
    pins it.
+
+   **Both met**, by hand in the browser: all four stages completed at par
+   (`act1-two-worlds` 9/9, `act1-four-directions` 2 against par 3,
+   `act1-word-power` 8/8, `act2-grammar-awakens` 4/4, each `[*] clean run`) —
+   the third of which closes M3's deferred clause literally — and on
+   `act1-word-power` the route `jj` + `l`×43 **loses on `nomagic`** at keystroke
+   21 while the **identical keys win on `verymagic`** at 45, marked `[ ]
+   assisted` rather than clean because always-on hints are a hint used
+   (`scoring.ts`'s rule, not the runner's). 1656 tests from 1630;
+   `goldens:verify` zero changed bytes.
+
+   **Two corrections to the plan as written**, both under fact 4 above: the DPR
+   recipe does not work (the scale must reach the atlas, not the canvas) and the
+   viewport-clip bullet omits the entity shift, which is where the one real bug
+   of this wave lived. A third, smaller: `frame.ts` was added to the file
+   breakdown so the clip is testable, and `app.tsx` is a stage list plus a
+   difficulty radio — scaffolding Wave C deletes, not a screen.
+
+   Left for later waves rather than forgotten: `effectsIntensity` stays 0 (Wave
+   C owns the value and the `prefers-reduced-motion` policy); `onExit(force)`
+   carries `:q` vs `:q!` — the `force` flag measured `false` and `true`
+   respectively — with nothing consuming it until Wave D has a snapshot to keep
+   or discard; the runner's engine-throw freeze path and the `matchMedia` DPR
+   listener are both written and neither is exercised. No root edits were
+   needed, Wave A having already landed the `dev` script and the launch entry.
 3. **Wave C — the front door.** `shell-commands.ts`, `title-screen.tsx` over
    a real engine (fact 1), `note-screen.tsx` (content note + comfort before
    first play), `select-screen.tsx`, `settings-screen.tsx`,
