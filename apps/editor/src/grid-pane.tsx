@@ -26,7 +26,7 @@
  *   so a render per commit is exactly right and an idle editor draws nothing.
  */
 
-import type { Pos } from '@vimorror/core';
+import type { Mode, Pos } from '@vimorror/core';
 import type { Entity, EntityKind } from '@vimorror/game';
 import { GlyphGrid, bakeFontAtlas, cursorShapeForMode, type CellBuffer, type FontAtlas } from '@vimorror/render';
 import { useEffect, useRef, useState, type MouseEvent } from 'react';
@@ -93,8 +93,18 @@ function frameLines(lines: readonly string[]): string[] {
 export type GridPaneProps = {
   readonly lines: readonly string[];
   readonly entities: readonly Entity[];
-  /** The spawn. `undefined` when the draft has none and does not parse. */
+  /**
+   * Where the cursor is drawn: the stage's spawn while editing, the live
+   * session's cursor while a playtest runs. `undefined` when the draft has no
+   * spawn and does not parse.
+   */
   readonly spawn: Pos | undefined;
+  /**
+   * The mode the cursor takes its SHAPE from — a live session's, or `undefined`
+   * for a stage at rest, which spawns in normal mode. The mapping is render's
+   * (`cursorShapeForMode`), never a shape hardcoded here.
+   */
+  readonly mode?: Mode | undefined;
   readonly selection: string | undefined;
   readonly onSelect: (id: string | undefined) => void;
   /** The armed paint kind, or `undefined` for the plain click-to-select grid. */
@@ -109,7 +119,7 @@ export type GridPaneProps = {
  */
 const GHOST_ID = '(painting)';
 
-export function GridPane({ lines, entities, spawn, selection, onSelect, tool, onPaint }: GridPaneProps) {
+export function GridPane({ lines, entities, spawn, mode, selection, onSelect, tool, onPaint }: GridPaneProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const gridRef = useRef<GlyphGrid | null>(null);
   const atlasRef = useRef<FontAtlas | null>(null);
@@ -175,9 +185,7 @@ export function GridPane({ lines, entities, spawn, selection, onSelect, tool, on
 
     gridRef.current.render(cells, atlas, {
       pos: spawn !== undefined && inFrame(cells, spawn) ? { row: spawn.line, col: spawn.col } : null,
-      // Wave D swaps this for the live engine's mode; a stage at rest spawns in
-      // normal mode, and the mapping is render's, not a hardcoded shape.
-      shape: cursorShapeForMode('normal'),
+      shape: cursorShapeForMode(mode ?? 'normal'),
     });
   });
 

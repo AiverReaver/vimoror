@@ -26,19 +26,31 @@ export const EDITS = ['buffer'] as const satisfies readonly (keyof StageDraft)[]
 export type BufferPaneProps = {
   readonly text: string;
   readonly onChange: (text: string) => void;
+  /**
+   * Frozen while a playtest runs, because the grid beside it belongs to the
+   * session then: an edit here would change the AUTHORED buffer while the preview
+   * kept drawing the live one, so the author's feedback loop would silently point
+   * at the wrong document. The panels stay editable — only the two surfaces whose
+   * feedback comes back through the grid are paused.
+   */
+  readonly readOnly?: boolean | undefined;
 };
 
-export function BufferPane({ text, onChange }: BufferPaneProps) {
+export function BufferPane({ text, onChange, readOnly }: BufferPaneProps) {
   return (
     <div className="pane">
       <h2>buffer</h2>
       <textarea
         className="buffer"
         value={text}
+        readOnly={readOnly === true}
         wrap="off"
         spellCheck={false}
         onChange={(event: ChangeEvent<HTMLTextAreaElement>) => onChange(event.target.value)}
       />
+      {readOnly === true ? (
+        <p className="note">paused while a playtest runs — the preview is showing the live session</p>
+      ) : null}
     </div>
   );
 }

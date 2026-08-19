@@ -226,6 +226,39 @@
       .bad {
         color: #ff7b6b;
       }
+      /* Wave D: the playtest key-capture surface. It has to LOOK like a target
+         and say which state it is in — keys reach the engine only while it holds
+         focus, since a document-level listener would feed the metadata panel's
+         text inputs to the stage. */
+      .capture {
+        border: 1px dashed var(--edge);
+        padding: 8px;
+        margin-bottom: 6px;
+        text-align: center;
+        color: var(--dim);
+        font-family: ui-monospace, monospace;
+        cursor: text;
+        outline: none;
+      }
+      .capture.capturing {
+        border: 1px solid #5fe07a;
+        border-style: solid;
+        color: #5fe07a;
+      }
+      /* The event log: beats, rejection lines and the outcome. Bounded height,
+         because a long playtest must not push the controls off the panel. */
+      pre.log {
+        max-height: 160px;
+        overflow-y: auto;
+        color: var(--ink);
+        font-size: 12px;
+        margin-top: 6px;
+      }
+      ul.presets {
+        margin: 6px 0 0;
+        padding-left: 16px;
+        font-family: ui-monospace, monospace;
+      }
       button,
       select {
         font: inherit;

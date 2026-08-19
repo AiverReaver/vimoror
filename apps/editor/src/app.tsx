@@ -12,6 +12,12 @@
  * prefers the parse, because that is where `cursor`'s default is resolved and the
  * editor must not carry a second copy of it.
  *
+ * **Wave D adds one exception, and it is the whole of "playtest in place":** while
+ * a session is live the grid draws the SESSION's buffer, cursor, mode and live
+ * entity positions instead. Same canvas, same skin, same geometry — the author
+ * plays the stage on the surface they authored it on, and there is no second
+ * preview to drift from this one.
+ *
  * **The compile-time guard below is Wave C's done-line.** "Every field
  * `schema.ts` accepts is reachable from the UI" is not a property a test can
  * assert — a panel is not introspectable — so it is spelt as an exhaustiveness
@@ -33,6 +39,7 @@ import { HAS_FILE_PICKERS, openStageFile, saveStageFile } from './files.ts';
 import { GridPane } from './grid-pane.tsx';
 import { IssuesPane } from './issues-pane.tsx';
 import { MetadataPanel, EDITS as METADATA_EDITS } from './metadata-panel.tsx';
+import { PlayPane, type PlayView } from './play-pane.tsx';
 import { drawableEntities } from './stage-cells.ts';
 import { initialState, reduce, textFromBuffer } from './store.ts';
 
@@ -47,6 +54,13 @@ const _everyFieldIsAuthorable: Exclude<keyof StageDraft, AuthoredField> extends 
 export function App() {
   const [state, dispatch] = useReducer(reduce, undefined, initialState);
   const [notice, setNotice] = useState<string | undefined>(undefined);
+  /**
+   * The live playtest, or `undefined` while editing. Not in the reducer: the
+   * `GameSession` behind it is mutable and un-serialisable, so `store.ts` could
+   * not stay pure — and a `mode` field alongside a session held elsewhere would
+   * be two sources of truth for one fact. The presence of this view IS the mode.
+   */
+  const [play, setPlay] = useState<PlayView | undefined>(undefined);
 
   const { draft, selection, tool } = state;
   const parse = parseDraft(draft);
@@ -59,6 +73,9 @@ export function App() {
 
   function load(text: string, from: string): void {
     setNotice(undefined);
+    // A live session belongs to the stage that is closing. Left standing, the
+    // grid would keep drawing the old play over the new stage's draft.
+    setPlay(undefined);
     try {
       dispatch({ kind: 'draft-opened', draft: readDraft(text) });
       setNotice(`opened ${from}`);
@@ -72,6 +89,7 @@ export function App() {
     // no notice, so a stale "saved <name>" would otherwise keep asserting a save
     // that no longer describes the file on disk.
     setNotice(undefined);
+    setPlay(undefined);
     try {
       const opened = await openStageFile();
       if (opened === undefined) return;
@@ -126,15 +144,23 @@ export function App() {
       <main>
         <BufferPane
           text={textFromBuffer(draft.buffer)}
+          readOnly={play !== undefined}
           onChange={(text) => dispatch({ kind: 'buffer-typed', text })}
         />
+        {/* One grid, two sources: the draft while editing, the live session while
+            a playtest runs. That is what "playtest in place" means literally —
+            the author watches the stage they are authoring, on the surface they
+            authored it on, with no second canvas to drift. Painting is disarmed
+            with the same switch, since an entity added mid-play would go into the
+            draft while the grid was drawing the session's own array. */}
         <GridPane
-          lines={draft.buffer}
-          entities={entities}
-          spawn={spawn}
+          lines={play?.lines ?? draft.buffer}
+          entities={play?.entities ?? entities}
+          spawn={play?.cursor ?? spawn}
+          mode={play?.mode}
           selection={selection}
           onSelect={(id) => dispatch({ kind: 'entity-selected', id })}
-          tool={tool}
+          tool={play === undefined ? tool : undefined}
           onPaint={(from, to) => dispatch({ kind: 'entity-painted', from, to })}
         />
       </main>
@@ -143,6 +169,7 @@ export function App() {
         <MetadataPanel draft={draft} dispatch={dispatch} />
         <EntitiesPanel draft={draft} selection={selection} tool={tool} dispatch={dispatch} />
         <ConditionsPanel draft={draft} dispatch={dispatch} />
+        <PlayPane draft={draft} parse={parse} view={play} onView={setPlay} dispatch={dispatch} />
       </section>
 
       <footer>

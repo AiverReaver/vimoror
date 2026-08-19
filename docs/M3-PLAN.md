@@ -407,15 +407,48 @@ is a ceiling for the milestone that authors big stages.
    - Judgment call #2 (**where issues render**) is decided: **one issues pane keyed
      by path**, as specced. Eighteen paths from one malformed file all landed next
      to a field an author can find, so inline-per-field never had to earn itself.
-4. **Wave D — playtest + the recorder.** `keyboard.ts`, `recorder.ts`,
-   `play-pane.tsx`. Playtest constructs a fresh `GameSession` from the parsed
-   draft at the picked difficulty and feeds real keystrokes; recording is the
-   same session with the token stream captured; a win offers to arm, arming
+4. **Wave D — playtest + the recorder. DONE 2026-08-19.** `keyboard.ts`,
+   `recorder.ts`, `play-pane.tsx`. Playtest constructs a fresh `GameSession` from
+   the parsed draft at the picked difficulty and feeds real keystrokes; recording
+   is the same session with the token stream captured; a win offers to arm, arming
    writes `solution` + `par` into the draft and reports the all-three-presets
    replay. Done when: recording `di(G` on the act2 fixture arms a draft whose
    parse is clean and whose armed solution wins a fresh session with the same
    keystroke count — and a recording that trips a locked key refuses to arm
    with the reason shown.
+
+   **Both met, driven live in the browser.** `docs/CHECKLIST.md`'s M3 Wave D
+   section carries the full writeup — 1621 tests (from 1572), zero golden bytes
+   changed, demo 4/4, nothing touched outside `apps/editor/` — and the parts that
+   change how a reader should take this plan are:
+
+   - **`playing | recording` collapsed to ONE live state**, and `store.ts` gained
+     no `mode` field. Every playtest is recorded, because a playtest that reaches
+     a win *is* a solution worth arming; two modes would have been the same
+     session and the same fold with a boolean deciding whether a button renders.
+     A `GameSession` cannot live in a pure reducer at all, and a `mode` beside a
+     session held elsewhere is two sources of truth — so the presence of the
+     `PlayView` IS the mode.
+   - **The arm button is NOT gated on the win.** Gating it there re-implemented a
+     third of `arm`'s rule in the UI and hid the other two thirds, which made the
+     done-line's own second half unreachable: a recording that tripped a locked
+     key never wins, so its reason had nowhere to go. `arm` is the authority.
+   - **`par` is the recorded TOKEN count, not `session.keystrokes`** — fact 4
+     above says they are equal at a clean win, which is true and is why the
+     distinction is easy to lose. The schema compares token count against par, and
+     the two numbers diverge exactly when a key was rejected, so the keystone
+     asserts the equality rather than the code assuming it.
+   - **The recorder refuses on ANY `KeyRejected`, not just the fed key's.** A
+     rejection from inside a replay surfaces with a different key and forfeits
+     nothing, so the schema is blind to it where `validate:stages` is not — and a
+     solution really can win with a key rejected (measured), which is why the
+     preset replay's `won` flag carries the rejection term too.
+   - **`keyboard.ts` grew one thing the plan did not list: `shift-Tab` returns
+     `undefined`.** A capture surface that consumes `<Tab>` and `<Esc>` is a
+     keyboard trap, and leaving one gesture to the browser is the fix.
+   - The plan's `mode` in `store.ts` and a `hint()` readout are the two specced
+     items deliberately not built; both are recorded with their reasons in the
+     checklist's ceilings list.
 5. **Wave E — the round trip, and wrap-up.** Export polish, then the
    milestone's definition of done executed for real: **author a brand-new
    stage start to finish in the editor** — a real curriculum candidate (Act I

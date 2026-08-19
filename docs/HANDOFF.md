@@ -1,4 +1,4 @@
-# HANDOFF — M0 + M1 + M2 complete, **M3 Waves A–C done** (2026-08-19)
+# HANDOFF — M0 + M1 + M2 complete, **M3 Waves A–D done** (2026-08-19)
 
 Read this first when continuing work. The plan of record is `MergedPlan.md`;
 the tracking doc is `docs/CHECKLIST.md`; the harness gospel is
@@ -47,12 +47,14 @@ reader with no context.
 pnpm goldens:generate && pnpm test && pnpm typecheck && pnpm goldens:verify
 ```
 
-  **1153 goldens, isolation verified** (every case re-run in its own Vim process
-  and diffed). Nothing is mid-flight. The golden count is unchanged since M0 —
-  M1 and M2 added no goldens, and each of their waves re-ran `goldens:verify`
-  and confirmed **zero golden bytes changed**. The repo-wide TEST count has
-  grown with them, from M0's 1221 to **1467** at M2 Wave E; the per-wave
-  arithmetic is in `docs/CHECKLIST.md`.
+  **1159 goldens, isolation verified** (every case re-run in its own Vim process
+  and diffed). Nothing is mid-flight. The count has moved once since M0's 1153,
+  by the six cases the 2026-08-18 triage pass added for the uncounted `aw`/`aW`
+  abort cursor — M1, M2 and M3 have added none, and every wave of all three
+  re-ran `goldens:verify` and confirmed **zero golden bytes changed**. The
+  repo-wide TEST count has grown with them, from M0's 1221 to **1467** at M2 Wave
+  E and **1621** at M3 Wave D; the per-wave arithmetic is in
+  `docs/CHECKLIST.md`.
 
   `pnpm test:fuzz` is separate from the above and NOT yet clean over a full
   10k-sequence run — it's a live differential tool, not a committed-golden
@@ -674,8 +676,9 @@ non-blocking. Worth doing early in whatever comes after M0:
     and outcome are identical either way — which is what lets one player's
     replay reproduce under another's comfort settings.
 - **M3 (`apps/editor`) has its plan: `docs/M3-PLAN.md`**, waves A–E, same shape
-  as M1's and M2's. **Waves A, B and C are done — A and B on 2026-08-18, C on
-  2026-08-19.** Wave A was the
+  as M1's and M2's. **Waves A, B, C and D are done — A and B on 2026-08-18, C and
+  D on 2026-08-19.** Only Wave E — the manual round trip, a brand-new stage
+  authored in the editor and exported into `content/stages/` — is left. Wave A was the
   two debts M3 rests on, both in packages rather than `apps/`: `keys.ts`'s
   `render`/`tokenize` round trip (see the `keys.ts` bullet under "Engine
   architecture notes" above) and `schema.ts`'s `StageInput` export, the AUTHORED
@@ -690,6 +693,51 @@ non-blocking. Worth doing early in whatever comes after M0:
   round trip; the plan's five verified-against-source facts are still the part
   worth reading before picking them up — two of them REMOVE work the older plan
   docs still list (the stage validator already shipped; no Zustand).
+- **The five Wave D facts a newcomer would otherwise rediscover the hard way**,
+  all measured rather than assumed:
+  - **`par` is the recorded TOKEN count, and `session.keystrokes` is the wrong
+    number that happens to be equal.** `schema.ts` compares
+    `tokenize(solution).length > par`, so par must be at least the token count;
+    keystrokes counts only RESOLVED commands. They diverge exactly when a key was
+    rejected (`x` on act2: 1 token, 0 keystrokes) and agree at every clean win,
+    because a win is evaluated inside a tick and therefore lands at rest with
+    every fed token belonging to some resolved command. `recorder.ts` carries both
+    and the keystone asserts the equality rather than the code assuming it — which
+    is also why the mutation sweep's lone survivor (`par: rec.keystrokes`) is a
+    genuinely equivalent mutant and not a hole.
+  - **A rejected key and a FAILED command are opposite shapes, and only one of
+    them blocks arming.** A failed command still resolves — `dfz`, or `k` at line
+    0, emits `InvalidCommand` AND `CommandResolved` — so it ticks, costs a
+    keystroke, and stays armable, exactly as `validate-stages.ts`'s header claims a
+    human route may. A rejected key returns early, forfeits `pending.keyBuffer`,
+    and never ticks, so the recording cannot be repaired by dropping it: the
+    surviving tokens would splice a dangling operator onto whatever came next.
+  - **The recorder must refuse on ANY `KeyRejected`, not only the fed key's, and
+    the hole is reachable.** A rejection from INSIDE a replay (`@a`, `:normal`)
+    surfaces on the same stream with a different key and forfeits nothing, so
+    `schema.ts`'s top-level-token check cannot see it while `validate:stages` —
+    which filters every `KeyRejected` — can. Measured: a stage gated to `l` alone,
+    replayed with `xlll`, **wins with `x` rejected**. So `replayAtPresets`'s `won`
+    flag carries the rejection term as well as the outcome, or the editor blesses a
+    route CI fails.
+  - **A real browser puts the SHIFTED character in `event.key`, so `keyboard.ts`
+    reads `shiftKey` for exactly one thing** — letting `shift-Tab` out of the
+    capture box, which otherwise consumes `<Tab>` and `<Esc>` and is a keyboard
+    trap. Uppercasing from `shiftKey` instead would be wrong on every non-US
+    layout. **The preview automation is the trap here**: `computer{action:"key",
+    text:"shift+g"}` delivers `{key: 'g', code: '', shiftKey: true}`, so the engine
+    correctly reads a `g` operator prefix and waits; a bare `"G"` reproduces a real
+    keyboard. And `computer{action:"type"}` cannot drive the pane at all — it
+    inserts text without firing `keydown`.
+  - **The live session cannot live in the reducer, so the plan's `mode` field does
+    not exist.** A `GameSession` is mutable and un-serialisable; a `mode` in
+    `store.ts` beside a session held in a ref elsewhere is two sources of truth for
+    one fact. `app.tsx` holds a `PlayView | undefined` in `useState` and its
+    presence IS the mode — which is also what lets ONE `GridPane` draw the draft
+    while editing and the session while playing, with no second canvas. The two
+    surfaces that read their feedback back through the grid (the buffer textarea,
+    the paint tool) freeze while a session runs; the panels stay live, because
+    raising `par` mid-playtest is exactly the edit an author wants.
 - **The four Wave C facts a newcomer would otherwise rediscover the hard way**,
   all measured rather than assumed:
   - **"Every schema field is reachable from the UI" cannot be a test, so it is a

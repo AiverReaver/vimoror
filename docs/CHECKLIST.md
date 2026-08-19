@@ -2400,6 +2400,184 @@ where the author clicked, so the schema stays the one that decides which cells a
 real. Tinting the padding rows is the fix if it ever annoys anyone; it is a
 preview-honesty nicety, not a correctness gap.
 
+### Wave D — playtest and the solution recorder `[x]`
+
+Done 2026-08-19. `apps/editor/src/{keyboard,recorder}.ts` and `play-pane.tsx` are
+new, with two new test files; `app.tsx`, `grid-pane.tsx`, `buffer-pane.tsx` and
+`index.html` grew. **1621 tests green** (1572 after Wave C, +49), `pnpm typecheck`
+clean, `pnpm goldens:verify` **zero golden bytes changed** (1159, isolation
+verified), `pnpm demo` 4/4, `validate:stages` 3 valid. Nothing outside
+`apps/editor/` was touched — no root-config edit, no `packages/` edit, so M3's
+done-item 6 still holds exactly.
+
+The done-line is "recording `di(G` on the act2 fixture arms a draft whose parse is
+clean and whose armed solution wins a fresh session with the same keystroke count
+— and a recording that trips a locked key refuses to arm with the reason shown."
+**Both halves driven live in the browser through the preview tool**, not argued
+from tests:
+
+- [x] **The canonical recording arms.** act2 opened, `playtest` clicked, `d` `i`
+      `(` `G` pressed on the capture box: the readout walked `normal · 0
+      keystrokes · 1 key recorded · typed: d` (the ghost HUD showing core's
+      pending operator) through to `normal · 4 keystrokes · 4 keys recorded` and a
+      green `won`. Arming wrote `armed: solution di(G, par 4`, the metadata
+      panel's own `solution` and `par` fields came back `di(G` and `4`, the footer
+      still read **schema valid**, and the three-preset replay printed `verymagic:
+      won in 4 keystrokes` / `magic: …` / `nomagic: …`.
+- [x] **A locked key refuses, with the reason on screen.** `x` (locked by act2's
+      own `allowedKeys`) logged `x  You have not been given that key yet.` and
+      arming answered `"x" was rejected during the recording, so the stage would
+      reject its own solution. A rejected key forfeits the whole half-typed
+      command with it, so the recording cannot be repaired by dropping it — grant
+      the key in allowedKeys, or take a route that avoids it, and record again.`
+- [x] **Playtest is literally in place.** The grid drew the SESSION while it ran —
+      after `di(` the preview read `delete the () doubt` while the textarea beside
+      it still held `delete the (parenthetical) doubt`, and the threat's tint
+      followed its chase onto line 1 — then reverted to the draft on `stop`. Both
+      beats fired into the log in order, the second marked `(startling)`.
+- [x] **The live cursor takes the session's MODE, verified in pixels rather than
+      by eye.** In insert mode the canvas inverts one pixel column at the cell's
+      left edge (a bar); after `<Esc>` the whole nine-pixel cell inverts (a
+      block). A hardcoded `'normal'` — what `grid-pane.tsx` had through Wave C —
+      cannot produce the first reading. The same probe pinned `iZ<Esc>` resolving
+      as ONE three-keystroke command, which is core's insert-session rule showing
+      up in the recorder's tally.
+
+#### What building it taught
+
+- [x] **`session.keystrokes` is the wrong number for `par`, and the right one
+      only by coincidence.** The schema compares `tokenize(solution).length > par`,
+      so par must be at least the TOKEN count; keystrokes counts only resolved
+      commands. Measured, the two disagree exactly when a key was rejected — `x`
+      on act2 gives 1 token and 0 keystrokes — and agree at every clean win,
+      because a win is evaluated inside a tick and therefore lands at rest with
+      every fed token belonging to some resolved command. The recorder carries
+      both and takes par from the tokens; the keystone asserts the equality rather
+      than the code assuming it. (The mutation sweep's lone survivor is exactly
+      this: `par: rec.keystrokes` is a behaviourally EQUIVALENT mutant, which is
+      the assertion doing its job, not a hole.)
+- [x] **A FAILED command still resolves, so it still ticks and still costs** —
+      which is why a recorded human route may contain one and stay armable, as
+      `validate-stages.ts`'s header already claimed. Measured on act2: `di(kG`
+      refuses `k` at line 0 with `motion-failed`, emits `InvalidCommand` AND
+      `CommandResolved`, and wins at 5 tokens / 5 keystrokes. A rejected key is
+      the opposite shape: it returns early, forfeits `pending.keyBuffer`, and
+      never ticks.
+- [x] **The rejection check has to be on ANY `KeyRejected`, not only the fed
+      key's.** A rejection from inside a replay (`@a`, `:normal`) surfaces on the
+      same stream with a different key and forfeits nothing, so the schema's
+      top-level-token check is blind to it while `validate:stages` — which filters
+      every `KeyRejected` — is not. Proven reachable rather than assumed: a stage
+      gated to `l` alone, replayed with `xlll`, **wins with `x` rejected**, so
+      `replayAtPresets` reports `won in 3 keystrokes; keys rejected: x` and
+      `won: false`. Without the rejection term in that flag the editor would have
+      blessed a route CI fails.
+- [x] **`render` vs `tokens.join('')` is invisible on every route without a
+      literal `<`**, which is why the mutation sweep is what caught it. The case
+      that separates them, measured end to end through a real session: the six
+      keys `i < c r > <Esc>` render to `i<lt>cr><Esc>` and replay to a buffer of
+      `["<cr>x"]`, while the join gives `i<cr><Esc>`, tokenizes to **three**
+      tokens, inserts a newline, and leaves the stage playing with `["", "x"]`.
+      That is M3 Wave A's "silent one, which is worse" reproduced at the consumer
+      Wave A was fixed for.
+- [x] **The plan's `playing | recording` pair collapsed to ONE live state.** Every
+      playtest is recorded, because a playtest that reaches a win *is* a solution
+      worth arming — two modes would have been the same session and the same fold
+      with a boolean deciding whether a button renders. The plan already called
+      recording "the same session with the token stream captured"; this is that
+      sentence taken at its word. `store.ts` therefore gained **no `mode` field**:
+      a `GameSession` is mutable and un-serialisable so it can never live in a pure
+      reducer, and a `mode` in the reducer beside a session held elsewhere is two
+      sources of truth for one fact. The presence of the `PlayView` IS the mode.
+- [x] **The arm button must NOT be gated on the win, and the browser is what
+      showed it.** `disabled={outcome !== 'won'}` re-implemented one third of
+      `arm`'s rule in the UI and hid the other two thirds — so the very case the
+      done-line names (a recording that tripped a locked key and therefore never
+      won) had no way to report itself. It is enabled once anything is recorded
+      and `arm` answers; "the editor invents no rules of its own" applies to the
+      recorder as much as to the schema.
+- [x] **Keys are captured by a focusable box, not a window listener** — the
+      metadata panel is full of text inputs, and a document-level handler would
+      feed `title` keystrokes to the engine. That makes the box a **keyboard
+      trap**, since `<Tab>` and `<Esc>` are both real Vim keys it consumes: a
+      pointer user clicks away and a keyboard-only author could not leave. So
+      `shift-Tab` is the one gesture left to the browser (core has no `<S-Tab>`
+      consumer and Vim inserts nothing for it), the box says so, and a test pins
+      the pair — plain `Tab` consumed, shifted `Tab` not.
+- [x] **`keyboard.ts` needs no `shiftKey` handling for characters**, which looks
+      like an omission until measured: a real browser puts the SHIFTED value in
+      `event.key`, so `A` and `$` arrive as themselves and core's `<S-…>` token
+      stays notation-only. **The preview automation is the exception, and it cost
+      an hour**: driving `shift+g` through it delivers `{key: 'g', code: '',
+      shiftKey: true}` — an unshifted key with the modifier flag — so the engine
+      correctly read a `g` operator prefix and waited. A real keyboard sends
+      `{key: 'G', code: 'KeyG'}`, and the harness's bare `G` reproduces that. The
+      translator trusts `event.key`; uppercasing from `shiftKey` would be wrong on
+      every non-US layout (`shift+2` is `"` before it is `@`).
+- [x] **Three preview-tool traps, all of which look like editor bugs.** Worth
+      knowing before the next `apps/` pane is verified in the browser, because each
+      one produced a convincing false negative here:
+      - `computer{action: "type"}` inserts text **without firing `keydown`**, so
+        nothing reaches the handler at all. Every key above went through
+        `action: "key"`.
+      - **Key events only land after a real mouse click has given the pane OS
+        focus.** `document.hasFocus()` reported `true` and `activeElement` was the
+        capture box while four presses reached *nothing* — a `window`-level
+        `keydown` probe is what proved the events were never delivered. A
+        JS-driven `.click()` does not restore that focus; a `computer left_click`
+        does.
+      - **`computer left_click` by `ref` can silently miss when the screenshot
+        frame is scaled** (800x476 for a 1680x1000 viewport): it reports the
+        element's PAGE coordinates, and several such clicks landed on nothing. A
+        coordinate scaled into the screenshot frame works, a JS `.click()` always
+        works, and either way the assertion must be a SEPARATE tool call so React
+        has committed. The arm dispatch was "broken" three times before this was
+        the answer — settled by setting `par` to 3, watching the schema say `par
+        is 3 but the solution takes 4 keystrokes`, then arming and watching it go
+        valid at par 4.
+- [x] **Arming has to parse a LOCAL copy of the armed draft.** The preset replay
+      is part of the same click, and the dispatch that writes `solution`/`par`
+      does not come back around until the next render, so waiting for it would
+      have meant replaying the PREVIOUS solution. `parseDraft({...draft, solution,
+      par})` is the whole fix, and it also gives the honest failure message when
+      some other field is broken ("the presets were not replayed").
+- [x] **The three modules a playtest can desync were frozen rather than left
+      live.** The buffer textarea goes `readOnly` and the paint tool is disarmed
+      while a session runs, because both read their feedback back through the grid
+      — which now belongs to the session. The panels stay editable on purpose:
+      raising `par` mid-playtest is exactly the edit an author wants. Opening a
+      different stage drops the session, since a view left standing would draw the
+      old play over the new draft.
+- [x] **All 49 new tests passed on the first run, so they were mutation-tested
+      rather than trusted** — M2 Wave E's discipline. 19 mutants across
+      `keyboard.ts` and `recorder.ts`: **18 dead, 1 survivor**, and the survivor is
+      the provably-equivalent `par` spelling above. Two of the eighteen were only
+      dead because the sweep found the holes first and they became the tests named
+      above (the `render`/`join` case and the won-but-rejected preset flag) —
+      without them both mutants lived.
+
+#### Ceilings, recorded rather than fixed
+
+- The pane offers no `hint()` readout. The hint data is derived from the armed
+  solution and the keystone asserts it (`hintFor` returns `di(` at act2's spawn),
+  but an author cannot see the ladder in the editor. M4 owns hint presentation.
+- No `Comfort` toggles. A suppressed beat is still marked FIRED (M2 Wave D), so
+  buffer, ticks, entities, score and outcome are identical either way — the only
+  thing a toggle would change is which beats appear in the log.
+- The log is bounded at 200 lines. It renders every frame, and an author leaning
+  on a key would otherwise grow an unbounded array in the render path.
+- An engine throw mid-playtest stops the session and reports the message, rather
+  than logging and continuing. `pnpm test:fuzz` is known-nonzero live state, so
+  this is not hypothetical — and a half-applied keystroke makes the recording
+  untrustworthy, so nothing armable may survive it.
+- **A session outlives an edit to the panels, and that divergence is reported
+  rather than prevented.** The session was built from the parse at `playtest`
+  time, so editing a win condition or `allowedKeys` mid-play leaves it running the
+  old rules. Arming then replays against the CURRENT draft, so the preset list is
+  authoritative and will contradict the session's own "won" if the rules moved —
+  which is the honest outcome. Freezing the panels would have cost the one
+  mid-playtest edit an author actually wants (raising `par`).
+
 - [x] Dual-pane authoring: raw buffer text left, visual grid right, live-synced
 - [x] Overlay painting: spawn, goal, walls, threats, key-pickups, triggers,
       story beats. Done at Wave C. The palette arms a kind and the grid places
@@ -2416,9 +2594,17 @@ preview-honesty nicety, not a correctness gap.
       difficulty is a session-level setting only (see its ledger above); a stage
       says "harder" through `par`, a `keystrokes-over` budget, threat placement
       and `allowedKeys`.
-- [ ] **Solution recorder** — the highest-leverage feature in the plan. Play the
+- [x] **Solution recorder** — the highest-leverage feature in the plan. Play the
       stage in the editor; your keystrokes become the golden solution. One
-      action yields the par score, the hint data *and* a regression test.
+      action yields the par score, the hint data *and* a regression test. Done at
+      Wave D: `recorder.ts` folds `(token, events)` pairs from a live
+      `GameSession` and `arm()` returns `{solution: render(tokens), par:
+      tokens.length}` or a reason. Par is the token count (see Wave D's notes on
+      why `session.keystrokes` is the wrong number and equal anyway), the hint
+      data is `hints.ts` reading the armed solution with no second field to
+      drift, and the regression test is the exported stage `validate:stages`
+      replays in CI — plus the same three-preset replay run at record time, so
+      CI's answer arrives in the editor.
 - [x] Validator — replays every golden solution headlessly through core and
       asserts a win using only `allowedKeys`; runs in CI over `content/stages/`.
       **Done 2026-08-18, ahead of the rest of M3**, because M2 Wave C's
@@ -2449,7 +2635,11 @@ preview-honesty nicety, not a correctness gap.
       `validate:stages` would reject. Per-file pickers only; a directory-handle
       stage browser is a noted ceiling, not built. Split from the playtest half
       of this bullet, which is Wave D
-- [ ] Playtest in place
+- [x] Playtest in place. Done at Wave D, and "in place" is literal: the pane
+      publishes a `PlayView` and `app.tsx` hands it to the SAME `GridPane` the
+      author was editing, so the preview draws the session's buffer, cursor, mode
+      and live entity positions with no second canvas to drift. Verified in the
+      browser down to the cursor SHAPE following the live mode in canvas pixels.
 - [ ] **Definition of done:** author a brand-new stage in the editor, record its
       solution, export it, and confirm it loads and is completable in the game
       without touching code
