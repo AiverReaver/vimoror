@@ -1,4 +1,4 @@
-# HANDOFF — M0 + M1 + M2 + M3 complete, **M4 Wave A done** (2026-08-19)
+# HANDOFF — M0 + M1 + M2 + M3 complete, **M4 Waves A+B done** (2026-08-19)
 
 Read this first when continuing work. The plan of record is `MergedPlan.md`;
 the tracking doc is `docs/CHECKLIST.md`; the harness gospel is
@@ -53,9 +53,10 @@ pnpm goldens:generate && pnpm test && pnpm typecheck && pnpm goldens:verify
   abort cursor — M1, M2 and M3 have added none, and every wave of all three
   re-ran `goldens:verify` and confirmed **zero golden bytes changed**. The
   repo-wide TEST count has grown with them, from M0's 1221 to **1467** at M2 Wave
-  E, **1629** at M3 Wave E and **1630** at M4 Wave A (the one new test is
+  E, **1629** at M3 Wave E, **1630** at M4 Wave A (the one new test is
   `stage-view`'s `font.test.ts`; the 66 moved tests moved, they did not
-  multiply); the per-wave arithmetic is in `docs/CHECKLIST.md`. `pnpm validate:stages` reports **4 stage files valid** —
+  multiply) and **1656** at M4 Wave B (+7 `campaign.test.ts`, +2 `font.test.ts`,
+  +17 `frame.test.ts`); the per-wave arithmetic is in `docs/CHECKLIST.md`. `pnpm validate:stages` reports **4 stage files valid** —
   the fourth is M3 Wave E's `act1-word-power`, authored in the editor.
 
   `pnpm test:fuzz` is separate from the above and NOT yet clean over a full
@@ -518,9 +519,16 @@ artifact and excluded.
 
 **M4 (`apps/web`) is the milestone in flight, against its plan
 `docs/M4-PLAN.md`** (waves A–E, same shape as M1–M3's), written 2026-08-19
-against source rather than the plan docs. **Wave A is done** — the fourth
-package exists and the app's walls stand up; the per-item record is in
-`docs/CHECKLIST.md`'s M4 Wave A block. Four things a newcomer needs from it:
+against source rather than the plan docs. **Waves A and B are done** — the
+fourth package exists, the app's walls stand up, and the stage runner plays: all
+four shipped stages are completable in the app with real keystrokes, each at par,
+and the difficulty asymmetry (`nomagic` loses over budget, the identical keys win
+on `verymagic`) holds in the shell. The per-item record is in
+`docs/CHECKLIST.md`'s M4 Wave A and Wave B blocks. **Wave C is next**: the title
+screen over a real `VimEngine`, `shell-commands.ts`, the content note with
+comfort before first play, and the select/settings screens.
+
+Six things a newcomer needs from those two waves:
 
 - **`@vimorror/stage-view` is the browser-shared presentation kit**, and the
   reason it exists rather than living in game or render is a dependency rule,
@@ -535,11 +543,35 @@ package exists and the app's walls stand up; the per-item record is in
   devDependency and the CI `e2e` job land in Wave E with the specs they run,
   not in Wave A with the rest of the root edits. `pnpm dev` (5173) and the
   `launch.json` entry are in.
-- **`computer{action:"key"}` sends `comma`/`semicolon` as multi-character
-  `event.key` values**, which `keyTokenFor` correctly refuses — a browser-driven
-  playtest then silently records fewer keystrokes than you sent. Send the
-  literal `,` and `;`. Third entry in the same class as M3's
-  `computer{action:"type"}` and `shift+g` traps. Its two load-bearing verified facts:
+- **`computer{action:"key"}` sends `comma`/`semicolon`/`space` as
+  multi-character `event.key` values**, which `keyTokenFor` correctly refuses — a
+  browser-driven playtest then silently records fewer keystrokes than you sent.
+  Send the literal `,` and `;`; a literal space the tool cannot express at all
+  (`key` splits on whitespace), so dispatch that one as a `KeyboardEvent` with
+  `key: ' '`, which is what a real browser sends. The tool also **does not
+  activate a focused button** — Enter arrives as a trusted keydown and no click
+  follows, proved against a plain `<button>` the app never touches — and
+  coordinate clicks are in the **screenshot's** frame, not the viewport's. Click
+  by `ref`. Entries three, four and five in the same class as M3's
+  `computer{action:"type"}` and `shift+g` traps.
+- **The runner's DPR handling does NOT match M4-PLAN.md, on purpose.** Fact 4
+  prescribes sizing the canvas at `cells x cellSize x devicePixelRatio` and
+  calling `renderer.resize()`; `GlyphGrid.#drawCell` blits every cell at
+  `atlas.cellW`x`atlas.cellH` and nothing else, so that draws a 1x frame into a
+  2x buffer and leaves three quarters of the canvas blank. The scale has to reach
+  the **atlas** — `getFontAtlas(scale)` is memoised per integer scale (1..3), the
+  backing store comes from `atlas.cellW`, the CSS box from `CELL_W`. Forced to
+  scale 2 on a 1x display and measured: 1152x288 behind a 576x144 box.
+- **`frame.ts` is pure because no shipped stage scrolls.** All four fit their own
+  viewport, so `topline` is 0 in every playable run and the entity shift is
+  unreachable from a playtest. It is also where the shift went wrong first:
+  `stage-cells.ts`'s `drawable` refuses a negative `at.line`, so subtracting
+  `topline` and handing it over makes a wall straddling the top edge **vanish**
+  rather than clip. The anchor is clamped to row 0 for a rectangle whose far
+  corner is still visible, and deliberately NOT for a single cell (a goal that
+  scrolls off must go, not stick to the top row).
+
+The plan itself has two load-bearing verified facts, both still standing:
 the diegetic `:set` needs zero core changes — measured on a live engine,
 `CommandResolved` carries the full typed keys for known AND unknown ex
 commands (core's `applyOneSetArg` silently ignores `verymagic`/`magic`/

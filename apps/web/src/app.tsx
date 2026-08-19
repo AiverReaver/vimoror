@@ -1,111 +1,108 @@
 /**
- * Wave A's walking skeleton: the whole wall stack, standing up, with nothing on
- * it yet.
+ * Wave B's shell around the runner: a stage list, a difficulty picker, and the
+ * two in-memory settings the runner needs as props.
  *
- * It exists to prove the four seams M4 depends on actually connect in a browser
- * before Wave B builds the runner on top of them — the atlas bakes out of
- * `@vimorror/stage-view` (not a second copy), a stage frame becomes cells through
- * the lifted `stageCells`, `createRenderer` picks its own post-FX path, and Vite
- * serves all of it from outside this app's root. Wave B replaces the body of this
- * file with the screen union and `runner.tsx`; the canvas plumbing below is the
- * part it keeps.
+ * **This file is scaffolding with a deadline.** Wave C replaces it with the real
+ * screen union (`note | title | select | settings | run`) over a live `VimEngine`,
+ * and Wave D gives the settings a home in `localStorage`. What it exists for is
+ * Wave B's own done-line — *all four shipped stages completable in the app with
+ * real keystrokes*, and `act1-word-power` losing over budget on `nomagic` while
+ * the identical route wins on `verymagic`. That needs a way to pick a stage and a
+ * way to pick a difficulty, and nothing else, so nothing else is here.
  *
- * Two rules borrowed from the editor's `grid-pane.tsx`, both load-bearing:
+ * Two things it does that are NOT temporary, because the runner's contract needs
+ * them:
  *
- * - **React never touches the canvas.** The element is created once and every
- *   frame is imperative. `GlyphGrid`'s dirty-cell cache describes pixels that are
- *   already on the surface; a re-render that swapped the element would leave the
- *   cache describing a blank one.
- * - **The canvas is never asked for a second context type.** A canvas hands out
- *   exactly one, and `createRenderer` claims this one for WebGL2. Asking it for
- *   `'2d'` anywhere would make the pipeline's own probe return null.
+ * - **The stage and the settings are held in state, so their identity is
+ *   stable.** The runner restarts its session when either changes, which is
+ *   correct for a difficulty change between stages and would be a silent loss of
+ *   progress on every parent commit if these were rebuilt inline.
+ * - **The runner stays mounted across retry and next-stage.** Retry is internal
+ *   to it and next-stage swaps a prop, so one WebGL2 context serves a whole run
+ *   of play. Remounting per attempt would leak contexts — `dispose()` releases
+ *   the textures and the program, not the context itself, and Chrome drops the
+ *   oldest once about sixteen are live.
  *
- * Unlike the editor, the draw is a `requestAnimationFrame` loop rather than one
- * render per commit: phosphor persistence and the glitch bands are time-varying,
- * so the post-FX pass has to keep running over an idle buffer. Intensity is
- * pinned at 0 here — `effectsIntensity` is never defaulted by render, and the
- * value is Wave C's comfort layer to decide.
+ * `effectsIntensity` stays at 0 here. It is a required, never-defaulted argument
+ * on every `draw()` call precisely so that deciding its value is a decision
+ * someone makes on purpose, and that decision — the `prefers-reduced-motion`
+ * default of 0, the 0.6 for everyone else, picked by eye on the real CRT pass —
+ * is Wave C's, on the screen where the player is looking at the slider.
  */
 
-import { createRenderer, type Renderer } from '@vimorror/render';
-import { CELL_H, CELL_W, getFontAtlas, stageCells } from '@vimorror/stage-view';
-import { useEffect, useRef, useState } from 'react';
+import { DEFAULT_COMFORT, DEFAULT_DIFFICULTY, DIFFICULTIES, type Difficulty } from '@vimorror/game';
+import { useState } from 'react';
 
-/** Authored here, not loaded: the campaign catalogue is Wave B. */
-const SKELETON_LINES = [
-  'vimorror',
-  '',
-  'the shell is standing up.',
-  'wave a: atlas baked, cells built, renderer chosen.',
-];
+import { stageAfter, stages } from './campaign.ts';
+import { Runner } from './runner.tsx';
 
-const COLS = 64;
-const ROWS = 12;
+/** Wave C owns the real value and the reduced-motion policy. */
+const EFFECTS_INTENSITY = 0;
 
-/** One row per camera row, every row padded to `COLS`, so `linesToCells`'s own
- * longest-line width calculation lands on exactly the canvas's size instead of
- * jumping with the content — the same padding `grid-pane.tsx` does, and the shape
- * Wave B's viewport clip takes. */
-function frameLines(lines: readonly string[]): string[] {
-  const out: string[] = [];
-  for (let row = 0; row < ROWS; row += 1) out.push((lines[row] ?? '').padEnd(COLS, ' '));
-  return out;
-}
+const DIFFICULTY_NOTE: Readonly<Record<Difficulty, string>> = {
+  verymagic: 'threats at half pace, no keystroke budget, the route always on screen',
+  magic: 'exact Vim, the budget scored but not enforced, hints on request',
+  nomagic: 'the budget is a hard fail and there are no hints',
+};
 
 export function App() {
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [status, setStatus] = useState('baking the font atlas…');
+  const [difficulty, setDifficulty] = useState<Difficulty>(DEFAULT_DIFFICULTY);
+  const [stageId, setStageId] = useState<string | undefined>(undefined);
 
-  useEffect(() => {
-    // Captured per effect run, not read back from a ref on cleanup: StrictMode
-    // runs this twice, and a shared ref would let the second run's renderer be
-    // disposed by the first run's cleanup.
-    let renderer: Renderer | undefined;
-    let frame = 0;
-    let cancelled = false;
+  const stage = stages.find((s) => s.id === stageId);
 
-    void getFontAtlas().then(
-      (atlas) => {
-        const canvas = canvasRef.current;
-        if (cancelled || canvas === null) return;
-
-        const cells = stageCells(frameLines(SKELETON_LINES), []);
-        // Sized before `createRenderer`, which reads these to build its private
-        // grid canvas and to size the post-FX pass.
-        canvas.width = cells.width * CELL_W;
-        canvas.height = cells.height * CELL_H;
-
-        renderer = createRenderer(canvas, { atlas });
-        setStatus(`post-fx: ${renderer.kind} · ${cells.width}x${cells.height} cells · intensity 0.00`);
-
-        const draw = (): void => {
-          renderer?.draw({
-            cells,
-            camera: { topline: 0, height: cells.height, width: cells.width },
-            cursor: { pos: { line: 0, col: 0 }, mode: 'normal' },
-            effectsIntensity: 0,
-          });
-          frame = requestAnimationFrame(draw);
-        };
-        frame = requestAnimationFrame(draw);
-      },
-      // Surfaced rather than swallowed, the lesson `grid-pane.tsx` recorded: a
-      // missing woff2 otherwise reads as a slow page with an unhandled rejection
-      // in the console instead of as a broken one.
-      (e: unknown) => setStatus(`the font atlas failed to bake: ${String(e)}`),
+  if (stage !== undefined) {
+    const next = stageAfter(stage.id);
+    return (
+      <Runner
+        stage={stage}
+        difficulty={difficulty}
+        comfort={DEFAULT_COMFORT}
+        effectsIntensity={EFFECTS_INTENSITY}
+        onExit={() => setStageId(undefined)}
+        onNext={next === undefined ? undefined : () => setStageId(next.id)}
+      />
     );
-
-    return () => {
-      cancelled = true;
-      cancelAnimationFrame(frame);
-      renderer?.dispose();
-    };
-  }, []);
+  }
 
   return (
-    <>
-      <canvas ref={canvasRef} />
-      <p className={status.startsWith('the font atlas failed') ? 'status bad' : 'status'}>{status}</p>
-    </>
+    <div className="select">
+      <h1>vimorror</h1>
+
+      <fieldset className="difficulty">
+        <legend>difficulty</legend>
+        {(Object.keys(DIFFICULTIES) as Difficulty[]).map((d) => (
+          <label key={d}>
+            <input
+              type="radio"
+              name="difficulty"
+              value={d}
+              checked={difficulty === d}
+              onChange={() => setDifficulty(d)}
+            />
+            <code>:set {d}</code> <span className="dim">{DIFFICULTY_NOTE[d]}</span>
+          </label>
+        ))}
+      </fieldset>
+
+      <ul className="stages">
+        {stages.map((s) => (
+          <li key={s.id}>
+            <button type="button" onClick={() => setStageId(s.id)}>
+              act {s.act} · {s.title}
+            </button>{' '}
+            <span className="dim">
+              par {s.par} · {s.buffer.length} {s.buffer.length === 1 ? 'line' : 'lines'}
+              {s.entities.length === 0 ? '' : ` · ${s.entities.length} entities`}
+            </span>
+          </li>
+        ))}
+      </ul>
+
+      <p className="note">
+        Every stage is unlocked. Progression, saves and the title screen's own command line arrive in the waves
+        after this one.
+      </p>
+    </div>
   );
 }

@@ -3009,6 +3009,87 @@ is shut" for the `fw` that resulted. Send the literal `,` and `;`. This is the
 same class as M3's recorded `computer{action:"type"}` and `shift+g` traps, and
 the third entry in it.
 
+### Wave B — the stage runner — **done** (2026-08-19)
+
+- [x] **All four shipped stages are completable in the app with real
+      keystrokes**, each verified at par in the browser: `act1-two-worlds` 9/9,
+      `act1-four-directions` 2 keys against par 3, `act1-word-power` 8/8 and
+      `act2-grammar-awakens` 4/4, all `[*] clean run`. The third of those closes
+      M3's deferred definition-of-done clause literally — `act1-word-power`
+      "loads and is completable **in the game**", not through the editor's
+      playtest.
+- [x] **The difficulty asymmetry holds in the shipped shell.** On
+      `act1-word-power`, `jj` + `l`x43 **loses on `:set nomagic`** at keystroke
+      21 ("More than 20 keys.") and the **identical keys win on `:set
+      verymagic`** at 45 keys, 37 over par. The winning run is marked `[ ]
+      assisted` rather than clean, which is `scoring.ts`'s own rule showing
+      through: always-on hints are a hint used.
+- [x] `content/campaign.json` + `campaign.ts` — the manifest's ordering zipped
+      with `content/stages/*.json` parsed through `parseStage` from raw text
+      (`import.meta.glob`, `fixtures.ts`'s precedent). `campaign.test.ts` asserts
+      the bijection **both ways**: a manifest id with no file drops a stage
+      silently, and a stage file nobody listed is content that passes
+      `validate:stages` and is then unreachable — the second being the one M5/M6
+      will actually hit, since authoring a stage and listing it are two acts.
+- [x] `runner.tsx` end to end: document-level keydown through `keyTokenFor`, the
+      session event fold (rejection lines, `BeatFired` as the dialogue overlay,
+      `BufferSaved` → "written.", `QuitRequested` → leave, `OutcomeDecided` →
+      win/lose overlay with keystrokes-vs-par, the clean flag, retry/next/leave),
+      hints per all three policies, the mid-command ghost from
+      `engine.pending`, camera + DPR. Every one of `:w`, `:q`, a locked-key
+      rejection, a beat, a threat chase and the on-request hint's cost was
+      verified on screen.
+- [x] `frame.ts` + `frame.test.ts` — the viewport clip, split out pure because
+      **no shipped stage scrolls**: `topline` is 0 in every playable run, so a
+      browser playtest of this wave cannot reach the part that matters. 17 tests,
+      four mutations killed one each.
+- [x] `font.ts` grew a per-scale memo (`getFontAtlas(scale)`, `atlasScaleFor`),
+      the editor's `getFontAtlas()` unchanged at the default of 1. See the DPR
+      note below — this is the one place Wave B departed from the plan.
+- [x] Gates: `pnpm typecheck` clean, `pnpm test` **1656/1656** across 28 files
+      (1630 + 7 campaign + 2 font + 17 frame), `pnpm validate:stages` 4/4,
+      `pnpm demo` 4/4, `pnpm goldens:verify` **zero changed bytes**. The editor
+      re-verified in the browser after the shared `font.ts` edit — fixture
+      rendered, playtest won on `nomagic`, zero console errors. Nothing changed
+      outside `apps/web/`, `packages/stage-view/src/font*.ts` and
+      `content/campaign.json`; no root edits were needed, Wave A having already
+      landed the `dev` script and the launch entry.
+
+**M4-PLAN.md's DPR prescription is wrong, and this is the correction.** Fact 4
+says the runner "sizes the canvas at `cells x cellSize x devicePixelRatio`, calls
+`renderer.resize()`". Measured against `GlyphGrid.#drawCell`, which blits every
+cell at `atlas.cellW`x`atlas.cellH` and nothing else, that draws a 1x frame into
+a 2x buffer and leaves three quarters of the canvas blank. The scale has to reach
+the **atlas**: `getFontAtlas(scale)` bakes at `CELL_W x scale`, the backing store
+comes from `atlas.cellW`, and the CSS box stays at `CELL_W`. Verified by forcing
+scale 2 on a 1x display — 1152x288 behind a 576x144 box, frame filling it, same
+layout as 1x. Integer scales only (1..3): a fractional cell size puts every glyph
+blit on a fractional pixel boundary, which is the blur the exercise removes.
+
+Two more things recorded because they cost time, both in the same trap class as
+the `comma`/`semicolon` entry above — **five now**:
+
+- **`computer{action:"key"}` sends `space` as a five-character `event.key`**,
+  which `keyTokenFor` correctly refuses, and the tool cannot express a literal
+  space at all (`key` splits its argument on whitespace). A real browser sends
+  `' '`, length 1, which is accepted — measured in-page. Drive that one key with
+  a dispatched `KeyboardEvent`.
+- **`computer{action:"key"}` does not activate a focused button.** Enter reaches
+  the element as a trusted keydown and the browser fires no click. Proved to be
+  the harness rather than the app by focusing a plain `<button>` the app never
+  touches and getting the same nothing. Click by `ref`; coordinate clicks are in
+  the **screenshot's** frame, not the viewport's.
+
+Deliberately left for later waves, each named rather than forgotten:
+`apps/web/src/app.tsx` is a stage list and a difficulty radio, scaffolding with a
+deadline — Wave C replaces it with the screen union over a real `VimEngine`.
+`effectsIntensity` stays 0 (Wave C owns the value and the
+`prefers-reduced-motion` policy). `onExit(force)` carries `:q` vs `:q!` — the
+event's `force` flag was measured, `false` and `true` respectively — but nothing
+consumes it until Wave D has a snapshot to keep or discard. The runner's
+engine-throw freeze path and the `matchMedia` DPR listener are both written and
+neither is exercised.
+
 - [ ] Title screen, `:set magic` difficulty selection (diegetic, from the game's
       own command line)
 - [ ] Comfort settings surfaced **before first play**
@@ -3016,7 +3097,7 @@ the third entry in it.
       resources link
 - [ ] Save via `localStorage` with in-payload `schemaVersion`
 - [ ] Audio: raw WebAudio, procedural drones
-- [ ] Stage runner
+- [x] Stage runner — **Wave B**
 - [ ] Playwright E2E: load a stage, send a real key sequence, assert the win
       screen — and separately assert that on `:set nomagic` an over-budget run
       fails while the identical run passes on `:set verymagic`
