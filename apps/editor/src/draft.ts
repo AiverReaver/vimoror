@@ -135,6 +135,62 @@ export function exportStage(draft: StageDraft): string {
 }
 
 /**
+ * The same bytes, or the reason there are none — for a caller that renders
+ * instead of catching.
+ *
+ * `exportStage` is safe to throw from `save()`, which wraps it in a `try` and
+ * turns the message into a notice. It is NOT safe to throw from a RENDER, and
+ * Wave E put it in one: a pane that throws unmounts the React tree and takes the
+ * issues pane down with it, which is the blank-page failure `drawableEntities`
+ * and `listOf` already exist to prevent one and two doors further in.
+ *
+ * Reachable, not hypothetical, and measured before this existed: **`JSON.parse`
+ * is iterative in V8 while `JSON.stringify` recurses per level**, so the editor's
+ * untrusted-input door admits structures the serializer cannot walk.
+ * `{"buffer":["x"],"beats":[[[…10,000 deep…]]]}` passes `readDraft` (which checks
+ * only `buffer`), passes `stageFileName`, and gets a perfectly ordinary issue list
+ * out of `safeParseStage` — and then `exportStage` throws `RangeError: Maximum
+ * call stack size exceeded`.
+ *
+ * **The size bound is the other half of the same door, and catching alone does not
+ * cover it.** Below the throwing band the same shape SUCCEEDS and returns
+ * something no textarea should hold: measured, a 1,425-byte file exports at
+ * 983KB, a 2KB file at 2MB, and an 8KB file at 32MB — and a 32MB string measured
+ * in the browser costs about a second of synchronous main-thread work per
+ * assignment, which happens on every keystroke. The tab stops responding, so the
+ * issues pane survives the React tree and is unreachable anyway, which is the
+ * failure this function exists to prevent wearing a different coat. `MAX_FRAME_COLS`
+ * in `stage-cells.ts` is the same ceiling in the same spirit, with the same
+ * justification for the number: a stage is about a KILOBYTE (`app.tsx` and this
+ * file's own header both say so), so a megabyte is a thousandfold past anything a
+ * human authors and cannot cut off real content.
+ *
+ * The bound lives here rather than in the pane because this function exists only
+ * for the render caller. `save()` keeps calling `exportStage` directly: an author
+ * who picked a save target asked for the bytes, whatever they weigh, and a file
+ * on disk costs no frames.
+ *
+ * Named for `schema.ts`'s `safeParseStage`, whose shape and job this mirrors.
+ */
+export type DraftExport =
+  | { readonly ok: true; readonly text: string }
+  | { readonly ok: false; readonly error: string };
+
+const MAX_SHOWN_BYTES = 1_000_000;
+
+export function safeExportStage(draft: StageDraft): DraftExport {
+  let text: string;
+  try {
+    text = exportStage(draft);
+  } catch (e) {
+    return { ok: false, error: `this draft cannot be written out: ${(e as Error).message}` };
+  }
+  return text.length > MAX_SHOWN_BYTES
+    ? { ok: false, error: `this draft is too large to show: ${text.length} bytes` }
+    : { ok: true, text };
+}
+
+/**
  * `validate-stages.ts`'s own rule — "a stage file is named after the stage it
  * holds" — applied before the file exists, so the editor cannot offer a name that
  * would fail the gate.

@@ -28,6 +28,7 @@ import {
   parseDraft,
   readDraft,
   rectFrom,
+  safeExportStage,
   specsOrAbsent,
   stageFileName,
   withField,
@@ -145,10 +146,83 @@ describe('an exported stage is a text file someone will diff', () => {
     // stages were formatted with inline positions (`{ "line": 0, "col": 0 }`) and
     // `JSON.stringify` spreads those over three lines. Content and key order match
     // exactly — which is what `validate:stages` and the identity test check — and
-    // the whitespace does not. Wave E's export polish is where that would change.
+    // the whitespace does not.
+    //
+    // **Wave E looked at closing that and decided not to.** Matching the hand
+    // formatting means either a bespoke serializer or a regex over
+    // `JSON.stringify`'s output, and a regex that rewrites `"line":`/`"col":` pairs
+    // cannot tell a position apart from a buffer line that happens to contain the
+    // same characters — a formatter that can corrupt content to tidy a diff is a
+    // bad trade. `act1-word-power.json` is the first stage written by the editor
+    // rather than by hand, so the exporter's shape is now the corpus's shape and
+    // the three older fixtures are the odd ones out.
     const round = exportStage(readDraft(readFixture('act2-grammar-awakens.json')));
     expect(round).toContain('"line": 0');
     expect(round).not.toContain('{ "line": 0, "col": 0 }');
+  });
+});
+
+describe('safeExportStage', () => {
+  it('returns the same bytes exportStage does, for a draft that serializes', () => {
+    const draft = readDraft(readFixture('act1-word-power.json'));
+    const result = safeExportStage(draft);
+    expect(result).toEqual({ ok: true, text: exportStage(draft) });
+  });
+
+  /**
+   * The blank-page guard, and the reason it is not paranoia: `JSON.parse` is
+   * iterative in V8 while `JSON.stringify` recurses per nesting level, so
+   * `readDraft` (which checks only `buffer`) admits documents the serializer
+   * cannot walk. Every other door survives this file — `readDraft`,
+   * `stageFileName` and `parseDraft` all return normally, the last with an
+   * ordinary issue list — so without the guard the export pane alone throws out
+   * of render and takes the issues pane that was about to explain the file with
+   * it.
+   */
+  it('reports a draft it cannot serialize instead of throwing', () => {
+    const deep = `{"buffer":["x"],"beats":${'['.repeat(10_000)}${']'.repeat(10_000)}}`;
+    const draft = readDraft(deep);
+
+    // The three doors that must keep working, asserted so a future change that
+    // makes one of THEM throw is caught here rather than as a blank page.
+    expect(stageFileName(draft)).toBe('untitled-stage.json');
+    expect(parseDraft(draft).ok).toBe(false);
+    expect(() => exportStage(draft)).toThrow(RangeError);
+
+    const result = safeExportStage(draft);
+    expect(result.ok).toBe(false);
+    expect(result.ok ? '' : result.error).toContain('cannot be written out');
+  });
+
+  /**
+   * The other half of the same door, and the half that catching alone misses.
+   * Below the depth where `JSON.stringify` throws it SUCCEEDS and returns
+   * something no textarea should hold — measured, this 2KB file exports at 2MB,
+   * and an 8KB one at 32MB, which costs about a second of blocked main thread per
+   * keystroke. A test that only pins the throw would pass on a guard that lets
+   * that through.
+   */
+  it('refuses to show an export no textarea should hold', () => {
+    const wide = `{"buffer":["x"],"beats":${'['.repeat(1000)}${']'.repeat(1000)}}`;
+    const draft = readDraft(wide);
+
+    // It really does serialize — this is not the RangeError case wearing a
+    // different message, which is the whole reason the bound has to exist
+    // separately from the `catch`.
+    expect(exportStage(draft).length).toBeGreaterThan(1_000_000);
+
+    const result = safeExportStage(draft);
+    expect(result.ok).toBe(false);
+    expect(result.ok ? '' : result.error).toContain('too large to show');
+  });
+
+  it('shows a real stage, which is three orders of magnitude under the bound', () => {
+    // The bound cannot cut off content anybody authored: the largest committed
+    // stage is about a kilobyte, and this asserts the headroom rather than
+    // trusting the constant.
+    const largest = Math.max(...fixtures.map((f) => exportStage(readDraft(readFixture(f))).length));
+    expect(largest).toBeLessThan(10_000);
+    expect(safeExportStage(readDraft(readFixture('act1-word-power.json'))).ok).toBe(true);
   });
 });
 

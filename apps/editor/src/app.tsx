@@ -34,6 +34,7 @@ import { BufferPane, EDITS as BUFFER_EDITS } from './buffer-pane.tsx';
 import { ConditionsPanel, EDITS as CONDITION_EDITS } from './conditions-panel.tsx';
 import { exportStage, listOf, parseDraft, readDraft, stageFileName, type DraftEntity, type StageDraft } from './draft.ts';
 import { EntitiesPanel, EDITS as ENTITY_EDITS } from './entities-panel.tsx';
+import { ExportPane } from './export-pane.tsx';
 import { FIXTURES } from './fixtures.ts';
 import { HAS_FILE_PICKERS, openStageFile, saveStageFile } from './files.ts';
 import { GridPane } from './grid-pane.tsx';
@@ -174,6 +175,11 @@ export function App() {
 
       <footer>
         <IssuesPane issues={parse.ok ? undefined : parse.issues} />
+        {/* The bytes a save would write, readable without a native dialog —
+            which is the only way a stage leaves a browser that has no File
+            System Access pickers, and the only way anything but a human can
+            check what the editor actually exports. */}
+        <ExportPane draft={draft} />
       </footer>
     </div>
   );

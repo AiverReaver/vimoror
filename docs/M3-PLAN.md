@@ -449,7 +449,7 @@ is a ceiling for the milestone that authors big stages.
    - The plan's `mode` in `store.ts` and a `hint()` readout are the two specced
      items deliberately not built; both are recorded with their reasons in the
      checklist's ceilings list.
-5. **Wave E — the round trip, and wrap-up.** Export polish, then the
+5. **Wave E — the round trip, and wrap-up. DONE 2026-08-19.** Export polish, then the
    milestone's definition of done executed for real: **author a brand-new
    stage start to finish in the editor** — a real curriculum candidate (Act I
    "Word Power" is the natural pick: `w b e f t ; ,` territory, no stage
@@ -458,6 +458,49 @@ is a ceiling for the milestone that authors big stages.
    code**. The new stage ships as the fourth fixture — the M5 pipeline proven
    one milestone early, on one stage. Sweep the done-list, update
    `docs/CHECKLIST.md` boxes and `docs/HANDOFF.md`.
+
+   **All met, and Act I "Word Power" was indeed the pick.**
+   `docs/CHECKLIST.md`'s M3 Wave E section carries the full writeup — 1629 tests
+   (from 1621: four are the corpus-driven loops picking the new stage up on their
+   own, four belong to the guard the wave's adversarial review earned), zero golden
+   bytes changed, demo 4/4, `validate:stages` **4 valid**, nothing touched outside
+   `apps/editor/` and `content/stages/` — and the parts that change how a reader
+   should take this plan are:
+
+   - **"Export polish" turned out to be a missing READER, not a nicety.**
+     `exportStage`'s only consumer was the save picker, so a browser without File
+     System Access could not get a stage out at all, and a native save dialog is
+     undriveable by anything but a human — the milestone's own round trip could
+     not have been checked. `export-pane.tsx` is a read-only textarea over the
+     same serializer; the committed stage is byte-identical to what it showed,
+     hashed on both sides.
+   - **`f`'s TARGET character is gated by `allowedKeys`, and it killed the first
+     route.** `KeyPolicy` is per keystroke, so `fd` needs `d` permitted — which
+     would hand an Act I stage the delete operator. The fix is to jump to a
+     character that is already an allowed key (`,`, which the stage permits as
+     the reverse-`f` motion anyway). Any future `f`/`t` stage inherits this
+     constraint, and the schema cannot warn about it until after a route is
+     recorded.
+   - **The stage lost on `verymagic`, the EASIEST preset**, and only
+     `replayAtPresets` at record time said so. `threatPeriod: 2` skips a chase
+     step rather than slowing one, so the threat sat one line back and its next
+     step landed exactly where the cursor had jumped. **Difficulty is not
+     monotone for a positional threat** — which is precisely why
+     `validate-stages.ts` replays all three, now demonstrated on a stage that was
+     not built to demonstrate it.
+   - **The adversarial review found the stage tuned to exactly ONE route**, which
+     no gate can catch: `stageSchema` compares only the shipped solution against
+     `par` and the budget, and `validate-stages.ts` replays only that solution, so
+     a stage can be hostile to every other way of playing it and pass everything.
+     The first draft's budget was the pure-`w` route's exact cost, which killed an
+     `e` drill by one keystroke *on the goal cell*. **Set a budget from the worst
+     route you would still call correct.** The same pass found Act I's follower
+     lethal in a way no placement can fix (see above) and a mechanics-explaining
+     beat flagged `startling`, which Gentle Mode then suppressed.
+   - **The definition of done's "in the game" was read as the plan's own
+     paragraph below allows** — `GameSession` is the game's rules layer, the
+     editor's playtest runs it, and the shipped file was reopened from
+     `content/stages/` and won on the capture box before the wave closed.
 
 `MergedPlan.md` phrases the definition of done as "confirm it loads and is
 completable **in the game**" — and the game app is M4, so that sentence cannot
@@ -501,7 +544,10 @@ surviving mutant last time.
   behavior, verified through the preview tool the way M1 verified the demo —
   screenshots and pixel/DOM checks, not eyeballing.
 
-## "M3 done when"
+## "M3 done when" — **all six met, 2026-08-19**
+
+`docs/CHECKLIST.md`'s M3 section carries the sweep with the measured numbers
+against each one.
 
 1. `pnpm typecheck` / `pnpm test` green repo-wide, editor suites included.
 2. **Every schema field is authorable and every schema error is surfaced in
@@ -554,10 +600,14 @@ M2's Wave E filed them.
   inline-per-field — strictly more wiring for the same information — never had to
   earn itself. The path prefix in a `<pre>` is what makes `beats.1.on.entity`
   findable at all.
-- **How much the playtest surfaces** — beats, rejection lines and outcome in
-  an event log (as specced) vs a fuller in-fiction presentation. The log is
-  enough for an authoring tool; anything richer is M4's presentation arriving
-  early and should be resisted unless authoring genuinely needs it.
+- ~~**How much the playtest surfaces**~~ — **decided at Wave D and confirmed by
+  Wave E's authoring session: the event log, as specced.** Nothing richer had to
+  earn itself, because authoring a whole stage on it never wanted more: the log's
+  three line kinds each answered a real question on the first try — `d  You have
+  not been given that key yet.` named the gated `f` target, the two beat lines
+  proved the startling one fires where it was meant to, and `— WON —` closed the
+  run. The one readout an author genuinely lacks is the hint ladder, which is
+  recorded as a Wave D ceiling and belongs to M4's hint presentation anyway.
 
 ## Critical files
 
@@ -571,4 +621,6 @@ M2's Wave E filed them.
   `metadata-panel.tsx`, `entities-panel.tsx`, `play-pane.tsx`)
 - Root `package.json` (`dev:editor`), `tsconfig.json` (include + `jsx`),
   `vitest.config.ts` (include), `.claude/launch.json` (the 5174 entry)
-- `content/stages/` — the fourth fixture, authored in the editor at Wave E
+- `apps/editor/src/export-pane.tsx` (Wave E — the export, readable)
+- `content/stages/act1-word-power.json` — the fourth fixture, authored in the
+  editor at Wave E

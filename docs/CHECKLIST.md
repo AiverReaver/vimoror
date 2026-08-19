@@ -2080,7 +2080,10 @@ eye, with the canvas's own pixels read back:
       such.** `showOpenFilePicker` opens an OS dialog no browser automation can
       drive, so `files.ts` is exercised only by inspection and by its one pure
       rule having been moved OUT of it (see below). This is also why
-      `fixtures.ts` exists.
+      `fixtures.ts` exists. **Wave E narrowed this to the picker alone**: the
+      export pane shows the exact bytes `saveStageFile` would write, so what the
+      editor produces is now checkable (and was checked, by hash) even though the
+      dialog that writes it still is not.
 
 Two corrections to the plan's own Wave B text, both measured:
 
@@ -2578,6 +2581,271 @@ from tests:
   which is the honest outcome. Freezing the panels would have cost the one
   mid-playtest edit an author actually wants (raising `par`).
 
+### Wave E — the round trip `[x]`
+
+Done 2026-08-19. Two new files — `apps/editor/src/export-pane.tsx` and
+`content/stages/act1-word-power.json` — plus a five-line edit to `app.tsx`, one CSS
+rule in `index.html`, and `draft.ts`'s `safeExportStage` with its four tests (the
+review's two confirmed code findings, below). **1629 tests green** (1621 after Wave
+D, +8: four are the corpus-driven loops picking the new stage up automatically —
+`draft.test.ts`'s import→export identity, `schema.test.ts`'s "validates" and "plays
+its own solution with no key rejected", and `session.test.ts`'s "wins by its own
+solution" — and four are `safeExportStage`'s own), `pnpm typecheck` clean, `pnpm goldens:verify` **zero golden
+bytes changed** (1159, isolation verified), `pnpm demo` 4/4, **`pnpm
+validate:stages` 4 valid** (from 3). Nothing outside `apps/editor/` and
+`content/stages/` was touched, so M3's done-item 6 still holds exactly.
+
+#### The export polish: the export had no reader
+
+- [x] **`exportStage` produced bytes nothing could see.** The only consumer was
+      `saveStageFile`, behind `showSaveFilePicker` — so in Firefox and Safari, where
+      `HAS_FILE_PICKERS` is false and both file buttons render disabled, a finished
+      stage **could not leave the editor at all**; and since a native save dialog is
+      undriveable by anything but a human, nobody could check what the editor
+      actually writes either. `export-pane.tsx` is a read-only `<textarea>` holding
+      `exportStage(draft)` beside the issues pane: same serializer, no second copy,
+      selectable, select-on-focus so copying is one gesture. It is one-way on
+      purpose — editing JSON there would be a second authoring surface competing
+      with the panels, and `readDraft` is already the door text comes in through.
+      It is also what made this wave's own round trip checkable: the file committed
+      below is byte-identical to what the pane showed (SHA-256 compared on both
+      sides, `bdc8a58c…5b908d58` after the two corrections below), and re-opening
+      the committed file from the `content/stages/` dropdown reproduces the same
+      hash.
+
+#### The round trip: `act1-word-power`, authored in the editor
+
+The milestone's definition of done, executed for real. `content/stages/act1-word-power.json`
+is Act I stage 3 from the curriculum table (`w b e W B E f F t T ; ,` territory,
+the one Act I stage no fixture covered), and **every byte of it was produced by
+the editor UI** — `blankStage()` → buffer typed into the textarea → both entities
+painted on the grid (the goal a four-cell drag over the last word, the threat a
+seven-cell drag over "repeats") → metadata, keys, conditions and beats through the
+panels → the solution **recorded through the playtest capture box** and armed →
+the export pane read out and written to disk. No code was touched to make it
+valid, and no JSON was hand-edited.
+
+- [x] **The route is `jjf,;www`, par 8, and the pedagogy is in the budget.**
+      `f,` `;` crosses two commas in two commands where `w` alone needs ten presses
+      and `l` needs forty-three. Every single-motion drill a learner might actually
+      try was run at every preset rather than reasoned about, and **the first
+      budget was set from that table wrongly** — see the adversarial-review notes
+      below. The shipped budget is `keystrokes-over: 20`:
+
+      | route after `jj` | keystrokes | at 20 | at the first draft's 12 |
+      |---|---|---|---|
+      | `f,;www` (par, 8) | 8 | won ×3 | won ×3 |
+      | 8×`W` | 10 | won ×3 | won ×3 |
+      | 9×`E` | 11 | won ×3 | **lost on `verymagic` only** |
+      | 10×`w` | 12 | won ×3 | won ×3, on its last keystroke |
+      | 11×`e` | 13 | won ×3 | **lost on `nomagic`** |
+      | `b` then 10×`w` | 11 | still playing | **lost on two presets** |
+      | 43×`l` | 45 | lost to the budget on `nomagic` only | lost ×3 |
+
+      That is "a stage says *harder* through `par`, a budget, threat placement and
+      `allowedKeys`" with an actual stage saying it: **every word-motion route wins
+      at every preset, only character-crawling loses, and only where the budget is
+      enforced.** `par` 8 is what separates the good route from the slow one, and
+      `scoring.ts` reports the overrun without ending anything — which is the
+      difficulty table's own division of labour between par and the budget.
+- [x] **Verified from the shipped file, not just from the draft**: reopened through
+      the `content/stages/` dropdown after `validate:stages` went green, played
+      `jjf,;www` on the capture box, and watched both beats fire and `— WON —` land
+      at 8 keystrokes with the follower two words behind on the same line.
+
+#### What building it taught
+
+- [x] **`f`'s TARGET is a keystroke the policy gates, and the first recording died
+      on it.** The stage's first route was `jjfd;;` — find the `d` of "door" — and
+      the very first playtest logged `d  You have not been given that key yet.`
+      `KeyPolicy` is checked per KEYSTROKE (`state.ts`'s `isPolicyAllowed`), and an
+      `f`'s argument is an ordinary keystroke, so **an `f`-teaching stage must permit
+      every character it asks the player to jump to**. The naive fix — adding `d` to
+      `allowedKeys` — hands an Act I mover the delete operator, which is three acts
+      early. The fix that is actually right is to choose a target that is *already*
+      an allowed key: `,` is in `";,"` for its own sake as the reverse-`f` motion, so
+      `f,` costs the policy nothing. The buffer was rewritten around it
+      (`the first door, the second door, the third door`), which is also better
+      content. **This is the single most useful thing the round trip found**, and it
+      is invisible to the schema: `stageSchema` checks the SOLUTION's tokens against
+      `allowedKeys`, so it would have caught the finished stage — but only after the
+      author had recorded a route they could not play.
+- [x] **The adversarial review found the stage tuned to exactly ONE route, and
+      that is the wave's biggest content lesson.** Three findings, one root cause:
+      the budget had been set to 12 *because* that was the pure-`w` route's exact
+      cost, which read as elegant and was actually the stage refusing every other
+      way of playing it. Reproduced before anything was changed (the table above is
+      that measurement): a learner drilling `E` — a key the stage advertised, and
+      the *cheapest* word route at 11 — **lost on `verymagic` and won on the other
+      two**; a learner drilling `e` overran by exactly one keystroke and died **on
+      the goal cell, one tick after the win beat told them they had found the third
+      door**; and a single exploratory `b` cost the stage outright. None of it was
+      catchable by any existing gate, because `stageSchema` only compares the
+      SHIPPED solution against the budget and `validate-stages.ts` only replays the
+      shipped solution — so a stage can be hostile to every route but its own and
+      pass everything. Fixed in the editor and re-exported: the budget is 20
+      (comfortably past the worst word-motion drill at 13, far under the 45 a
+      character crawl costs), and `teachesKeys` dropped `b`/`B`/`F`/`T`, which the
+      geometry gives nothing to do — spawn is at the start and the goal is the last
+      word, so every backward motion is pure loss. They stay in `allowedKeys`, which
+      is where a key belongs when it is permitted for recovery and repetition rather
+      than taught.
+      **The general rule for the next stage author: `par` is what a route should
+      cost, `keystrokes-over` is what a WRONG APPROACH costs — set the budget from
+      the worst route you would still call correct, never from the second-best
+      one.**
+- [x] **The follower is not lethal, and that is a curriculum decision the review
+      forced.** `threat-reaches-cursor` was in `lose` until the `E` finding above,
+      and the fix could not be placement: the non-monotonicity below is structural,
+      not a tuning error, so *any* lethal chaser makes some legitimate routes die on
+      Easy and live on Normal. Act I's own line in the curriculum table is "Learning
+      to move at all. Something moves only when you do" — so the third stage of the
+      game introduces the follower's grammar (it tints, it has a glyph, it moves
+      only on your turn, you can walk through it) and Act II's
+      `act2-grammar-awakens` is where the same shape first kills you. The `counted`
+      beat says so in as many words. The stage's only lose condition is now the
+      budget, which is the shape `act1-four-directions` already ships.
+- [x] **The stage lost on `verymagic` — the EASIEST preset — and the record-time
+      preset replay is the only thing that said so.** With the follower authored at
+      `0:28..0:31`, the armed solution reported `verymagic: lost to
+      threat-reaches-cursor` beside two green wins. Measured with a scratch probe
+      that prints the threat rectangle per tick rather than reasoned about:
+      `threatPeriod: 2` **skips** a chase step (`session.ts`: `ticks % period === 0`),
+      it does not slow one down, so at half cadence the threat was still at
+      `1:27..1:30` on tick 3 and its tick-4 step landed on `2:28..2:31` exactly as
+      `;` put the cursor on column 31. At full cadence the same threat had already
+      been dragged left to `2:26..2:29` by two earlier steps and never touched it.
+      **A slower chase is not a safer chase — it is a chase in a different place**,
+      and difficulty is therefore not monotone for a positional threat. Re-anchoring
+      the follower to `0:13..0:19` ("repeats", in `the corridor repeats itself here`,
+      which reads better besides) won at all three, verified by the same probe and
+      then by `validate:stages` — and that turned out to be **the wrong KIND of
+      fix**, because it made the golden route safe without making the property go
+      away for any other route. The shipped stage keeps the better placement and
+      drops the lethality (see the review notes below); the measurement is what
+      still matters, since the next author of a chasing threat inherits it.
+      This is the exact failure `validate-stages.ts`'s three-preset loop was built
+      for, arriving in the editor instead of on a red build — which is what
+      `replayAtPresets` is for, now demonstrated on a stage nobody wrote to
+      demonstrate it.
+- [x] **The golden route passes THROUGH the threat, and that is the rule working.**
+      On `magic`/`nomagic` tick 3 leaves the cursor at `2:14` inside the follower's
+      `2:11..2:17` — safe, because `reached` requires the threat to have MOVED onto
+      the cursor and a threat already covering it has no gap to close (M2 Wave C's
+      settled question, act2's own shape). The `counted` beat fires exactly there,
+      which is the moment the stage exists to teach. It does **not** fire on
+      `verymagic`, where the follower is still a line behind on that tick; a beat
+      firing on two presets of three is content, not a defect, and nothing in the
+      gate reads beats. The condition is simply accurate — on `verymagic` you do not
+      pass through it, so the line that says you did should not appear.
+- [x] **`startling: true` on that beat was a Gentle Mode bug, found by the wave's
+      adversarial review and reproduced before it was fixed.** `counted` is the
+      line that tells the player standing in a threat is survivable — a MECHANICS
+      explanation — and `gentle.ts`'s header promises Gentle Mode keeps "all
+      mechanics and story intact; startle beats and look-away tricks off." Measured
+      with `comfort: {gentle: true, jumpScares: false}`: the stage emitted only
+      `third-door-found`, so exactly the player who most needs telling that the
+      thing beside them is not lethal was the one not told — while
+      `threat-reaches-cursor` was live at the time. `act2-grammar-awakens` had it the right
+      way round already (`aside-noticed` explanatory and unflagged, `aside-removed`
+      eerie and flagged), which is what made the inversion legible. Flipped to
+      `false` **through the editor's own checkbox and re-exported**, so the round
+      trip's "no JSON hand-edited" claim survives its own bug fix; both beats now
+      reach a Gentle Mode player. The general rule this leaves behind: **`startling`
+      marks a startle, not a mood** — a beat that teaches a rule can never carry it.
+- [x] **Two React-batching traps when driving the editor programmatically**, worth
+      knowing before the next `apps/` pane is verified this way — both produce a
+      convincing "the editor is broken" reading:
+      - **A whole drag dispatched in ONE task paints nothing.** `onDown` sets
+        `drag` with `setState` and `onUp` reads it from the same render's closure,
+        so `mousedown`+`mousemove`+`mouseup` fired back-to-back leaves `drag`
+        undefined and `onUp` falls through to selecting. A real pointer delivers
+        them in separate tasks. The same applies to arming a palette tool and
+        clicking in one go — `tool` is still `undefined` in `onDown`'s closure.
+        Each step has to be its own tool call.
+      - **Reading the export pane in the same call that mutated the draft reads the
+        PREVIOUS value**, which looked exactly like a paint that had failed. Same
+        class as Wave D's "the assertion must be a separate tool call so React has
+        committed".
+- [x] **The export pane was a new BLANK-PAGE path, and the review caught it before
+      anything shipped on it.** `exportStage` was safe to throw from `save()`, which
+      catches and shows a notice — Wave E put the same call in a RENDER, where a
+      throw unmounts the React tree and destroys the issues pane. Reachable, and
+      reproduced rather than argued: **`JSON.parse` is iterative in V8 while
+      `JSON.stringify` recurses per level**, so `readDraft` (which checks only
+      `buffer`) admits `{"buffer":["x"],"beats":[[[…10,000 deep…]]]}` and every other
+      door survives it — `stageFileName` returns `untitled-stage.json`, `parseDraft`
+      returns an ordinary `id: Required` issue list — while `exportStage` alone
+      throws `RangeError: Maximum call stack size exceeded`. At about five thousand
+      levels it does something worse and SUCCEEDS, handing back fifty megabytes to
+      put in a textarea. `draft.ts` gained `safeExportStage` (named for
+      `safeParseStage`, same shape) and the pane renders the reason instead of the
+      bytes.
+      **Catching is only half of it, and the review's second confirmed finding is
+      the other half.** Below the throwing band the identical shape SUCCEEDS: a
+      1,425-byte file exports at 983KB, a 2KB file at 2MB, an 8KB file at 32MB —
+      and a 32MB string measured in the browser costs about a second of blocked
+      main thread *per assignment*, i.e. per keystroke, so the issues pane survives
+      the React tree and is unreachable anyway. `MAX_SHOWN_BYTES` (1MB) is the
+      bound, in the same spirit and with the same kind of justification as
+      `stage-cells.ts`'s `MAX_FRAME_COLS`: a stage is about a KILOBYTE, so a
+      megabyte is a thousandfold past anything a human authors. It lives in
+      `safeExportStage` and not in the pane because `save()` must keep the full
+      bytes — an author who picked a save target asked for them, and a file on disk
+      costs no frames. Four tests, all mutation-checked: removing the `try`,
+      blanking the text, rewording the message, removing the bound, flipping its
+      comparison, and moving the constant a thousandfold in EITHER direction each
+      kill at least one. Exactly the failure
+      `listOf`'s own comment describes — "a `.map` on a number throws out of render,
+      React unmounts the tree, and the issues pane about to explain the problem goes
+      with it" — arriving at a third door.
+- [x] **Painting a rectangle and typing the corners are not equivalent, and the
+      difference shows up in the exported JSON.** `blankEntity` builds
+      `{id, kind, ...rect, glyph}`, so a painted entity serialises in the same key
+      order the hand-authored fixtures use; setting `to` afterwards through the
+      number boxes appends it after `label` instead. Both parse identically and no
+      rule cares — only a `content/stages/` diff does. The goal was repainted as a
+      drag rather than nudged, which is why the committed file reads like its
+      neighbours. Recorded as a ceiling below rather than fixed: ordering nested
+      keys would need a second `FIELD_ORDER` per shape, and `FIELD_ORDER` exists to
+      stop a field being silently DROPPED, which is a different problem.
+
+#### Ceilings, recorded rather than fixed
+
+- **Only TOP-LEVEL fields have a canonical export order.** Keys inside an entity,
+  condition or beat follow the order the panels happened to write them. See the
+  last Wave E note above for why this is not worth a second ordered list.
+- **The export pane is read-only.** Pasting JSON back in would be a second door
+  beside `readDraft` and a second authoring surface beside the panels; a browser
+  with no File System Access pickers can now get a stage OUT but still cannot get
+  one in except through the bundled `content/stages/` dropdown.
+- **The export pane rebuilds the string on every render, and that stays uncached.**
+  Measured at 0.0024 ms averaged over 200 runs on the committed stage, which is
+  what "a stage is about a kilobyte" buys — and a `useMemo` here is exactly the
+  cache `draft.ts` and `app.tsx` both refuse in their headers, for the reason they
+  give: a cached export is a export that can disagree with the draft it claims to
+  be. The SIZE half of the same finding was real and is fixed, not ceilinged —
+  see the `MAX_SHOWN_BYTES` note above.
+- **`save()` and the export pane word the same serialization failure differently**
+  — the notice shows the raw `RangeError` message, the pane prefixes it. Left
+  alone: two callers, two contexts, and `exportStage` throwing is the right
+  contract for the one that already has a `try`.
+- **The export does not reproduce the older fixtures' hand-formatting.** The three
+  hand-authored stages write positions inline (`{ "line": 0, "col": 0 }`) and
+  `JSON.stringify(…, null, 2)` spreads them over three lines, so
+  `content/stages/` now holds two conventions. Matching them needs either a
+  bespoke serializer or a regex over the output, and a regex cannot tell a
+  position apart from a buffer line containing the same characters — a formatter
+  that can corrupt content to tidy a diff is a bad trade. `act1-word-power.json`
+  is the first stage written by the editor rather than by hand, so the exporter's
+  shape is the corpus's shape from here and the older three are the outliers.
+  `draft.test.ts` records the decision next to the test that would catch it
+  changing.
+- **A new file in `content/stages/` needs the dev server to re-transform
+  `fixtures.ts`** before the dropdown lists it — `import.meta.glob(..., {eager:
+  true})` is resolved at transform time, so a page reload alone is not enough. It
+  is a dev-loop wrinkle, not a runtime one.
+
 - [x] Dual-pane authoring: raw buffer text left, visual grid right, live-synced
 - [x] Overlay painting: spawn, goal, walls, threats, key-pickups, triggers,
       story beats. Done at Wave C. The palette arms a kind and the grid places
@@ -2640,9 +2908,37 @@ from tests:
       author was editing, so the preview draws the session's buffer, cursor, mode
       and live entity positions with no second canvas to drift. Verified in the
       browser down to the cursor SHAPE following the live mode in canvas pixels.
-- [ ] **Definition of done:** author a brand-new stage in the editor, record its
+- [x] **Definition of done:** author a brand-new stage in the editor, record its
       solution, export it, and confirm it loads and is completable in the game
-      without touching code
+      without touching code. **Done at Wave E**:
+      `content/stages/act1-word-power.json`, Act I stage 3, authored entirely
+      through the UI (buffer typed, both entities painted, panels filled,
+      solution `jjf,;www` recorded on the capture box and armed at par 8),
+      exported byte-identically out of the new export pane, and green in
+      `validate:stages` at all three presets. "In the game" is read as
+      `MergedPlan.md`'s own gate allows before M4 exists: the game's RULES layer
+      is `GameSession`, the editor's playtest runs it, and the shipped file was
+      reopened from `content/stages/` and won through that playtest at 8
+      keystrokes. The in-app confirmation re-runs at M4 as part of its stage
+      runner's own done-line.
+
+**M3 is done.** All six "M3 done when" criteria swept at Wave E:
+
+1. `pnpm typecheck` / `pnpm test` green repo-wide, editor suites included — 1629
+   tests, 25 files.
+2. Every schema field authorable and every schema error surfaced, with zero
+   validation rules in the editor — Wave C's `EDITS`/`FIELD_ORDER` pair holds it,
+   and `apps/editor` still imports `safeParseStage`/`formatIssues` and adds no
+   rule beside them.
+3. The recorder round-trips real play — Wave D pinned it, and Wave E ran it on a
+   stage nobody had written yet: record → arm → the armed draft parses clean →
+   the armed solution wins a fresh session at the recorded keystroke count.
+4. `pnpm validate:stages` green over the grown corpus — **4 stage files valid.**
+5. The manual round trip — the bullet above.
+6. Nothing changed outside `apps/editor/` and the five root-config edits except
+   Wave A's named debt (`keys.ts` + its test, `schema.ts`'s one `StageInput`
+   line), plus `content/stages/`, which is the milestone's own product.
+   `goldens:verify` reported zero changed bytes at every wave, Wave E included.
 
 ---
 

@@ -1,4 +1,4 @@
-# HANDOFF — M0 + M1 + M2 complete, **M3 Waves A–D done** (2026-08-19)
+# HANDOFF — M0 + M1 + M2 complete, **M3 complete** (2026-08-19)
 
 Read this first when continuing work. The plan of record is `MergedPlan.md`;
 the tracking doc is `docs/CHECKLIST.md`; the harness gospel is
@@ -53,8 +53,9 @@ pnpm goldens:generate && pnpm test && pnpm typecheck && pnpm goldens:verify
   abort cursor — M1, M2 and M3 have added none, and every wave of all three
   re-ran `goldens:verify` and confirmed **zero golden bytes changed**. The
   repo-wide TEST count has grown with them, from M0's 1221 to **1467** at M2 Wave
-  E and **1621** at M3 Wave D; the per-wave arithmetic is in
-  `docs/CHECKLIST.md`.
+  E and **1629** at M3 Wave E; the per-wave arithmetic is in
+  `docs/CHECKLIST.md`. `pnpm validate:stages` reports **4 stage files valid** —
+  the fourth is M3 Wave E's `act1-word-power`, authored in the editor.
 
   `pnpm test:fuzz` is separate from the above and NOT yet clean over a full
   10k-sequence run — it's a live differential tool, not a committed-golden
@@ -514,6 +515,19 @@ artifact and excluded.
 
 ## What comes next
 
+**M4 (`apps/web`) is the next milestone, and it needs its own plan before it
+starts** — the same rule `docs/CHECKLIST.md` states for every milestone after M0,
+and the reason `M1-PLAN.md`, `M2-PLAN.md` and `M3-PLAN.md` exist. M4's checklist
+bullets (title screen, diegetic difficulty selection, comfort settings before
+first play, the content note, `localStorage` saves with an in-payload
+`schemaVersion`, procedural WebAudio, the stage runner, Playwright E2E) are a
+deliverable list, not a decomposition. Three things this repo already decided
+that M4 inherits rather than re-litigates: `stage-cells.ts` and `keyboard.ts` are
+**the seams M4 lifts** out of the editor (both were written for it and say so in
+their headers); the CRT pipeline is M4's runtime dress and deliberately absent
+from the editor; and Zustand was left untaken at M3 explicitly so M4 could decide
+it for the game loop.
+
 **All seven Wave 4 sub-waves are done — Wave 4 as a whole is complete, and so
 are Waves 1–4.** The engine itself has no more waves queued.
 
@@ -676,9 +690,17 @@ non-blocking. Worth doing early in whatever comes after M0:
     and outcome are identical either way — which is what lets one player's
     replay reproduce under another's comfort settings.
 - **M3 (`apps/editor`) has its plan: `docs/M3-PLAN.md`**, waves A–E, same shape
-  as M1's and M2's. **Waves A, B, C and D are done — A and B on 2026-08-18, C and
-  D on 2026-08-19.** Only Wave E — the manual round trip, a brand-new stage
-  authored in the editor and exported into `content/stages/` — is left. Wave A was the
+  as M1's and M2's. **All five waves are done — A and B on 2026-08-18, C, D and E
+  on 2026-08-19 — and all six "M3 done when" criteria were swept explicitly at
+  Wave E** (see `docs/CHECKLIST.md`'s M3 section for the sweep with numbers).
+  Wave E is the round trip: `export-pane.tsx` (the export had no reader, so a
+  browser without File System Access could not get a stage out at all and nothing
+  but a human could check what the editor writes) and
+  `content/stages/act1-word-power.json`, Act I stage 3, **every byte of it
+  produced by the editor UI** — buffer typed, both entities painted on the grid,
+  panels filled, solution `jjf,;www` recorded on the playtest capture box and
+  armed at par 8, then read out of the export pane byte-identically (same SHA-256
+  on both sides) and committed. Wave A was the
   two debts M3 rests on, both in packages rather than `apps/`: `keys.ts`'s
   `render`/`tokenize` round trip (see the `keys.ts` bullet under "Engine
   architecture notes" above) and `schema.ts`'s `StageInput` export, the AUTHORED
@@ -693,6 +715,82 @@ non-blocking. Worth doing early in whatever comes after M0:
   round trip; the plan's five verified-against-source facts are still the part
   worth reading before picking them up — two of them REMOVE work the older plan
   docs still list (the stage validator already shipped; no Zustand).
+- **The six Wave E facts a newcomer would otherwise rediscover the hard way**,
+  all measured rather than assumed:
+  - **`f`/`t`'s TARGET character is gated by `allowedKeys`, and no schema rule
+    warns you in time.** `KeyPolicy` is checked per KEYSTROKE, so `fd` needs `d`
+    permitted — and granting `d` to an Act I movement stage hands the player the
+    delete operator three acts early. The first recorded route died on exactly
+    this (`d  You have not been given that key yet.` in the playtest log). The fix
+    that generalises: jump to a character the stage ALREADY permits for its own
+    sake — `act1-word-power` targets `,`, which is in `";,"` as the reverse-`f`
+    motion. `stageSchema` does check the solution's tokens against `allowedKeys`,
+    but only once a route exists, so this is a design constraint on the BUFFER,
+    not something to discover at validation time.
+  - **A stage can lose on `verymagic` while winning on `magic` and `nomagic`, and
+    the easiest preset being the fatal one is not a bug.** `threatPeriod: 2`
+    **skips** a chase step (`session.ts`: `ticks % period === 0`), it does not slow
+    one down — so at half cadence a threat sits somewhere ELSE, not merely further
+    away. Measured with a per-tick probe: authored at `0:28..0:31` the follower was
+    still at `1:27..1:30` on tick 3 and stepped onto `2:28..2:31` exactly as `;`
+    put the cursor on column 31, while full cadence had already dragged it left to
+    `2:26..2:29` and it never touched. **Difficulty is not monotone for a
+    positional threat.** This is what `validate-stages.ts`'s three-preset loop and
+    `recorder.ts`'s `replayAtPresets` are for, now demonstrated on a stage nobody
+    wrote to demonstrate it — and it surfaced in the editor at record time rather
+    than on a red build, which is the whole argument for running the gate there.
+    **The fix that matters is not placement.** Re-anchoring the follower made the
+    GOLDEN route safe at all three presets and left the property untouched for
+    every other route — an adversarial review then found a learner drilling the
+    taught key `E` losing on `verymagic` at keystroke 6 and winning on the other
+    two. Since the mechanism is structural, any lethal chaser has this shape, so
+    the shipped stage makes Act I's follower **non-lethal** and leaves the first
+    fatal threat to Act II, where `act2-grammar-awakens` already is one.
+  - **A stage can be hostile to every route but its own and pass every gate.**
+    `stageSchema` compares only the SHIPPED solution against `par` and the budget;
+    `validate-stages.ts` replays only the shipped solution. The first draft of this
+    stage set `keystrokes-over` to 12 *because* that was the pure-`w` route's exact
+    cost, which read as elegant and meant an `e` drill overran by one keystroke and
+    died **on the goal cell one tick after the win beat fired**, and a single
+    exploratory `b` cost the stage. **Set a budget from the worst route you would
+    still call correct, never from the second-best one** — `par` is what a good
+    route costs, the budget is what a wrong APPROACH costs. Shipped at 20: every
+    word-motion drill wins at every preset, only character-crawling loses, and only
+    on `nomagic` where the budget is enforced.
+  - **`startling` marks a startle, not a mood — a beat that teaches a rule can
+    never carry it.** `gentle.ts` promises "all mechanics and story intact; startle
+    beats and look-away tricks off", so flagging the beat that says *standing in
+    this thing is survivable* meant exactly the player who most needed telling was
+    the one not told, measured with `comfort: {gentle: true}`. `act2-grammar-awakens`
+    had it the right way round already: explanatory beat unflagged, eerie beat
+    flagged.
+  - **Standing in a threat is safe, and the shipped stage proves it on its golden
+    route.** On `magic`/`nomagic` tick 3 leaves the cursor at `2:14` inside the
+    follower's `2:11..2:17`; `reached` requires the threat to have MOVED onto the
+    cursor, and one already covering it has no gap to close. The `counted` beat
+    fires precisely there. It does not fire on `verymagic`, where the follower is a
+    line behind on that tick — the condition is simply accurate, and nothing in the
+    gate reads beats.
+  - **A render is not a `try` block, and Wave E put a serializer in one.**
+    `exportStage` throwing was fine from `save()`, which catches it into a notice;
+    the export pane made it a blank page. Reachable and reproduced: **`JSON.parse`
+    is iterative in V8 while `JSON.stringify` recurses per level**, so `readDraft`
+    (which checks only `buffer`) admits a 10,000-deep document that `stageFileName`
+    and `parseDraft` both survive and `exportStage` alone kills with a `RangeError`
+    — unmounting the React tree and the issues pane about to explain the file.
+    `draft.ts`'s `safeExportStage` is the guard, the third door in the family
+    `drawableEntities` and `listOf` already cover — **and catching is only half of
+    it**: below the throwing band the same shape SUCCEEDS, turning a 2KB file into
+    a 2MB export and an 8KB file into 32MB, which costs about a second of blocked
+    main thread per keystroke and leaves the issues pane mounted but unreachable.
+    `MAX_SHOWN_BYTES` bounds it at 1MB, `stage-cells.ts`'s `MAX_FRAME_COLS` being
+    the same ceiling in the same spirit.
+  - **Driving React panes programmatically has two batching traps that read as
+    editor bugs.** A whole drag dispatched in ONE task paints nothing (`onDown`
+    sets `drag` with `setState`; `onUp` reads the same render's closure), and so
+    does arming a palette tool and clicking in the same task. And reading the
+    export pane in the call that mutated the draft returns the PREVIOUS value —
+    the same class as Wave D's "the assertion must be a separate tool call".
 - **The five Wave D facts a newcomer would otherwise rediscover the hard way**,
   all measured rather than assumed:
   - **`par` is the recorded TOKEN count, and `session.keystrokes` is the wrong

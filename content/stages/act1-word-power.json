@@ -1,0 +1,86 @@
+{
+  "id": "act1-word-power",
+  "act": 1,
+  "title": "Word Power",
+  "buffer": [
+    "the corridor repeats itself here",
+    "count the doors you have opened",
+    "the first door, the second door, the third door"
+  ],
+  "entities": [
+    {
+      "id": "the-follower",
+      "kind": "threat",
+      "at": {
+        "line": 0,
+        "col": 13
+      },
+      "to": {
+        "line": 0,
+        "col": 19
+      },
+      "glyph": "?",
+      "label": "something that only moves when you do"
+    },
+    {
+      "id": "third-door",
+      "kind": "goal",
+      "at": {
+        "line": 2,
+        "col": 43
+      },
+      "to": {
+        "line": 2,
+        "col": 46
+      },
+      "glyph": "X",
+      "label": "the third door"
+    }
+  ],
+  "allowedKeys": [
+    "hjkl",
+    "wbeWBE",
+    "fFtT",
+    ";,",
+    "0123456789"
+  ],
+  "teachesKeys": [
+    "ft",
+    ";,",
+    "weWE"
+  ],
+  "par": 8,
+  "solution": "jjf,;www",
+  "win": [
+    {
+      "kind": "cursor-on",
+      "entity": "third-door"
+    }
+  ],
+  "lose": [
+    {
+      "kind": "keystrokes-over",
+      "max": 20
+    }
+  ],
+  "beats": [
+    {
+      "id": "counted",
+      "text": "You pass straight through it. It does not close around you. It only follows.",
+      "startling": false,
+      "on": {
+        "kind": "cursor-on",
+        "entity": "the-follower"
+      }
+    },
+    {
+      "id": "third-door-found",
+      "text": "Three doors. You counted them without being asked to, and the counting is what let it keep up.",
+      "startling": false,
+      "on": {
+        "kind": "cursor-on",
+        "entity": "third-door"
+      }
+    }
+  ]
+}
