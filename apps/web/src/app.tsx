@@ -1,108 +1,141 @@
 /**
- * Wave B's shell around the runner: a stage list, a difficulty picker, and the
- * two in-memory settings the runner needs as props.
+ * The shell: one screen union, one settings object, and no state that anything
+ * else already owns.
  *
- * **This file is scaffolding with a deadline.** Wave C replaces it with the real
- * screen union (`note | title | select | settings | run`) over a live `VimEngine`,
- * and Wave D gives the settings a home in `localStorage`. What it exists for is
- * Wave B's own done-line — *all four shipped stages completable in the app with
- * real keystrokes*, and `act1-word-power` losing over budget on `nomagic` while
- * the identical route wins on `verymagic`. That needs a way to pick a stage and a
- * way to pick a difficulty, and nothing else, so nothing else is here.
+ * This replaces Wave B's stage list and difficulty radio, which were scaffolding
+ * with a deadline and are now deleted rather than grown into.
  *
- * Two things it does that are NOT temporary, because the runner's contract needs
- * them:
+ * **Zustand was decided against, and this file is the argument.** Its
+ * justification in the technology table was "works outside React for the game
+ * loop" — measured against what the shell actually holds, that loop is a rAF
+ * callback reading a ref inside `runner.tsx`, and everything React renders here
+ * is a screen union and one settings object. A store would be a second source
+ * of truth for state that already lives in `GameSession` and, from Wave D, in
+ * `localStorage`. `useState` covers it with zero dependencies. If a real
+ * consumer appears — M6's free-play rooms, a stats overlay — it can take the
+ * dependency then.
+ *
+ * Three things this file is careful about, each of which the runner's contract
+ * requires:
  *
  * - **The stage and the settings are held in state, so their identity is
  *   stable.** The runner restarts its session when either changes, which is
- *   correct for a difficulty change between stages and would be a silent loss of
- *   progress on every parent commit if these were rebuilt inline.
- * - **The runner stays mounted across retry and next-stage.** Retry is internal
- *   to it and next-stage swaps a prop, so one WebGL2 context serves a whole run
- *   of play. Remounting per attempt would leak contexts — `dispose()` releases
- *   the textures and the program, not the context itself, and Chrome drops the
- *   oldest once about sixteen are live.
+ *   correct for a difficulty change between stages and would be a silent loss
+ *   of progress on every parent commit if these were rebuilt inline.
+ * - **`onCommand` and `onExit` are memoised.** The title screen's document-level
+ *   keydown listener re-arms whenever `onCommand` changes identity, and the
+ *   runner's does the same on `onExit`; without `useCallback` that is a
+ *   remove-and-add on every commit rather than a bug, but the runner also lists
+ *   `onExit` in the dependency array of the effect that owns the keyboard, and
+ *   a listener rebuilt mid-keystroke is not a thing worth finding out about
+ *   later.
+ * - **`:play` and `:stages` are the same door.** Two spellings of one action at
+ *   Wave C, and deliberately so: the plan's walk is note → title → `:play` →
+ *   select → stage, and a player who reaches for either word should arrive
+ *   somewhere. Wave D gives `:play` its own meaning — resume the stage the save
+ *   left in flight — at which point they diverge.
  *
- * `effectsIntensity` stays at 0 here. It is a required, never-defaulted argument
- * on every `draw()` call precisely so that deciding its value is a decision
- * someone makes on purpose, and that decision — the `prefers-reduced-motion`
- * default of 0, the 0.6 for everyone else, picked by eye on the real CRT pass —
- * is Wave C's, on the screen where the player is looking at the slider.
+ * "First launch only" for the content note is the union itself: `note` is the
+ * initial screen and nothing routes back to it, so it shows once and never
+ * again — within a session. A reload starts at `note` again until Wave D's save
+ * makes the claim true across sessions. The resources link is permanent from
+ * the first frame either way, which is the half that actually matters.
  */
 
-import { DEFAULT_COMFORT, DEFAULT_DIFFICULTY, DIFFICULTIES, type Difficulty } from '@vimorror/game';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 
 import { stageAfter, stages } from './campaign.ts';
+import { NoteScreen } from './note-screen.tsx';
 import { Runner } from './runner.tsx';
+import { SelectScreen } from './select-screen.tsx';
+import { defaultSettings, SettingsScreen, type Settings } from './settings-screen.tsx';
+import { TitleScreen } from './title-screen.tsx';
+import type { ShellCommand } from './shell-commands.ts';
 
-/** Wave C owns the real value and the reduced-motion policy. */
-const EFFECTS_INTENSITY = 0;
-
-const DIFFICULTY_NOTE: Readonly<Record<Difficulty, string>> = {
-  verymagic: 'threats at half pace, no keystroke budget, the route always on screen',
-  magic: 'exact Vim, the budget scored but not enforced, hints on request',
-  nomagic: 'the budget is a hard fail and there are no hints',
-};
+/** A union rather than a string plus a nullable id, so "running" cannot exist
+ * without a stage and no other screen can carry one. */
+type Screen =
+  | { readonly kind: 'note' }
+  | { readonly kind: 'title' }
+  | { readonly kind: 'select' }
+  | { readonly kind: 'settings' }
+  | { readonly kind: 'run'; readonly stageId: string };
 
 export function App() {
-  const [difficulty, setDifficulty] = useState<Difficulty>(DEFAULT_DIFFICULTY);
-  const [stageId, setStageId] = useState<string | undefined>(undefined);
+  const [screen, setScreen] = useState<Screen>({ kind: 'note' });
+  // Read once. `defaultSettings()` consults `prefers-reduced-motion` for the
+  // effects default and must not keep consulting it — the value is the
+  // player's the moment they touch the slider.
+  const [settings, setSettings] = useState<Settings>(defaultSettings);
 
-  const stage = stages.find((s) => s.id === stageId);
+  const onCommand = useCallback((command: ShellCommand): void => {
+    switch (command.kind) {
+      case 'set-difficulty':
+        setSettings((previous) => ({ ...previous, difficulty: command.difficulty }));
+        return;
+      case 'play':
+      case 'stages':
+        setScreen({ kind: 'select' });
+        return;
+      case 'settings':
+        setScreen({ kind: 'settings' });
+        return;
+    }
+  }, []);
 
-  if (stage !== undefined) {
-    const next = stageAfter(stage.id);
-    return (
-      <Runner
-        stage={stage}
-        difficulty={difficulty}
-        comfort={DEFAULT_COMFORT}
-        effectsIntensity={EFFECTS_INTENSITY}
-        onExit={() => setStageId(undefined)}
-        onNext={next === undefined ? undefined : () => setStageId(next.id)}
-      />
-    );
+  // `:q` versus `:q!` — the `force` flag is carried and still unconsumed. Wave D
+  // is the first wave with a snapshot to keep or discard, which is the only
+  // thing the distinction can mean.
+  const onExit = useCallback((): void => setScreen({ kind: 'select' }), []);
+
+  switch (screen.kind) {
+    case 'note':
+      return (
+        <NoteScreen settings={settings} onChange={setSettings} onContinue={() => setScreen({ kind: 'title' })} />
+      );
+
+    case 'title':
+      return <TitleScreen difficulty={settings.difficulty} onCommand={onCommand} />;
+
+    case 'select':
+      return (
+        <SelectScreen
+          onOpen={(stageId) => setScreen({ kind: 'run', stageId })}
+          onBack={() => setScreen({ kind: 'title' })}
+        />
+      );
+
+    case 'settings':
+      return <SettingsScreen settings={settings} onChange={setSettings} onBack={() => setScreen({ kind: 'title' })} />;
+
+    case 'run': {
+      const stage = stages.find((s) => s.id === screen.stageId);
+      // Unreachable through the UI — `stageId` only ever comes from this list —
+      // but a manifest id with no file drops a stage silently (`campaign.ts`),
+      // and a blank page is the worst possible answer to that.
+      if (stage === undefined) {
+        return (
+          <div className="screen">
+            <p className="bad">no stage with id &quot;{screen.stageId}&quot;.</p>
+            <div className="run-actions">
+              <button type="button" onClick={onExit}>
+                back
+              </button>
+            </div>
+          </div>
+        );
+      }
+      const next = stageAfter(stage.id);
+      return (
+        <Runner
+          stage={stage}
+          difficulty={settings.difficulty}
+          comfort={settings.comfort}
+          effectsIntensity={settings.effectsIntensity}
+          onExit={onExit}
+          onNext={next === undefined ? undefined : () => setScreen({ kind: 'run', stageId: next.id })}
+        />
+      );
+    }
   }
-
-  return (
-    <div className="select">
-      <h1>vimorror</h1>
-
-      <fieldset className="difficulty">
-        <legend>difficulty</legend>
-        {(Object.keys(DIFFICULTIES) as Difficulty[]).map((d) => (
-          <label key={d}>
-            <input
-              type="radio"
-              name="difficulty"
-              value={d}
-              checked={difficulty === d}
-              onChange={() => setDifficulty(d)}
-            />
-            <code>:set {d}</code> <span className="dim">{DIFFICULTY_NOTE[d]}</span>
-          </label>
-        ))}
-      </fieldset>
-
-      <ul className="stages">
-        {stages.map((s) => (
-          <li key={s.id}>
-            <button type="button" onClick={() => setStageId(s.id)}>
-              act {s.act} · {s.title}
-            </button>{' '}
-            <span className="dim">
-              par {s.par} · {s.buffer.length} {s.buffer.length === 1 ? 'line' : 'lines'}
-              {s.entities.length === 0 ? '' : ` · ${s.entities.length} entities`}
-            </span>
-          </li>
-        ))}
-      </ul>
-
-      <p className="note">
-        Every stage is unlocked. Progression, saves and the title screen's own command line arrive in the waves
-        after this one.
-      </p>
-    </div>
-  );
 }

@@ -69,6 +69,7 @@ import { atlasScaleFor, CELL_H, CELL_W, getFontAtlas, keyTokenFor } from '@vimor
 import { useEffect, useRef, useState } from 'react';
 
 import { frameCells, frameGeometry, MIN_COLS, MIN_ROWS } from './frame.ts';
+import { commandText, shellCommandFor } from './shell-commands.ts';
 
 /** Why the stage ended, in the game's voice. `by` is the condition that fired,
  * so this is a lookup over `rules.ts`'s own vocabulary and never a guess. */
@@ -305,7 +306,29 @@ export function Runner({ stage, difficulty, comfort, effectsIntensity, onExit, o
         let next = viewOf(session, previous);
         for (const e of events) {
           if (e.type === 'KeyRejected' || e.type === 'CommandRefused') next = { ...next, message: e.line };
-          else if (e.type === 'BeatFired') next = { ...next, beat: e.beat.text };
+          // A mid-stage `:set nomagic` really resolved — it cost its keystrokes
+          // and ticked the world — so it is answered rather than swallowed.
+          // Core's `:set` does not know the magic options and reports NOTHING
+          // for one it cannot apply (`applyOneSetArg` returns the options
+          // unchanged), so without this branch the player pays for the command
+          // and hears silence.
+          //
+          // **The answer is a refusal, and the message says exactly that.**
+          // M4-PLAN.md's fact 1 proposes "takes effect on your next stage",
+          // and that copy was written and then measured false: the runner has
+          // no way to tell the shell, and adding one restarts the session under
+          // the player, because `difficulty` is in the session effect's
+          // dependencies precisely so a change between stages takes hold. See
+          // the note in `docs/CHECKLIST.md` — deferring the change until the
+          // next session wants state in `app.tsx` plus a fourth entry point
+          // (retry is internal here), which is a lot of machinery for a line of
+          // copy. Saying no is honest and costs nothing.
+          else if (e.type === 'Tick') {
+            const shell = shellCommandFor(e.command.keys);
+            if (shell?.kind === 'set-difficulty') {
+              next = { ...next, message: `${commandText(shell)} — difficulty is chosen between stages, not inside one.` };
+            }
+          } else if (e.type === 'BeatFired') next = { ...next, beat: e.beat.text };
           else if (e.type === 'BufferSaved') next = { ...next, message: 'written.' };
           else if (e.type === 'OutcomeDecided') next = { ...next, outcome: e.outcome, score: session.score };
         }

@@ -460,6 +460,39 @@ Playwright specs, each in a fresh browser context (clean `localStorage`):
    second visit (in-memory for now), and every screen's colour-coded element
    carries its redundant glyph or label ("never colour alone" — the shell's
    first UI is where that invariant starts being checkable).
+
+   **Met**, from a fresh load and with real trusted keys: note → continue →
+   title → `:set nomagic` typed at the prompt → `:play` typed → select → Four
+   Directions → `G$` → **won, 2 keys against par 3, 1 under, `[*] clean run`**,
+   no hint button at all. `:stages`, `:settings` and an unknown `:zzz` (answered
+   by `rejectionLine('unknown-command')`, not new copy) all verified the same
+   way; `shift-Tab` leaves the capture surface and `<Esc>` returns to it. Fact 1
+   itself was re-measured before implementation and holds exactly. 1693 tests
+   from 1656; `goldens:verify` zero changed bytes; nothing changed outside
+   `apps/web/`.
+
+   **One correction to fact 1**, found by writing its copy and then measuring
+   it: a mid-stage `:set nomagic` cannot "take effect on your next stage"
+   without state in `app.tsx` and a fourth entry point, because the runner has
+   no channel to the shell and giving it one restarts the session under the
+   player. The interception stays — core's `:set` reports *nothing* for an
+   option it does not know, so without it the player pays for the command and
+   hears silence — but it answers with the truth: difficulty is chosen between
+   stages, not inside one.
+
+   **Two things the plan did not anticipate**, both measured: a key policy
+   cannot protect the title buffer (it gates the letters typed inside a pending
+   `:` line too, so denying `a`/`i`/`c` makes `:set magic` untypeable), so the
+   title is left editable — it is a real buffer and `u` undoes it; and the title
+   uses `GlyphGrid` rather than `createRenderer`, because `dispose()` frees
+   textures and the program but not the **WebGL2 context**, and the title is the
+   most-remounted screen in the app.
+
+   Left for later waves rather than forgotten: the select screen shows no lock
+   state, best score or resume banner (all four are projections of Wave D's
+   `progress` and `current`); `:play` and `:stages` are two spellings of one
+   door until `:play` gets its resume meaning; audio controls are absent because
+   `audio.ts` does not exist yet.
 4. **Wave D — persistence + audio.** `save.ts` (fact 3), `progression.ts`
    wired into select, settings write-through, mid-stage snapshot after each
    fed batch + on `visibilitychange`, resume flow through

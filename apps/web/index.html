@@ -50,34 +50,67 @@
         margin: 0;
       }
 
-      /* ---- the stage list (Wave B scaffolding; Wave C replaces it) ---- */
+      /* ---- the screens: note, title, select, settings ---- */
 
-      .select {
+      .screen {
         display: flex;
         flex-direction: column;
         gap: 16px;
-        max-width: 72ch;
+        max-width: 78ch;
       }
-      .select h1 {
+      .screen h1 {
         font-family: ui-monospace, monospace;
         font-size: 20px;
         letter-spacing: 0.3em;
         margin: 0;
       }
-      .difficulty {
+      .screen h2 {
+        font-family: ui-monospace, monospace;
+        font-size: 13px;
+        letter-spacing: 0.2em;
+        color: var(--dim);
+        margin: 0 0 6px;
+      }
+      .screen a {
+        color: #ffd452;
+      }
+      /* The title's canvas is the page's own frame, so it centres rather than
+         stretching, and nothing sits over it — the overlays belong to the run. */
+      .title {
+        align-items: center;
+      }
+      .controls {
         border: 1px solid var(--line);
         display: flex;
         flex-direction: column;
-        gap: 6px;
+        gap: 10px;
         margin: 0;
+        padding: 10px 12px;
       }
-      .difficulty legend {
+      .controls legend {
         color: var(--dim);
+        letter-spacing: 0.2em;
+        text-transform: uppercase;
       }
-      .difficulty label {
+      /* Baseline rather than centre, so a checkbox lines up with the FIRST line
+         of a label that wraps to three. */
+      .row {
         display: flex;
         align-items: baseline;
-        gap: 8px;
+        gap: 10px;
+        line-height: 1.5;
+      }
+      .row input[type='range'] {
+        flex: 0 0 200px;
+      }
+      .themes {
+        color: var(--dim);
+        margin: 0;
+        max-width: 60ch;
+        line-height: 1.6;
+      }
+      .act {
+        margin: 0;
       }
       .stages {
         list-style: none;

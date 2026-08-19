@@ -1,4 +1,4 @@
-# HANDOFF — M0 + M1 + M2 + M3 complete, **M4 Waves A+B done** (2026-08-19)
+# HANDOFF — M0 + M1 + M2 + M3 complete, **M4 Waves A+B+C done** (2026-08-19)
 
 Read this first when continuing work. The plan of record is `MergedPlan.md`;
 the tracking doc is `docs/CHECKLIST.md`; the harness gospel is
@@ -55,8 +55,10 @@ pnpm goldens:generate && pnpm test && pnpm typecheck && pnpm goldens:verify
   repo-wide TEST count has grown with them, from M0's 1221 to **1467** at M2 Wave
   E, **1629** at M3 Wave E, **1630** at M4 Wave A (the one new test is
   `stage-view`'s `font.test.ts`; the 66 moved tests moved, they did not
-  multiply) and **1656** at M4 Wave B (+7 `campaign.test.ts`, +2 `font.test.ts`,
-  +17 `frame.test.ts`); the per-wave arithmetic is in `docs/CHECKLIST.md`. `pnpm validate:stages` reports **4 stage files valid** —
+  multiply), **1656** at M4 Wave B (+7 `campaign.test.ts`, +2 `font.test.ts`,
+  +17 `frame.test.ts`) and **1693** at M4 Wave C (+28 `shell-commands.test.ts`,
+  +5 `settings-screen.test.ts`, +4 `select-screen.test.ts`); the per-wave
+  arithmetic is in `docs/CHECKLIST.md`. `pnpm validate:stages` reports **4 stage files valid** —
   the fourth is M3 Wave E's `act1-word-power`, authored in the editor.
 
   `pnpm test:fuzz` is separate from the above and NOT yet clean over a full

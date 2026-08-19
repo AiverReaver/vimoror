@@ -3097,11 +3097,156 @@ consumes it until Wave D has a snapshot to keep or discard. The runner's
 engine-throw freeze path and the `matchMedia` DPR listener are both written and
 neither is exercised.
 
-- [ ] Title screen, `:set magic` difficulty selection (diegetic, from the game's
-      own command line)
-- [ ] Comfort settings surfaced **before first play**
-- [ ] Skippable content note at first launch listing themes, plus a persistent
-      resources link
+### Wave C — the front door — **done** (2026-08-19)
+
+- [x] **Difficulty is selected diegetically, and the title screen is a real
+      `VimEngine` on a real buffer.** Fact 1 re-measured against a live engine
+      before a line was written, and it holds exactly: `:set verymagic<CR>`
+      emits `CommandResolved` with `keys: ':set verymagic<CR>'` (core's `:set`
+      does not know the magic options and reports NOTHING for one it cannot
+      apply), and `:play<CR>` emits `InvalidCommand (unknown-command)` **and**
+      `CommandResolved` with the full typed text. Verified in the browser with
+      real trusted keys: `:play` at the title reached stage select, `:stages`
+      and `:settings` reached theirs, `:set nomagic` changed the shell's
+      difficulty and the settings screen showed `> :set nomagic current`, and
+      `:zzz` answered with `rejectionLine('unknown-command')` — the same line a
+      stage gives, not new copy.
+- [x] `shell-commands.ts` + 28 tests. Exact match on the whole `keys` string,
+      which is what makes `:set sw=4<CR>` (a real command that really changed an
+      option) and `:<Esc>` (the prompt the player cancelled — it resolves too)
+      fall through for free. `commandText` round-trips every table entry back
+      through the parser, so a button label cannot drift from what the prompt
+      accepts. Passed first run, so **mutation-tested**: dropping `Object.hasOwn`,
+      dropping a `<CR>` from a table key, losing the `set ` prefix in
+      `commandText`, and case-folding the lookup each kill it.
+- [x] `note-screen.tsx` — themes named plainly, **no self-harm imagery** stated
+      explicitly rather than left to inference, and the comfort controls on the
+      same screen. That last part is the point: controls that merely EXIST
+      before first play are findable, not surfaced, and the player who needs
+      them is the one who will not go hunting. One continue button makes it
+      skippable.
+- [x] `settings-screen.tsx` — owns `Settings`, `defaultSettings()`,
+      `ComfortControls` (the note screen renders the same component, so the two
+      copies cannot drift) and `RESOURCES_URL`. The resources link is one
+      exported constant, reachable from the note, from settings and from the
+      title footer.
+- [x] **Gentle Mode verified end to end against real content**, which is the
+      only thing that proves the switch does anything:
+      `act2-grammar-awakens` ships the one `startling: true` beat. With Gentle
+      Mode off it fires ("The brackets stay…"); with it on that beat is gone and
+      the NON-startling beat still fires ("It was never load-bearing…") — the
+      story is not what is being disabled — and the outcome is identical, 4
+      keys against par 4, `[*] clean run` both times. That is `gentle.ts`'s
+      documented property (suppression at the emission point only) showing on
+      screen.
+- [x] **`effectsIntensity` default is 0.6, picked by eye and not derived.**
+      Compared on `act1-word-power` through the real CRT pass: at 0.6 all three
+      lines read cleanly with curvature, vignette and phosphor present; at 1.00
+      the top line is persistently garbled across successive frames — "itself
+      here" smears into illegibility — so full strength reads as damage rather
+      than dread. `prefers-reduced-motion: reduce` picks 0, and that half is not
+      a judgment call. `settings-screen.test.ts` pins both, plus the exact media
+      feature string: a typo there does not throw, it just returns
+      `matches: false` and silently gives a player who asked for reduced motion
+      the full-strength pass. Passed first run, **mutation-tested** — flipping
+      the ternary, typoing the query, and dropping the `?.` guard each kill it.
+- [x] `select-screen.tsx` — act grouping as a fold over the manifest, **never a
+      sort**, exported and tested for the case no shipped content reaches (an
+      act that recurs later must open a new group and a second heading, because
+      a curriculum that doubles back is a content mistake somebody should see).
+      Mutation-tested: sorting first, and matching the first group instead of
+      the last, each kill it.
+- [x] `app.tsx` — the screen union replacing Wave B's stage list and difficulty
+      radio, deleted rather than grown into. "First launch only" for the note is
+      the union itself: `note` is the initial screen and nothing routes back to
+      it. In memory only, so a reload starts there again until Wave D's save.
+- [x] **The keyboard-trap escape works on the title as it does in the runner**,
+      measured: `shift-Tab` from the capture surface moved focus to the
+      resources link, `<Esc>` on it returned focus to `document.body`, and the
+      next `:` opened the prompt again.
+- [x] **The Wave C done-line walked end to end with no code**, from a fresh
+      load: note → continue → title → `:set nomagic` typed at the prompt →
+      `:play` typed → select → Four Directions → `G$` → **won, 2 keys against
+      par 3, 1 under, `[*] clean run`**, with no hint button at all (`nomagic`
+      is `hints: 'none'`). Zero console errors across the whole session.
+- [x] Gates: `pnpm typecheck` clean, `pnpm test` **1693/1693** across 31 files
+      (1656 + 28 shell-commands + 5 settings + 4 select), `pnpm validate:stages`
+      4/4, `pnpm demo` 4/4, `pnpm goldens:verify` **1159 goldens, zero changed
+      bytes**. Nothing changed outside `apps/web/` — no package, no editor file,
+      no content file and no root edit.
+
+**A correction to M4-PLAN.md's fact 1, found by writing the copy and then
+measuring it.** The plan proposes that a mid-stage `:set nomagic` be
+acknowledged with "takes effect on your next stage." That was implemented
+verbatim, and then the next stage was measured still running `nomagic` — the
+runner has no way to tell the shell, and giving it one restarts the session
+under the player, because `difficulty` is in the session effect's dependency
+list precisely so a change BETWEEN stages takes hold. Deferring the change until
+the next session wants state in `app.tsx` plus a fourth entry point (retry is
+internal to the runner), which is a lot of machinery to make one line of copy
+true. The line is now the truth instead: `:set verymagic — difficulty is chosen
+between stages, not inside one.` The interception is still worth having — core's
+`:set` reports nothing at all for an option it does not know, so without it the
+player pays 15 keystrokes for silence.
+
+**Two more decisions worth recording, both measured rather than reasoned:**
+
+- **A key policy cannot protect the title buffer.** `setKeyPolicy` gates every
+  key INCLUDING the letters typed inside a pending `:` line — measured, denying
+  `s`/`a`/`i`/`c` to stop `dd` and `x` also makes `:set magic` untypeable, and
+  the leftover letters then run as normal-mode commands. So the title is left
+  editable, which is the honest answer anyway: it is a real buffer, `u` undoes
+  the damage, and the buttons never depend on the text still being there.
+- **`GlyphGrid`, not `createRenderer`, on the title.** `Renderer.dispose()`
+  frees textures and the program but **not the WebGL2 context** —
+  `crt-shader.ts` deletes three objects and stops — and a canvas element's
+  context is reclaimed only when the element is collected, with Chrome
+  force-losing the oldest at about sixteen. Title → select → stage → leave →
+  title is three mounts per cycle, doubled under `StrictMode`. Nothing on the
+  title is time-varying, so it draws on commit and holds no context.
+
+Also measured, and it shaped the one piece of art in the wave: **`#` block
+letters at one cell per pixel do not read.** A cell is 9x18, so a square block
+alphabet renders at half its intended aspect and the first version looked like
+scattered dots. Two cells per pixel is 18x18 and the letters resolve — but eight
+doubled letters is 96 columns, which clipped the final R at a 900px window and
+set a frame two thirds wider than any stage's. Stacked as VIM over ORROR it is
+64 columns and 10 rows, the same order of frame the runner draws.
+
+Two additions to the recorded harness-trap list, now **seven**:
+
+- **Reading the DOM in the same `javascript_tool` call that dispatches an event
+  reads the pre-flush DOM.** React had not committed yet, so the assertion saw
+  the old text and looked like a bug in the app. Dispatch in one call, read in
+  the next.
+- **`computer{action:"key"}` handles `:`, `$`, `(` and a bare `G` correctly** —
+  only the literal space is still unreachable (Wave B's entry), so a command
+  line like `:set nomagic` needs one dispatched `KeyboardEvent` for the space
+  and can use real trusted keys for everything else.
+
+And one non-trap, written down so the next reader does not chase it: sending
+keys in the same batch as the JS click that changed screens drops them all. The
+new screen's `useEffect` had not run, so there was no `keydown` listener yet —
+the buffer was untouched and the prompt stayed empty, which looks exactly like a
+broken command line. Not reachable by hand (a human cannot type inside one React
+commit); the fix when driving it is to click and type in separate calls.
+
+Left for later waves rather than forgotten: `select-screen.tsx` shows no lock
+state, best score, clean flag or resume banner — all four are projections of a
+`progress` map and a stored `current`, and rendering a badge over data that is
+always the same value would be UI that cannot be wrong, which looks verified and
+is not. Wave D adds the props; the rows are already where they go. `:play` and
+`:stages` are two spellings of one door until Wave D gives `:play` the resume
+meaning. Audio volume/mute is absent from the settings screen because `audio.ts`
+does not exist yet.
+
+
+- [x] Title screen, `:set magic` difficulty selection (diegetic, from the game's
+      own command line) — **Wave C**
+- [x] Comfort settings surfaced **before first play** — **Wave C**
+- [x] Skippable content note at first launch listing themes, plus a persistent
+      resources link — **Wave C** (skippable and permanent now; "first launch
+      only" is per-session until Wave D's save)
 - [ ] Save via `localStorage` with in-payload `schemaVersion`
 - [ ] Audio: raw WebAudio, procedural drones
 - [x] Stage runner — **Wave B**

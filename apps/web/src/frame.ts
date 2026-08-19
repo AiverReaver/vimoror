@@ -40,7 +40,7 @@
  */
 
 import type { Pos } from '@vimorror/core';
-import type { Entity, Stage } from '@vimorror/game';
+import type { Entity } from '@vimorror/game';
 import { stageCells } from '@vimorror/stage-view';
 import type { Camera, CellBuffer } from '@vimorror/render';
 
@@ -68,6 +68,10 @@ export const MAX_COLS = 512;
 /**
  * The frame, fixed for the whole run so the canvas is sized once.
  *
+ * Structural rather than `Pick<Stage, 'buffer'>`, because the title screen is
+ * the second caller and it is not a stage — it has no win condition, no par and
+ * no solution, and only ever needed the frame arithmetic.
+ *
  * `longest + 1` rather than `longest` for the reason `stage-cells.ts` widens by
  * one: the schema admits `col === line.length` as a real position, and a frame
  * exactly as wide as its longest line has no cell to tint there. Deciding it up
@@ -75,7 +79,10 @@ export const MAX_COLS = 512;
  * cut to `cols`, so the longest line it ever sees is `cols` whatever the player
  * types.
  */
-export function frameGeometry(stage: Pick<Stage, 'buffer'>): { readonly cols: number; readonly rows: number } {
+export function frameGeometry(stage: { readonly buffer: readonly string[] }): {
+  readonly cols: number;
+  readonly rows: number;
+} {
   const longest = stage.buffer.reduce((max, line) => Math.max(max, line.length), 0);
   return {
     cols: Math.min(MAX_COLS, Math.max(MIN_COLS, longest + 1)),
