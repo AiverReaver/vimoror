@@ -235,6 +235,19 @@ actually changes at the root:
   Vim-dependent scripts CI deliberately omits, Playwright is hermetic — it
   brings its own browser — so this is the first E2E that *can* run in CI.
 
+> **CORRECTED AT WAVE E — this list is two files short.** It also takes
+> `tsconfig.json` and `.gitignore`, and the claim above that "CI picks new tests
+> up with no edit" is true of the specs and false of the config that runs them.
+> `apps/**/*.ts` already covers `apps/web/e2e/`, but `playwright.config.ts` sits
+> at the repo root and matches no glob in `tsconfig.json`'s `include`, so without
+> an entry there the one genuinely new root file is never typechecked — measured,
+> it had two real type errors on its first run (`reducedMotion` is not a
+> top-level test option in Playwright 1.62; it goes in `contextOptions`, and
+> `deviceScaleFactor` is the other way round because `devices['Desktop Chrome']`
+> sets it top-level and top-level wins). `.gitignore` takes `test-results/`,
+> which is where `trace: 'retain-on-failure'` writes and where the CI job's
+> failure-artifact upload looks. Done-when 7 is amended to match.
+
 **Zustand is not taken, and the decision M3 explicitly left to M4 is hereby
 made.** Its justification in the technology table was "works outside React
 for the game loop" — measured against what the shell actually holds, that
@@ -504,12 +517,95 @@ Playwright specs, each in a fresh browser context (clean `localStorage`):
    deleting the old data, locked stages stay locked across reloads, and the
    drone demonstrably starts only after a gesture (the suspended-context
    trap checked, not assumed).
+
+   **All met**, each in the browser: `act1-two-worlds` left at 5/9 keys with the
+   buffer `helworld`, reloaded, `:play` typed at the title, and the stage came
+   back at 5/9 — with the RESTORED session's `JSON.stringify(snapshot)`
+   string-identical to what was stored. A hand-poisoned `schemaVersion: 99`
+   started a clean profile and left `vimorror.save.orphan.v99` holding the
+   original bytes. After winning Two Worlds the select screen showed `[*] best 20
+   clean` with Word Power and The Grammar Awakens still `[-] locked`, unchanged
+   across a reload. `audioStatus()` read `state: 'none'` before any gesture and
+   `running`, act 1, gain 0.16 after the note's continue click; muting set the
+   master gain to 0 and survived a reload. `:q!` discarded the resume snapshot and
+   `:q`/leave kept it, which is the `force` flag Wave B carried finally consumed.
+   1728 tests from 1693; `goldens:verify` zero changed bytes; nothing changed
+   outside `apps/web/`.
+
+   **Two things this wave did not build, and one it built differently.** The
+   `visibilitychange` listener is deliberately absent: the runner snapshots on
+   session start and after every fed key, every change to a `GameSession` goes
+   through `feed`, so there is no state a visibility change could catch that the
+   last feed has not already written. `progress` carries no difficulty, because
+   unlocking on `nomagic` only would make difficulty a second curriculum rather
+   than a dial. And the runner now reads `session.difficulty` rather than its
+   prop for the header and the hint policy — `GameSession.restore` takes
+   difficulty from the snapshot by design, so a resumed run enforces the
+   difficulty it was played at and the header must agree with what is enforced.
+
+   **A correction to fact 3's testing note.** "Round-trip identity" is not a
+   guard against `snapshotSchema` stripping a field it does not list — measured,
+   swapping `.passthrough()` for `.strict()` survives, because today the schema
+   and `SessionSnapshot` agree exactly. The test now round-trips a field the
+   schema has never heard of, which is the failure the passthrough exists for.
 5. **Wave E — E2E + wrap-up.** The three Playwright specs, the CI `e2e` job,
    `pnpm test:e2e` green locally and in CI, the done-list swept explicitly,
    `docs/CHECKLIST.md` boxes and `docs/HANDOFF.md` updated, and anything that
    passed on its first run mutation-tested rather than trusted (M2 Wave E's
    discipline, kept because it has caught the lone survivor every milestone
    since).
+
+   **All met.** Six tests in the three named spec files — the plan's three flows
+   plus three variants that are the same flows under one changed machine fact
+   (`prefers-reduced-motion`, `deviceScaleFactor: 2`, and a resume of a
+   non-first stage). `pnpm test:e2e` runs the lot in **2.8s**, three consecutive
+   runs clean, `retries: 0` on purpose. The asymmetry spec pins the milestone's
+   named test in the shipped shell: the same 45 keys lose on `nomagic` at
+   keystroke 21 and win on `verymagic` at 45. `pnpm test` is **unchanged at
+   1728** and that is the right number — Playwright specs are not vitest tests;
+   `goldens:verify` zero changed bytes.
+
+   **The discipline paid for itself again: 22 mutations, two survivors, and a
+   real bug the suite found on its own.**
+
+   - The bug: the outcome overlay's `retry`, `next stage` and `leave` did not
+     blur themselves, against the rule `runner.tsx`'s own header states. The
+     overlay unmounts on a *later* commit, so the clicked button holds focus
+     across a whole round trip and the runner stands down for any target that is
+     not the body — click `next stage`, type immediately, lose the keystroke.
+     Fixed at all three, and pinned with a **single-shot** `page.evaluate`:
+     `expect(body).toBeFocused()` retries until the overlay unmounts and passes
+     either way, which the mutation proved by surviving it.
+   - Survivor one was a tautology in this wave's own strongest assertion. "A
+     re-snapshot equals the stored snapshot" passed with the runner's
+     session-start `onSnapshot` deleted, because the stored bytes were simply
+     still there. The spec now poisons the stored snapshot with a field the game
+     cannot produce and `.passthrough()` carries through `restore`, so equality
+     holds only if something really re-wrote it.
+   - Survivor two was coverage in the right layer: `GameSession.feed`'s
+     decided-session freeze is unreachable from the UI because the runner stands
+     down first, and it is killed by three tests in `session.test.ts`.
+
+   **Two corrections to fact 5, and therefore to done-when 7.** Its root-edit
+   enumeration is one short in each direction of caution: `tsconfig.json` needs
+   `playwright.config.ts` added to `include` — the specs are already covered by
+   `apps/**/*.ts`, but the config sits at the root and matches no existing glob,
+   and it caught two real type errors on its first run — and `.gitignore` needs
+   `test-results/`, which is where `trace: 'retain-on-failure'` writes and where
+   the CI job looks for artifacts. Both are necessary, both are recorded, and
+   done-when 7 below is amended to name them.
+
+   **Two ceilings this suite deliberately does not reach**, stated so green is
+   not mistaken for total: **nothing reads a pixel** (the canvas is proved sized
+   and the renderer proved to have picked a path, and the win conditions prove
+   the ENGINE's buffer — but a frame frozen on the authored buffer would keep
+   every HUD assertion correct, and a WebGL2 backing store is unreadable after
+   the frame without `preserveDrawingBuffer`, so this stays the in-browser check
+   it has been at every wave, `effectsIntensity` at the uniform with it); and
+   **no comfort filter fires anywhere in the suite**, because
+   `act1-two-worlds` authors no beats and `act1-word-power`'s two are both
+   `startling: false`. The controls are proved to write; `gentle.test.ts` proves
+   what writing them means. A startling beat arrives with M5.
 
 ## Testing
 
@@ -563,10 +659,15 @@ passes get mutation-tested.
    green, `pnpm demo` 4/4, `pnpm goldens:verify` **zero changed bytes**, and
    `pnpm test:e2e` green locally and in CI.
 7. Nothing changed outside `apps/web/`, `packages/stage-view/` (the named
-   lift, moves not rewrites), `apps/editor`'s three import lines +
-   `grid-pane.tsx`'s atlas extraction, `content/campaign.json`, and the root
-   edits fact 5 enumerates. `vim-core`, `render` and `game` sources are
-   untouched.
+   lift, moves not rewrites), `apps/editor`'s **four** import lines (the plan
+   counted three; `recorder.test.ts` is the fourth) + `grid-pane.tsx`'s atlas
+   extraction, `content/campaign.json`, and the root edits fact 5 enumerates
+   **plus the three it does not** — `tsconfig.json`'s `include` and
+   `.gitignore`'s `test-results/`, both added at Wave E and both explained in the
+   correction note under fact 5, and `.gitignore`'s `graphify-out/`, added when
+   the waves were committed and the only one of the three that is not M4 work at
+   all (a local tool's output, loose at the repo root; see `docs/HANDOFF.md`).
+   `vim-core`, `render` and `game` sources are untouched.
 
 **Explicitly NOT in M4:** `H`/`M`/`L` — the camera now exists in front of the
 engine, but nothing *teaches* them until M6 authors a stage that does, the

@@ -14,6 +14,7 @@
     "demo": "node tools/demo.ts",
     "validate:stages": "node tools/validate-stages.ts",
     "test": "vitest run",
+    "test:e2e": "playwright test",
     "test:fuzz": "node tools/goldens/fuzz.ts",
     "fuzz:triage": "node tools/goldens/triage.ts",
     "test:watch": "vitest",
@@ -23,6 +24,7 @@
     "dev:editor": "vite apps/editor --port 5174"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@types/node": "^22.10.2",
     "fast-check": "^3.23.2",
     "typescript": "^5.7.2",

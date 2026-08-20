@@ -3240,19 +3240,328 @@ is not. Wave D adds the props; the rows are already where they go. `:play` and
 meaning. Audio volume/mute is absent from the settings screen because `audio.ts`
 does not exist yet.
 
+### Wave D — persistence + audio — **done** (2026-08-19)
+
+- [x] **`save.ts` — a codec, not a serializer** (M4-PLAN.md's fact 3, honoured
+      literally). The envelope is `{schemaVersion, settings, progress, current}`
+      with `current.snapshot` a `SessionSnapshot` passed through untouched;
+      `session.ts` had already solved the hard half (the `Set`-JSONs-to-`{}`
+      trap, authored-vs-evolved, the mid-visual clamp on restore) and none of it
+      is re-solved here. `zod` is `apps/web`'s first runtime dependency, exactly
+      where Wave A said it would arrive.
+- [x] **An unreadable payload is renamed aside, never deleted.**
+      `vimorror.save.orphan.v<N>` carries the version the payload CLAIMED, so a
+      migration written later has something to find. Verified in the browser: a
+      hand-poisoned `schemaVersion: 99` started a clean profile at the content
+      note, left `vimorror.save.orphan.v99` holding the original bytes, and threw
+      nothing. Unparseable text is the one case that does NOT get an orphan —
+      nothing a migration could ever recover, and an orphan key nobody will clean
+      up is worse than none — but it is still left exactly where it was.
+- [x] **The snapshot is validated shallowly and restored inside a `try`.**
+      Everything the shell renders is checked; `engine` is left opaque, because a
+      Zod mirror of `EngineSnapshot` would be a second authority on core's save
+      format. `GameSession.restore` throws on a stage mismatch (its one
+      deliberate loud failure) and `VimEngine.restore` throws on a garbage
+      engine, so one `catch` in the runner covers both and answers with a fresh
+      session plus a line saying so — never a crash on a loading screen and never
+      a silent drop either.
+- [x] **Mid-stage reload resumes, and a re-snapshot equals the stored bytes.**
+      Measured: `act1-two-worlds` left at 5/9 keys with the buffer `helworld`,
+      page reloaded, `:play` typed at the title, the stage came back at 5/9 with
+      the same buffer and `:set magic` — and `JSON.stringify(snapshot)` written by
+      the RESTORED session was string-identical to what was stored before the
+      reload. That is M4's done-when 4, checked rather than assumed.
+- [x] `progression.ts` — `unlockedIds` (linear, first stage always open,
+      **completed at any difficulty counts** because difficulty is a dial and not
+      a second curriculum) and `recordWin` (`bestKeystrokes` a minimum,
+      `cleanRun` sticky). The chain stops at the first gap rather than opening
+      everything after it, which is what a hand-edited save or a stage inserted
+      into `campaign.json` between two finished ones actually produces.
+- [x] `select-screen.tsx` filled in the four things Wave C named and left out:
+      lock state, best score, the clean flag and the resume banner. **Never
+      colour alone** on every one — `[*]` clean, `[x]` completed, `[ ]` open,
+      `[-]` locked, with the word `locked` in the row's own text and the banner
+      naming the stage, the keystroke count and the difficulty in words. Verified
+      across a reload: Two Worlds `[*] best 20 clean`, Four Directions `[ ]`,
+      Word Power and The Grammar Awakens `[-] locked`.
+- [x] **`onExit(force)` is finally consumed, and both halves were measured.**
+      `:q` and the leave button keep the resume snapshot (the banner appeared for
+      Four Directions, 1 key in); `:q!` discards it (banner gone, `current`
+      absent from the save). Vim's own distinction landing as UI for nothing,
+      which is what Wave B carried the flag for.
+- [x] **`current` is cleared the moment an outcome latches, and a decided run is
+      never snapshotted at all** — the two are one either/or in the runner rather
+      than a write followed by a delete, because the failure mode is offering a
+      finished stage back as "resume". Measured: winning Two Worlds at 20 keys
+      wrote `progress: {act1-two-worlds: {completed, bestKeystrokes: 20,
+      cleanRun: true}}` and no `current`.
+- [x] **`audio.ts` — the drone starts only after a gesture, and that was READ
+      rather than inferred.** Before any gesture `audioStatus()` reports
+      `state: 'none'` — no context constructed at all; after the content note's
+      continue click it reports `running`, act 1, gain 0.16 (`volume ** 2`). The
+      trap this exists for is invisible from the app's own behaviour: a context
+      built before a gesture is not refused, it is created `suspended`, so the
+      code runs, the nodes connect and the drone is silent forever. `ensureAudio`
+      is called from ONE `pointerdown`/`keydown` pair in `app.tsx`, in the
+      capture phase so the runner's `preventDefault` cannot get in front of it.
+- [x] Volume and mute persist and reach the graph: muting set the master gain to
+      0 and survived a reload as `audio: {muted: true, volume: 0.4}`. The drone
+      is two detuned sawtooths through a lowpass with a slow LFO on the CUTOFF
+      (timbre, never volume — a tremolo reads as a fault in the playback), and it
+      is retuned rather than restarted when the act changes.
+- [x] Gates: `pnpm typecheck` clean, `pnpm test` **1728/1728** across 34 files
+      (1693 + 14 save + 13 progression + 8 audio), `pnpm validate:stages` 4/4,
+      `pnpm demo` 4/4, `pnpm goldens:verify` 1159 goldens with **zero changed
+      bytes**. Nothing changed outside `apps/web/` — no package, no editor file,
+      no content file, and no root edit beyond the lockfile that `zod` brings.
+- [x] All three new suites passed first run, so all three were
+      **mutation-tested** — sixteen mutations, sixteen killed. Two of them
+      changed the code under test:
+
+**The `.passthrough()` test was wrong, and the mutation is what showed it.** The
+suite round-tripped a snapshot from a live `GameSession` and compared the JSON,
+which reads like a guard against `snapshotSchema` stripping a field it does not
+list — and it is not one. Swapping `.passthrough()` for `.strict()` SURVIVED,
+because today the schema and `SessionSnapshot` agree exactly, so stripping,
+passing through and rejecting are indistinguishable. The failure the guard is for
+is the NEXT field `session.ts` adds: with Zod's stripping default the save would
+parse, load, and have quietly forgotten it. The test now adds a field the schema
+has never heard of and asserts it comes back, which kills `.strict()` and the
+bare default both.
+
+**`StageProgress.completed` was decorative.** Replacing `progress[id]?.completed
+!== true` with `=== undefined` survived, because `recordWin` only ever writes
+`true` — so the unlock chain was really testing for the PRESENCE of an entry and
+the field was along for the ride. Reachable only from a hand-edited save, which
+is precisely the boundary this map crosses; there is now a test that a
+`completed: false` entry does not open the next stage.
+
+**One thing the plan asks for that is deliberately not built: the
+`visibilitychange` listener.** The runner snapshots on session start and after
+every fed key, and every change a `GameSession` can undergo goes through `feed`
+— so there is no state a visibility change could catch that the last feed has
+not already written, including the stage opened and abandoned without a
+keystroke, which the start-of-session snapshot covers. A listener would be a
+second writer for a case that cannot exist.
+
+**Two smaller departures, both measured.** The first save is written when the
+player leaves the content note, not when the app mounts: without that gate,
+opening the game and closing the tab on the note screen meant the note never
+appeared again — measured, not reasoned. And the runner now reads
+`session.difficulty` rather than its `difficulty` prop for the header and the
+hint policy, because `GameSession.restore` takes difficulty from the snapshot by
+design; a run left mid-stage and resumed after the player changed `:set` at the
+title continues at the difficulty it was actually played at, and the header must
+not claim otherwise.
+
+Three additions to the recorded harness-trap list, now **ten**:
+
+- **`computer{action:"key"}` sends `Return`, `colon` and `exclam` as
+  multi-character `event.key` values** — `keyTokenFor` correctly drops all three.
+  The literals `:` and `!` work; Enter must be spelled **`Enter`**. Same class as
+  Wave A's `comma`/`semicolon` and Wave B's `space`, and `,` itself now arrives
+  correctly as a literal.
+- **Enter must be its own tool call.** `: p l a y Enter` in one batch loses the
+  Enter every time; `: p l a y` followed by a separate `Enter` works.
+- **A `KeyboardEvent` dispatched on `document` never reaches the app.** Both the
+  runner and the title stand down for any target that is not `document.body`
+  (that is what lets a focused button keep its own keys), and
+  `document.dispatchEvent` makes `document` the target. Dispatch on
+  `document.body` and let it bubble — that is the only way to send the literal
+  space Wave B recorded as unreachable.
+
+And one non-trap: the tab silently stops receiving synthesised keys after some
+JS-driven navigation, and a single click anywhere on the page brings them back.
+Not a bug in the app — the same keys work before and after — but it looks exactly
+like a dead command line.
+
+Left for Wave E rather than forgotten: the drone's per-act retune is exercised
+only at act 1, since acts 2+ are behind the unlock chain and `baseHzFor` carries
+the arithmetic under test; and the three Playwright specs, the CI `e2e` job and
+`playwright.config.ts` are still the whole of Wave E, exactly as Wave A deferred
+them.
+
+
+### Wave E — E2E + wrap-up — **done** (2026-08-20)
+
+- [x] **`playwright.config.ts` — chromium only, `testDir: apps/web/e2e`, and a
+      `webServer` that runs `pnpm dev` itself.** So `pnpm test:e2e` is one
+      command from a cold checkout and there is no second way to start the game
+      that could drift from the one `.claude/launch.json` uses.
+      `reuseExistingServer` locally only; **`retries: 0`** deliberately — a spec
+      that passes on the second run has found something, and a retry would hide
+      exactly the timing bug an E2E suite over a rAF loop and a real keyboard
+      exists to catch. `reporter: 'list'` because the HTML reporter opens a
+      server on failure and hangs a CI job; `trace: 'retain-on-failure'` is what
+      answers "what did the page look like".
+- [x] **Six tests in three spec files** — the plan's three flows, plus three
+      variants that are the same flows under one changed machine fact. `pnpm
+      test:e2e` green, **2.8–3.0s** for the whole suite, three consecutive runs
+      clean:
+      - `first-run.spec.ts` — the fresh-profile walk: note (themes, the
+        `no self-harm` bound, the helpline **checked by `href`**), comfort
+        controls **operated** not merely counted (Gentle Mode disables the
+        jump-scare switch, which is `allowsBeat`'s rule made visible), continue,
+        `:play` typed at the title, both sides of the unlock chain, Two Worlds
+        won at 9/9 `exactly par` `[*] clean run`, and one win opening exactly one
+        room. Plus `prefers-reduced-motion: reduce` → effects default `0.00`
+        (against `0.60` in the main run), and `deviceScaleFactor: 2` → the
+        backing store 1152 behind a 576 CSS box.
+      - `difficulty-asymmetry.spec.ts` — `MergedPlan.md`'s named test, and now
+        `:settings` too (the third verb, and the third place done-when 3 promises
+        the helpline). The crawl `jj` + `l`×43 **loses on `:set nomagic`** at
+        `21/8 keys` with "More than 20 keys." and the **identical 45 keys win on
+        `:set verymagic`** at `45 keys, par 8 — 37 over · [ ] assisted (0 undo, 0
+        hint)`. Every key of both runs typed; the losing one stops mattering at
+        21.
+      - `save-round-trip.spec.ts` — the note survives a reload *on* the note and
+        never returns after `continue`; `ihel<Esc>` → reload → `:play` resumes at
+        `5/9 keys` and finishes `11 keys, par 9 — 2 over`; `current` cleared on
+        the win; and a second test resuming a NON-first stage (`G` → reload →
+        `$` → `2 keys, par 3 — 1 under`), which is the only place the snapshot's
+        `stageId` lookup is doing real work.
+- [x] **CI `e2e` job**, separate from `test` so the unit gate stays a fast,
+      Vim-free minute with no browser download in front of it. `pnpm exec
+      playwright install --with-deps chromium`, then `pnpm test:e2e`; traces
+      uploaded on failure. **This is the first end-to-end suite this repo can run
+      in CI at all** — Playwright is hermetic, unlike every Vim-dependent script,
+      which is why `goldens:*` and `test:fuzz` still stay local-only.
+- [x] Root: `"test:e2e": "playwright test"` and the `@playwright/test`
+      devDependency, landed here with the specs they run exactly as Wave A
+      deferred them (`playwright test` with zero specs exits 1).
+- [x] Gates: `pnpm typecheck` clean, `pnpm test` **1728/1728** across 34 files —
+      **unchanged, and that is the expected number**: Playwright specs are not
+      vitest tests, and the `apps/**/*.test.ts` include glob is what keeps the
+      two suites out of each other's directories (so a new E2E file must be named
+      `*.spec.ts`). `pnpm validate:stages` 4/4, `pnpm demo` 4/4,
+      `pnpm goldens:verify` 1159 goldens with **zero changed bytes**.
+- [x] **Twenty-two mutations run, two survivors, one real bug found.** The
+      discipline earned its keep for the fifth milestone running.
+
+**The one survivor that was a false positive: claim 3 of the save spec was
+comparing the stored bytes against themselves.** Deleting the runner's
+session-start `onSnapshot(session.snapshot())` left the pre-reload snapshot
+sitting untouched in `localStorage`, so "a re-snapshot equals what was stored"
+passed with nothing having been re-written — a tautology wearing the shape of the
+strongest assertion in the suite. The fix is a poison: before the reload the spec
+writes a field into the stored snapshot that the game cannot produce, and
+`snapshotSchema`'s `.passthrough()` carries it through `loadSave` into
+`GameSession.restore`, which has never heard of it. It is therefore still there
+afterwards **if and only if nothing re-wrote the save**. Mutation re-run: killed.
+
+**A real bug, found by the suite rather than by a review: the outcome overlay's
+three buttons did not blur themselves.** `runner.tsx`'s own header says "every
+control blurs itself on click so the next keystroke goes back to the stage", and
+`retry`, `next stage` and the overlay's `leave` were the exception — the overlay
+unmounts on a *later* commit, so for one whole round trip the clicked button
+still holds focus and the runner stands down for any target that is not the body.
+A player who clicks `next stage` and immediately types loses that keystroke. Now
+fixed at all three, and pinned — with a **single-shot** `page.evaluate`, because
+`expect(body).toBeFocused()` simply retries until the overlay unmounts and passes
+either way. Measured: the mutation survived the retrying matcher and dies against
+the one-shot read.
+
+**The other survivor was coverage in the right place, not a gap.** Deleting
+`GameSession.feed`'s `if (this.#outcome.status !== 'playing') return []` freeze is
+invisible to the browser, because `runner.tsx` stands down on a decided outcome
+before it ever calls `feed` — the outer guard makes the inner one unreachable
+from the UI. It is killed by three tests in `session.test.ts`, which is the layer
+that owns it. Defence in depth, confirmed rather than assumed.
+
+**Two ceilings this suite deliberately does not reach**, both named so nobody
+mistakes green for total:
+
+- **Nothing reads a pixel.** `stageReady` proves the canvas was sized from the
+  frame (≥ 576 wide, not the browser's default 300) and that `createRenderer`
+  picked a path; the win conditions prove the ENGINE's buffer is right. What is
+  unpinned is whether the pixels show it — freezing the frame on the authored
+  buffer would keep every HUD assertion correct. A WebGL2 backing store is not
+  readable after the frame without `preserveDrawingBuffer`, so that stays an
+  in-browser check, as it has been at every wave. `effectsIntensity` reaching the
+  shader uniform is unpinned for the same reason.
+- **No comfort filter fires anywhere in the suite.** `act1-two-worlds` authors no
+  beats and `act1-word-power`'s two are both `startling: false`, so `allowsBeat`
+  has nothing to refuse. The controls are proved to WRITE; what they write is
+  proved by `gentle.test.ts`. A startling beat arrives with the acts that author
+  one, M5.
+
+**Both waves are committed and neither housekeeping item is outstanding any
+more** — Wave D is `da7a5e1`, Wave E is the commit carrying this line, and
+`graphify-out/` is ignored rather than left loose at the repo root. One caveat
+outlived them: `pnpm install` fails at `da7a5e1` on its own, because a single
+lockfile carries both waves' dependencies and CI installs `--frozen-lockfile`.
+That, and why `runner.tsx` went with D while the docs went with E, is under
+"Commit shape of Waves D and E" in `docs/HANDOFF.md`.
+
+**Three root edits fact 5 does not enumerate, all three necessary, all three
+recorded rather than smuggled:** `tsconfig.json` gained `playwright.config.ts` in
+its `include` (the specs were already covered by `apps/**/*.ts`, but the config sits
+at the root and matches no existing glob, so without it `pnpm typecheck` never
+sees the one new root file — and it caught two real type errors on its first run),
+and `.gitignore` gained `test-results/`, which is where `trace: 'retain-on-failure'`
+writes and where the CI job looks for its artifacts. The third is `.gitignore`
+again, for `graphify-out/` — a local tool's 1.5 MB of output sitting untracked at
+the repo root, where one broad `git add` would have swept it into a wave commit.
+That one is not M4 work and is not pretending to be; it was decided at commit
+time, on purpose, and is written up in `docs/HANDOFF.md`. M4's done-when 7 is
+amended to include all three; see the note under it.
+
 
 - [x] Title screen, `:set magic` difficulty selection (diegetic, from the game's
       own command line) — **Wave C**
 - [x] Comfort settings surfaced **before first play** — **Wave C**
 - [x] Skippable content note at first launch listing themes, plus a persistent
-      resources link — **Wave C** (skippable and permanent now; "first launch
-      only" is per-session until Wave D's save)
-- [ ] Save via `localStorage` with in-payload `schemaVersion`
-- [ ] Audio: raw WebAudio, procedural drones
+      resources link — **Wave C**, and "first launch only" made literal at
+      **Wave D**: the note is the initial screen only when `loadSave()` came back
+      empty, and leaving it is what writes the first save
+- [x] Save via `localStorage` with in-payload `schemaVersion` — **Wave D**
+- [x] Audio: raw WebAudio, procedural drones — **Wave D**
 - [x] Stage runner — **Wave B**
-- [ ] Playwright E2E: load a stage, send a real key sequence, assert the win
+- [x] Playwright E2E: load a stage, send a real key sequence, assert the win
       screen — and separately assert that on `:set nomagic` an over-budget run
-      fails while the identical run passes on `:set verymagic`
+      fails while the identical run passes on `:set verymagic` — **Wave E**, both
+      in `apps/web/e2e/` and both green in CI
+
+**M4 is done.** All seven of `M4-PLAN.md`'s "M4 done when" criteria swept at
+Wave E, each against the shipped app rather than against the plan:
+
+1. `pnpm dev` serves the game at 5173, and **all four `content/stages/` files are
+   selectable and completable in the app** — measured at Wave B, each at par, the
+   third of them closing M3's deferred "loads and is completable in the game"
+   clause literally. Two of the four are now completed by Playwright on every run.
+2. Difficulty is selected diegetically at a real engine's command line, with
+   buttons and radios beside it, and it is **consumed**: the asymmetry spec is
+   green — the same 45 keys lose on `:set nomagic` at keystroke 21 and win on
+   `:set verymagic` at 45.
+3. Comfort is surfaced before first play on the content note, the note is
+   skippable and appears only on first launch (both halves pinned, including the
+   half that needed a reload *on* the note to see), and the resources link is
+   reachable from all three screens that promise it — checked by `href`, because
+   it is a helpline and its text cannot vouch for its destination. Effects
+   intensity defaults to `0.00` under `prefers-reduced-motion` and `0.60`
+   otherwise, both asserted. **Its arrival at the shader uniform is the one
+   clause with no automated gate** — see Wave E's named ceilings.
+4. The save round-trips: a mid-stage reload resumes through `GameSession.restore`
+   and a re-snapshot equals what was stored (with the poison that makes that a
+   real comparison); a version-mismatched payload starts clean **without crashing
+   and without destroying the stored data** (Wave D, in the browser, plus
+   `save.test.ts`); settings, progress and lock state persist across reloads.
+5. Audio sounds only after a gesture — `audioStatus()` READ as `none` before and
+   `running` after, not inferred — and volume and mute persist. Deliberately not
+   in the E2E suite: a headless run has no gesture worth making and no ear.
+6. `pnpm typecheck` / `pnpm test` green repo-wide (**1728**, 34 files),
+   `pnpm validate:stages` 4/4, `pnpm demo` 4/4, `pnpm goldens:verify` **zero
+   changed bytes**, and `pnpm test:e2e` **6/6 green locally and wired into CI**.
+7. Nothing changed outside `apps/web/`, `packages/stage-view/` (Wave A's named
+   lift, moves not rewrites), `apps/editor`'s four import lines +
+   `grid-pane.tsx`'s atlas extraction, `content/campaign.json`, and the root
+   edits — **which are two more than fact 5 enumerates**: `tsconfig.json`
+   (`playwright.config.ts` is at the root and matches no existing glob, so
+   without it the one new root file is never typechecked) and `.gitignore`
+   (`test-results/`, where traces land). Both are recorded in Wave E's block
+   rather than left as an unexplained diff. `vim-core`, `render` and `game`
+   sources are untouched — `git diff packages/` is empty of everything but
+   `stage-view`'s Wave A additions.
 
 ---
 

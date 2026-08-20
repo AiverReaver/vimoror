@@ -1,4 +1,4 @@
-# HANDOFF — M0 + M1 + M2 + M3 complete, **M4 Waves A+B+C done** (2026-08-19)
+# HANDOFF — M0 + M1 + M2 + M3 complete, **M4 complete** (2026-08-20)
 
 Read this first when continuing work. The plan of record is `MergedPlan.md`;
 the tracking doc is `docs/CHECKLIST.md`; the harness gospel is
@@ -47,6 +47,13 @@ reader with no context.
 pnpm goldens:generate && pnpm test && pnpm typecheck && pnpm goldens:verify
 ```
 
+  And, from M4 Wave E, the browser gate — chromium only, ~3 seconds, no Vim and
+  no local browser needed since Playwright brings its own:
+
+```bash
+pnpm test:e2e
+```
+
   **1159 goldens, isolation verified** (every case re-run in its own Vim process
   and diffed). Nothing is mid-flight. The count has moved once since M0's 1153,
   by the six cases the 2026-08-18 triage pass added for the uncounted `aw`/`aW`
@@ -56,8 +63,13 @@ pnpm goldens:generate && pnpm test && pnpm typecheck && pnpm goldens:verify
   E, **1629** at M3 Wave E, **1630** at M4 Wave A (the one new test is
   `stage-view`'s `font.test.ts`; the 66 moved tests moved, they did not
   multiply), **1656** at M4 Wave B (+7 `campaign.test.ts`, +2 `font.test.ts`,
-  +17 `frame.test.ts`) and **1693** at M4 Wave C (+28 `shell-commands.test.ts`,
-  +5 `settings-screen.test.ts`, +4 `select-screen.test.ts`); the per-wave
+  +17 `frame.test.ts`), **1693** at M4 Wave C (+28 `shell-commands.test.ts`,
+  +5 `settings-screen.test.ts`, +4 `select-screen.test.ts`) and **1728** at M4
+  Wave D (+14 `save.test.ts`, +13 `progression.test.ts`, +8 `audio.test.ts`) — and
+  **still 1728 at M4 Wave E, which is the expected number**: Wave E's six tests
+  are Playwright, run by `pnpm test:e2e`, and vitest's `apps/**/*.test.ts`
+  include glob is the whole of what keeps the two suites out of each other's
+  directories (so a new E2E file has to be named `*.spec.ts`). The per-wave
   arithmetic is in `docs/CHECKLIST.md`. `pnpm validate:stages` reports **4 stage files valid** —
   the fourth is M3 Wave E's `act1-word-power`, authored in the editor.
 
@@ -517,20 +529,73 @@ artifact and excluded.
   `\x16…` type to `blockwise` and ignores the width, so a width-only divergence
   would not be caught today.
 
+## Commit shape of Waves D and E, and the one thing a bisect will hit
+
+Both waves are committed as of 2026-08-20 — **`da7a5e1`** *M4 Wave D: the game
+remembers, and the test that was guarding nothing*, then Wave E, which is the
+commit carrying this paragraph. Every other wave in this repo landed as one
+commit of its own and these two keep that, so the history still says what each
+wave was. Three notes survive the commits, because each one is invisible from the
+log:
+
+- **`pnpm install` fails at Wave D alone, and no staging order avoids it.** One
+  `pnpm-lock.yaml` holds both `zod` (Wave D) and `@playwright/test` (Wave E), so
+  whichever commit it lands in, the other commit's manifests disagree with it —
+  and `ci.yml` installs with `--frozen-lockfile`, which is an error on exactly
+  that disagreement. It landed with Wave D. Only regenerating a D-only lockfile
+  would have avoided it, which is not worth it for one intermediate commit. Both
+  commits go out together so CI runs on the tip, where the pair is consistent.
+  Anything that checks out `da7a5e1` on its own — a bisect, mostly — needs a
+  plain `pnpm install` first. Nothing after Wave E is affected.
+- **`apps/web/src/runner.tsx` is whole in Wave D, blur fix included.** The file
+  carries both waves: Wave D's `initialSnapshot`/`onSnapshot` wiring and Wave E's
+  `blurAfter` calls in the outcome overlay. Wave D's `app.tsx` passes both props,
+  so holding the file back would have made `da7a5e1` fail to typecheck — worse
+  than a slightly impure commit. The blur calls are inert on their own and rode
+  in early.
+- **All three docs are whole in Wave E.** `docs/{CHECKLIST,HANDOFF,M4-PLAN}.md`
+  were each written to at Wave D and again at Wave E, so none of them splits.
+  They cost nothing either way: no build reads them.
+
+**`graphify-out/` is now ignored** — 1.5 MB at the repo root from graphify, a
+local analysis tool, none of it part of this project. It was untracked and in no
+ignore file, which meant a single `git add -A` would have swept half a megabyte
+of generated HTML into a wave commit. `.gitignore` gained `graphify-out/` with a
+comment saying whose output it is. That decision was deliberately left open
+during M4 — M4's done-when 7 enumerates exactly which root files the milestone
+was allowed to touch, and whether another tool's output belongs in *this*
+project's ignore file was not M4's call to make quietly. It is made now, on
+purpose, and it is the third root edit past what done-when 7 lists.
+
 ## What comes next
 
-**M4 (`apps/web`) is the milestone in flight, against its plan
-`docs/M4-PLAN.md`** (waves A–E, same shape as M1–M3's), written 2026-08-19
-against source rather than the plan docs. **Waves A and B are done** — the
-fourth package exists, the app's walls stand up, and the stage runner plays: all
-four shipped stages are completable in the app with real keystrokes, each at par,
-and the difficulty asymmetry (`nomagic` loses over budget, the identical keys win
-on `verymagic`) holds in the shell. The per-item record is in
-`docs/CHECKLIST.md`'s M4 Wave A and Wave B blocks. **Wave C is next**: the title
-screen over a real `VimEngine`, `shell-commands.ts`, the content note with
-comfort before first play, and the select/settings screens.
+**M4 (`apps/web`) is DONE as of 2026-08-20** — all five waves A–E against
+`docs/M4-PLAN.md`, and all seven of its "M4 done when" criteria swept explicitly
+in `docs/CHECKLIST.md`. The fourth package exists, the app's walls stand up, the
+stage runner plays (all four shipped stages completable with real keystrokes,
+each at par, and the difficulty asymmetry holding in the shell), the front door
+is a real `VimEngine` whose command line IS the shell's, the game remembers
+(settings, progress, unlock state and a mid-stage snapshot in `localStorage`,
+plus a procedural drone that starts only after a user gesture) — and there is
+now an automated gate over all of it. The per-item record is in
+`docs/CHECKLIST.md`'s five M4 blocks.
 
-Six things a newcomer needs from those two waves:
+**M5 (Act I authored end to end) is the next milestone, and it needs its own
+plan before it starts** — the same rule M1–M4 each followed. Two things M4 left
+pointing at it, deliberately rather than by omission: no comfort filter fires
+anywhere in the E2E suite because no shipped stage authors a `startling` beat
+(`gentle.test.ts` is what proves what the switches mean until one does), and
+`H`/`M`/`L` are still unconsumed — the camera now exists in front of the engine,
+but nothing teaches them until a stage does.
+
+`pnpm test:e2e` is the new command. Six Playwright tests in `apps/web/e2e/`,
+chromium only, ~3 seconds, `retries: 0`; `playwright.config.ts`'s `webServer`
+starts `pnpm dev` itself, so it is one command from a cold checkout and there is
+no second way to start the game. CI runs it as a separate `e2e` job — the first
+end-to-end suite this repo can run in CI at all, because Playwright brings its
+own browser while every Vim-dependent script cannot.
+
+Twelve things a newcomer needs from those five waves:
 
 - **`@vimorror/stage-view` is the browser-shared presentation kit**, and the
   reason it exists rather than living in game or render is a dependency rule,
@@ -540,11 +605,28 @@ Six things a newcomer needs from those two waves:
   `CELL_W`/`CELL_H` (9x18) are the one shared cell geometry.
 - **The plan said three editor import sites; there were four.**
   `recorder.test.ts` imports `keyTokenFor` too. Grep, don't count from a doc.
-- **Playwright is NOT wired yet, deliberately.** `playwright test` with no
-  specs exits 1, so `playwright.config.ts`, the `@playwright/test`
-  devDependency and the CI `e2e` job land in Wave E with the specs they run,
-  not in Wave A with the rest of the root edits. `pnpm dev` (5173) and the
-  `launch.json` entry are in.
+- **Playwright landed at Wave E with the specs it runs**, not at Wave A with the
+  other root edits, because `playwright test` with zero specs exits 1 and a red
+  CI job would have stayed red for three waves. Three traps it cost, all
+  measured: `reducedMotion` is **not** a top-level test option in 1.62 (it goes
+  in `contextOptions`), `deviceScaleFactor` is the opposite (top-level, because
+  `devices['Desktop Chrome']` sets it there and top-level beats
+  `contextOptions`), and `page.keyboard.type(':play')` needs its `Enter` as a
+  **separate** `press` — the same terminator rule the browser tool has.
+- **An auto-retrying matcher can wait out the very race you are testing.**
+  `expect(body).toBeFocused()` passed against a button that really did hold focus
+  after a click, because the overlay unmounted mid-retry and focus fell back to
+  the body on its own. Anything about a transient state wants a single-shot
+  `page.evaluate`. This is how Wave E's one real bug was nearly missed after it
+  had already been found.
+- **`0/9 keys` is not a gate that the stage can take a key.** The status line
+  prints `view?.keystrokes ?? 0` on the runner's FIRST commit, before the session
+  effect has run, so a spec that types on seeing it feeds `sessionRef.current ===
+  null` and the keys vanish. `stageReady()` waits on `post-fx`, which is set
+  inside the atlas continuation and therefore strictly after the session exists.
+  Between two stages even that is not enough — `post-fx` is already resolved from
+  the run before it, because the renderer effect depends only on the atlas scale
+  — so a transition waits on the status line showing the NEW stage's tally.
 - **`computer{action:"key"}` sends `comma`/`semicolon`/`space` as
   multi-character `event.key` values**, which `keyTokenFor` correctly refuses — a
   browser-driven playtest then silently records fewer keystrokes than you sent.
@@ -554,8 +636,14 @@ Six things a newcomer needs from those two waves:
   activate a focused button** — Enter arrives as a trusted keydown and no click
   follows, proved against a plain `<button>` the app never touches — and
   coordinate clicks are in the **screenshot's** frame, not the viewport's. Click
-  by `ref`. Entries three, four and five in the same class as M3's
-  `computer{action:"type"}` and `shift+g` traps.
+  by `ref`. **`Return`, `colon` and `exclam` are multi-character too** — use the
+  literals `:` and `!`, and spell Enter **`Enter`**; Enter also has to be its own
+  tool call, since `: p l a y Enter` in one batch loses it every time. And a
+  `KeyboardEvent` dispatched on `document` never arrives: both the runner and the
+  title stand down for any target that is not `document.body` (that is what lets
+  a focused button keep its own keys), so dispatch on `document.body` and let it
+  bubble — which is the only way to send that literal space. Ten entries now, in
+  the same class as M3's `computer{action:"type"}` and `shift+g` traps.
 - **The runner's DPR handling does NOT match M4-PLAN.md, on purpose.** Fact 4
   prescribes sizing the canvas at `cells x cellSize x devicePixelRatio` and
   calling `renderer.resize()`; `GlyphGrid.#drawCell` blits every cell at
@@ -580,6 +668,35 @@ Six things a newcomer needs from those two waves:
   far corner is still visible, and deliberately NOT for a single cell (a goal that
   scrolls off must go, not stick to the top row). `frame.ts` is pure so all of
   this is testable at all.
+
+- **The save is a codec, not a serializer, and it never destroys data.**
+  `save.ts` wraps a `SessionSnapshot` untouched — `session.ts` had already solved
+  the `Set`-JSONs-to-`{}` trap, authored-vs-evolved and the mid-visual clamp, and
+  none of it is re-solved. `engine` is left OPAQUE inside the envelope on
+  purpose: a Zod mirror of `EngineSnapshot` would be a second authority on core's
+  save format, so `VimEngine.restore`'s throw plus `GameSession.restore`'s
+  deliberate stage-mismatch throw are the guard, caught in the runner and
+  answered with a fresh session. A payload that fails the schema is renamed to
+  `vimorror.save.orphan.v<N>`, never deleted — and if the orphan write itself
+  fails, the ORIGINAL is left in place rather than removed.
+- **`snapshotSchema` is `.passthrough()`, and the test that proves it must use a
+  field the schema has never heard of.** Round-tripping a real snapshot does NOT
+  prove it: today the schema and `SessionSnapshot` agree exactly, so stripping,
+  passing through and rejecting are indistinguishable, and swapping
+  `.passthrough()` for `.strict()` survived the mutation until the test was
+  fixed. The failure it guards is the next field `session.ts` adds.
+- **`GameSession.restore` owns the resumed run's difficulty**, taking it from the
+  snapshot by design. So `runner.tsx` reads `session.difficulty` — not its
+  `difficulty` prop — for the header and the hint policy: a run left mid-stage
+  and resumed after the player changed `:set` at the title continues at the
+  difficulty it was really played at, and the header must not claim otherwise.
+- **Audio's failure mode is silence, not an error.** An `AudioContext` built
+  before a user gesture is not refused — it is created `suspended`, so the code
+  runs, the nodes connect and nothing ever sounds. `ensureAudio()` is therefore
+  called from ONE `pointerdown`/`keydown` pair in `app.tsx` (capture phase, so
+  the runner's `preventDefault` cannot get in front of it), and `audioStatus()`
+  is exported so the state can be READ in the browser instead of inferred.
+  Measured both sides: `state: 'none'` before any gesture, `running` after.
 
 The plan itself has two load-bearing verified facts, both still standing:
 the diegetic `:set` needs zero core changes — measured on a live engine,

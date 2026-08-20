@@ -33,3 +33,42 @@ jobs:
       # here. `pnpm goldens:generate/:verify` and `pnpm test:fuzz` all spawn
       # a real Vim process and stay local-only, deliberately not run in CI.
       - run: pnpm test
+
+  # Separate from `test` on purpose: the unit job stays a fast, Vim-free gate,
+  # and a browser download must not sit in front of it. This is the FIRST
+  # end-to-end suite this repo can run in CI at all — every other browser check
+  # (the render demo, the editor, the shell's own waves) was verified by hand,
+  # and the Vim-dependent scripts are deliberately local-only. Playwright is
+  # hermetic: it brings its own Chromium, so nothing here depends on the runner
+  # having a browser or an X server.
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.11.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # Chromium only, matching `playwright.config.ts`. `--with-deps` installs
+      # the shared libraries the bundled browser needs on a bare ubuntu image.
+      - run: pnpm exec playwright install --with-deps chromium
+
+      # `playwright.config.ts`'s `webServer` starts `pnpm dev` itself, so this
+      # is one command from a cold checkout and there is no second way to start
+      # the game that could drift from the one a developer uses.
+      - run: pnpm test:e2e
+
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: test-results/
+          retention-days: 7
