@@ -4,11 +4,13 @@
  * This file owns three things beyond its own screen, and each is here rather
  * than in `app.tsx` for a reason:
  *
- * - **`Settings` and `defaultSettings()`** — the shell's whole in-memory state
- *   besides which screen is showing. Wave D moves this shape into `save.ts`'s
- *   envelope and adds `audio`; nothing else about it should have to change,
+ * - **`Settings` and `defaultSettings()`** — the shell's whole state besides
+ *   which screen is showing, and (from Wave D) the shape `save.ts` stores in
+ *   its envelope. `audio` arrived there without any screen needing to change,
  *   which is why the screens take the object and a setter rather than five
- *   props.
+ *   props. The type stays HERE rather than moving into `save.ts`: this is where
+ *   the controls that write it live, and `save.ts` importing the type is a
+ *   one-way edge while the reverse would put the codec upstream of a `.tsx`.
  * - **`ComfortControls`** — rendered by the content note AND by this screen, so
  *   that "surfaced before first play" and "editable any time" are the same
  *   controls with the same copy and not two drifting copies of it. The note
@@ -34,6 +36,7 @@
 
 import { DEFAULT_COMFORT, DEFAULT_DIFFICULTY, DIFFICULTIES, type Comfort, type Difficulty } from '@vimorror/game';
 
+import { DEFAULT_AUDIO, type AudioSettings } from './audio.ts';
 import { commandText } from './shell-commands.ts';
 
 /**
@@ -70,6 +73,8 @@ export type Settings = {
   readonly comfort: Comfort;
   /** 0..1, straight to the shader uniform on every `draw()`. */
   readonly effectsIntensity: number;
+  /** Wave D. `audio.ts` owns the graph; this is the only thing that turns it. */
+  readonly audio: AudioSettings;
 };
 
 /** For a profile that has not asked for reduced motion. Picked by eye on the
@@ -87,6 +92,7 @@ export function defaultSettings(): Settings {
     difficulty: DEFAULT_DIFFICULTY,
     comfort: DEFAULT_COMFORT,
     effectsIntensity: reduced ? 0 : EFFECTS_DEFAULT,
+    audio: DEFAULT_AUDIO,
   };
 }
 
@@ -172,6 +178,57 @@ export function ComfortControls({ settings, onChange }: SettingsProps) {
   );
 }
 
+/**
+ * Volume and mute. Not on the content note, which is the one judgment call in
+ * this file that is not about comfort: the note is about what the game contains,
+ * and burying a volume slider in it would make it read as a settings screen the
+ * player is allowed to skip.
+ *
+ * The slider stays live while muted rather than being disabled — a player
+ * setting a level they intend to unmute into is the ordinary case, and the mute
+ * checkbox says which state is in force. Never colour alone: both controls are
+ * real form controls with real labels, and the number is printed beside the
+ * slider.
+ */
+function AudioControls({ settings, onChange }: SettingsProps) {
+  const { audio } = settings;
+  return (
+    <fieldset className="controls">
+      <legend>audio</legend>
+
+      <label className="row">
+        <input
+          type="checkbox"
+          checked={audio.muted}
+          onChange={(e) => onChange({ ...settings, audio: { ...audio, muted: e.target.checked } })}
+        />
+        <span>
+          <strong>Mute</strong>
+          <span className="dim"> — silence everything. The game plays exactly the same.</span>
+        </span>
+      </label>
+
+      <label className="row">
+        <span>
+          <strong>Volume</strong> <code>{audio.volume.toFixed(2)}</code>
+          <span className="dim">
+            {' '}
+            — one drone that follows the act, and a short tone when a stage ends. Nothing else makes a sound.
+          </span>
+        </span>
+        <input
+          type="range"
+          min={0}
+          max={1}
+          step={0.05}
+          value={audio.volume}
+          onChange={(e) => onChange({ ...settings, audio: { ...audio, volume: Number(e.target.value) } })}
+        />
+      </label>
+    </fieldset>
+  );
+}
+
 /** The difficulty picker, in `:set` terms because that is how it is spelt
  * everywhere else in the game. The buttons and the title screen's command line
  * reach the same state; neither is the real one. */
@@ -209,6 +266,7 @@ export function SettingsScreen({ settings, onChange, onBack }: SettingsProps & {
       <h1>settings</h1>
       <DifficultyControls settings={settings} onChange={onChange} />
       <ComfortControls settings={settings} onChange={onChange} />
+      <AudioControls settings={settings} onChange={onChange} />
       <p className="note">
         Difficulty can also be set from the game&apos;s own command line at the title screen: type{' '}
         <code>:set nomagic</code> and press Enter. Inside a stage the command still runs and still costs its

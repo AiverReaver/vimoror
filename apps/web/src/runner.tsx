@@ -14,9 +14,15 @@
  *   written. **Comfort** filtering happened before `BeatFired` was emitted.
  *   **The outcome** is `OutcomeDecided`, and `by` names the condition, so the
  *   loss copy is a lookup rather than a judgment.
- * - **Difficulty and comfort arrive as props.** Wave C gives them a home and
- *   Wave D makes them persist; a default here would be a fourth copy of a
- *   decision `difficulty.ts` already owns.
+ * - **Difficulty and comfort arrive as props, and the SESSION is the authority
+ *   on them once it exists.** A default here would be a fourth copy of a
+ *   decision `difficulty.ts` already owns; and a resumed run enforces the
+ *   difficulty it was played at, because `GameSession.restore` takes it from
+ *   the snapshot, so the header and the hint button read `session.difficulty`
+ *   rather than the prop that seeded it.
+ * - **The save is written, never read.** `onSnapshot` fires on session start
+ *   and after every fed key; `initialSnapshot` is a seed the parent chose. This
+ *   file never touches `localStorage`, so the codec has exactly one caller.
  *
  * Four things are decisions rather than wiring:
  *
@@ -62,12 +68,14 @@ import {
   type Hint,
   type Outcome,
   type Score,
+  type SessionSnapshot,
   type Stage,
 } from '@vimorror/game';
 import { createRenderer, followCursor, type Camera, type CellBuffer, type Renderer } from '@vimorror/render';
 import { atlasScaleFor, CELL_H, CELL_W, getFontAtlas, keyTokenFor } from '@vimorror/stage-view';
 import { useEffect, useRef, useState } from 'react';
 
+import { playStinger } from './audio.ts';
 import { frameCells, frameGeometry, MIN_COLS, MIN_ROWS } from './frame.ts';
 import { commandText, shellCommandFor } from './shell-commands.ts';
 
@@ -124,13 +132,40 @@ export type RunnerProps = {
   readonly comfort: Comfort;
   /** 0..1, straight to the shader uniform. Wave C's comfort layer owns the value. */
   readonly effectsIntensity: number;
-  /** `:q` (`force: false`) keeps a resume snapshot at Wave D; `:q!` discards it. */
+  /**
+   * A play in flight to pick back up, or `undefined` to start the stage.
+   *
+   * **A seed, read when a session starts and never watched.** It is held in a
+   * ref rather than listed in the session effect's dependencies, because the
+   * effect is what restarts the stage and a snapshot changes on every keystroke
+   * — depending on it would restart the run under the player once per key. The
+   * ref is consumed only when its `stageId` matches, which is what makes
+   * StrictMode's double-invoke, a `next stage` that changes the prop, and a
+   * `retry` that clears it all land on the right session without a fourth flag.
+   */
+  readonly initialSnapshot: SessionSnapshot | undefined;
+  /** Called on session start and after every fed key. `save.ts` is the consumer. */
+  readonly onSnapshot: (snapshot: SessionSnapshot) => void;
+  /** Won or lost, once, as it latches. The stage id travels with it because
+   * `Score` does not carry one. */
+  readonly onOutcome: (stageId: string, outcome: Outcome, score: Score) => void;
+  /** `:q` (`force: false`) keeps the resume snapshot; `:q!` discards it. */
   readonly onExit: (force: boolean) => void;
   /** `undefined` at the end of the campaign, which is what hides the button. */
   readonly onNext: (() => void) | undefined;
 };
 
-export function Runner({ stage, difficulty, comfort, effectsIntensity, onExit, onNext }: RunnerProps) {
+export function Runner({
+  stage,
+  difficulty,
+  comfort,
+  effectsIntensity,
+  initialSnapshot,
+  onSnapshot,
+  onOutcome,
+  onExit,
+  onNext,
+}: RunnerProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const sessionRef = useRef<GameSession | null>(null);
   /** The frame currently on screen. Rebuilt on a keystroke, drawn every frame. */
@@ -140,9 +175,26 @@ export function Runner({ stage, difficulty, comfort, effectsIntensity, onExit, o
   const intensityRef = useRef(effectsIntensity);
   intensityRef.current = effectsIntensity;
 
+  /** The seed, consumed by `stageId` rather than by a flag — see the prop. */
+  const seedRef = useRef<SessionSnapshot | undefined>(initialSnapshot);
+
   const [view, setView] = useState<RunView | undefined>(undefined);
   const [hint, setHint] = useState<Hint | undefined>(undefined);
   const [crash, setCrash] = useState<string | undefined>(undefined);
+  /** A resume that could not be honoured. Not a crash — the stage is playable. */
+  const [dropped, setDropped] = useState<string | undefined>(undefined);
+  /**
+   * The difficulty the SESSION is running at, which is not always the prop.
+   *
+   * `GameSession.restore` takes difficulty from the snapshot by design —
+   * authored rules come from the stage, evolved state from the save — so a run
+   * left mid-stage and resumed after the player changed `:set` at the title
+   * continues at the difficulty it was played at. The session is the authority
+   * on its own difficulty, so the header, the hint policy and the loss rules
+   * all read this rather than the prop, and none of them can disagree with what
+   * is actually being enforced.
+   */
+  const [runDifficulty, setRunDifficulty] = useState<Difficulty>(difficulty);
   const [atlasError, setAtlasError] = useState<string | undefined>(undefined);
   const [postFx, setPostFx] = useState<string | undefined>(undefined);
   /** Bumped by retry. The session effect is the only thing that reads it. */
@@ -156,7 +208,7 @@ export function Runner({ stage, difficulty, comfort, effectsIntensity, onExit, o
 
   const scale = atlasScaleFor(dpr);
   const geom = frameGeometry(stage);
-  const hintPolicy = modifiersFor(difficulty).hints;
+  const hintPolicy = modifiersFor(runDifficulty).hints;
   /**
    * Derived from the object's own keys rather than from its identity, so a parent
    * that rebuilds an equal `Comfort` cannot restart the stage under the player —
@@ -182,23 +234,55 @@ export function Runner({ stage, difficulty, comfort, effectsIntensity, onExit, o
   // renderer's own body is async behind the atlas anyway, so this is belt and
   // braces rather than the thing that makes it work.
   useEffect(() => {
-    const session = new GameSession(stage, { difficulty, comfort });
+    // Consumed by id, not cleared: StrictMode invokes this twice and a
+    // consume-once ref would give the second run a fresh session, silently
+    // throwing away the resume the first run honoured.
+    const seed = seedRef.current?.stageId === stage.id ? seedRef.current : undefined;
+
+    let session: GameSession;
+    let droppedReason: string | undefined;
+    try {
+      session = seed === undefined ? new GameSession(stage, { difficulty, comfort }) : GameSession.restore(stage, seed);
+    } catch (e) {
+      // `restore()` is the one deliberately loud surface in the game layer — a
+      // stage mismatch throws, and `VimEngine.restore` throws on an engine
+      // snapshot it cannot read. Both mean the same thing here: the save is not
+      // this stage's any more (renamed, removed, corrupted, hand-edited), and a
+      // fresh session is the only honest answer. Never a crash on a loading
+      // screen, and never a silent one either.
+      session = new GameSession(stage, { difficulty, comfort });
+      droppedReason = `the saved run could not be resumed (${(e as Error).message}) — this stage started fresh.`;
+    }
+
     const camera: Camera = { topline: 0, height: geom.rows, width: geom.cols };
     sessionRef.current = session;
     cameraRef.current = camera;
     cellsRef.current = frameCells(session.engine.lines, session.entities, camera);
     setView(viewOf(session));
     setCrash(undefined);
+    setDropped(droppedReason);
+    setRunDifficulty(session.difficulty);
+    // Read off the SESSION, not the prop: a resumed run enforces the difficulty
+    // it was played at, and `hintPolicy` is therefore not in the dependencies
+    // below — it is derived from state this effect itself sets.
+    const policy = modifiersFor(session.difficulty).hints;
     // `always` (verymagic) is free and on screen from the start; the other two
     // policies start with nothing, and `none` never gets a button at all.
-    setHint(hintPolicy === 'always' ? session.hint() : undefined);
+    setHint(policy === 'always' ? session.hint() : undefined);
+    // Stored before the first key, so a stage opened and abandoned without a
+    // keystroke still resumes — and so the mid-play snapshot after every fed
+    // batch has nothing to special-case. That pair is also why there is no
+    // `visibilitychange` listener: every change to a session goes through
+    // `feed`, so there is no state a visibility change could catch that the
+    // last feed has not already written.
+    onSnapshot(session.snapshot());
     return () => {
       sessionRef.current = null;
     };
     // `comfort` enters as `comfortKey` and `geom` as its two numbers,
     // deliberately: both are rebuilt every render, and depending on their
     // identity would restart the stage on every parent commit.
-  }, [stage, difficulty, comfortKey, runKey, geom.cols, geom.rows, hintPolicy]);
+  }, [stage, difficulty, comfortKey, runKey, geom.cols, geom.rows, onSnapshot]);
 
   useEffect(() => {
     // Captured per effect run rather than read back off a ref in cleanup, so
@@ -335,6 +419,23 @@ export function Runner({ stage, difficulty, comfort, effectsIntensity, onExit, o
         return next;
       });
 
+      // Outside the `setView` updater deliberately — that callback runs during
+      // render and must stay pure, and all three of these are effects on the
+      // world: one writes `localStorage`, one makes a noise, one navigates.
+      //
+      // **A decided run is not snapshotted at all**, which is the whole reason
+      // this is an either/or rather than two statements. `app.tsx` clears
+      // `current` when an outcome latches, and a snapshot written after that —
+      // or before it, and then not cleared — would offer a finished stage back
+      // as "resume", which is the one thing `current` must never mean.
+      const decided = events.find((e) => e.type === 'OutcomeDecided');
+      if (decided !== undefined && decided.type === 'OutcomeDecided') {
+        onOutcome(stage.id, decided.outcome, session.score);
+        playStinger(decided.outcome.status === 'won' ? 'win' : 'lose');
+      } else {
+        onSnapshot(session.snapshot());
+      }
+
       // Recomputed while free, cleared while not: an `on-request` hint is spent
       // where the player asked for it, so it must not silently follow them to the
       // next position without charging again.
@@ -348,7 +449,7 @@ export function Runner({ stage, difficulty, comfort, effectsIntensity, onExit, o
 
     document.addEventListener('keydown', onKeyDown);
     return () => document.removeEventListener('keydown', onKeyDown);
-  }, [crash, hintPolicy, onExit]);
+  }, [crash, hintPolicy, onExit, onOutcome, onSnapshot, stage.id]);
 
   /** Every control gives the keyboard back, or the next keystroke goes nowhere. */
   function blurAfter(event: { readonly currentTarget: HTMLElement }): void {
@@ -384,7 +485,7 @@ export function Runner({ stage, difficulty, comfort, effectsIntensity, onExit, o
           act {stage.act} · {stage.title}
         </span>
         <span className="dim">
-          :set {difficulty} · par {stage.par} · post-fx {postFx ?? '…'}
+          :set {runDifficulty} · par {stage.par} · post-fx {postFx ?? '…'}
         </span>
       </header>
 
@@ -422,16 +523,34 @@ export function Runner({ stage, difficulty, comfort, effectsIntensity, onExit, o
                 <p className="note">{lossLine(outcome.by)}</p>
               </>
             )}
+            {/* All three blur, and the two that start a new stage need it most.
+                Found by `apps/web/e2e/save-round-trip.spec.ts`: this overlay
+                unmounts on the commit AFTER the click, so a player who clicks
+                `next stage` and immediately types loses that keystroke to the
+                still-focused button — `onKeyDown` stands down for any target
+                that is not the body. Every other control in this file already
+                did this; these three were the exception the header claimed did
+                not exist. */}
             <div className="run-actions">
-              <button type="button" onClick={() => setRunKey((n) => n + 1)}>
+              <button
+                type="button"
+                onClick={(event) => {
+                  blurAfter(event);
+                  // Cleared BEFORE the bump: retry means this stage from the
+                  // top, and a seed left in place would restore the run that
+                  // just ended.
+                  seedRef.current = undefined;
+                  setRunKey((n) => n + 1);
+                }}
+              >
                 retry
               </button>
               {onNext === undefined ? null : (
-                <button type="button" onClick={onNext}>
+                <button type="button" onClick={(event) => { blurAfter(event); onNext(); }}>
                   next stage
                 </button>
               )}
-              <button type="button" onClick={() => onExit(false)}>
+              <button type="button" onClick={(event) => { blurAfter(event); onExit(false); }}>
                 leave
               </button>
             </div>
@@ -466,6 +585,7 @@ export function Runner({ stage, difficulty, comfort, effectsIntensity, onExit, o
         </p>
       )}
 
+      {dropped === undefined ? null : <p className="note">{dropped}</p>}
       {atlasError === undefined ? null : <p className="bad">{atlasError}</p>}
       {crash === undefined ? null : <p className="bad">{crash} — retry to start the stage again.</p>}
     </div>

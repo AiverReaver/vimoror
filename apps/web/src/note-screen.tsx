@@ -19,10 +19,12 @@
  * - **No doubt is ever killed for XP.** The themes are named as themes, not as
  *   enemies, which is what the game actually does with them.
  *
- * The note shows on first launch only. Wave C keeps `seenNote` in memory, so it
- * returns on reload; Wave D's save is what makes "only on first launch" true
- * across sessions, and the resources link is permanent from the first frame
- * either way.
+ * The note shows on first launch only, and from Wave D that is literally true
+ * rather than per-session: `app.tsx` starts here when `loadSave()` came back
+ * empty and at the title when it did not, and continuing past this screen is
+ * what writes the first save. Nothing routes back. The resources link is
+ * permanent from the first frame either way, which is the half that matters —
+ * a note you have to be able to find again is a note that failed.
  */
 
 import { ComfortControls, ResourcesLink, type SettingsProps } from './settings-screen.tsx';

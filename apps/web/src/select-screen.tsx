@@ -9,25 +9,36 @@
  * the ordering is content, and content mistakes belong on screen rather than
  * in a silent regroup.
  *
- * **What is deliberately not here yet:** lock state, best score and the clean
- * flag, and the resume banner. All four are projections of a `progress` map and
- * a stored `current` snapshot, and neither exists until Wave D writes
- * `save.ts` and `progression.ts`. Rendering an "unlocked" badge over data that
- * is always the same value would be UI that cannot be wrong, which is worse
- * than no UI: it would look verified. Wave D adds the props; the rows are
- * already the place they go.
+ * **Wave D fills in the four things Wave C left out** — lock state, best score,
+ * the clean flag and the resume banner — all four being projections of the
+ * `progress` map and the stored `current` snapshot that `save.ts` now writes.
+ * Every one arrives as a prop: this screen computes no policy, and in
+ * particular does not decide what is unlocked (`progression.ts` does) or what a
+ * clean run is (`scoring.ts` does).
+ *
+ * **Never colour alone**, on every one of them: a locked row is a disabled
+ * button with the word `locked` and the name of the stage that opens it, a
+ * completed row carries `[x]`, a clean one `[*]`, and the resume banner names
+ * the stage and the keystroke count in words. Nothing here is signalled by a
+ * tint.
  *
  * `teachesKeys` is shown because it is the one field that says what a stage is
  * FOR, and because a player choosing a room deserves to know it is about `w`
  * and `b` before they are inside it.
  */
 
-import type { Stage } from '@vimorror/game';
+import type { SessionSnapshot, Stage } from '@vimorror/game';
 
 import { stages } from './campaign.ts';
+import type { Progress } from './save.ts';
 
 export type SelectScreenProps = {
+  readonly progress: Progress;
+  readonly unlocked: ReadonlySet<string>;
+  /** The play in flight, if there is one. Its stage need not be the next one. */
+  readonly resume: SessionSnapshot | undefined;
   readonly onOpen: (stageId: string) => void;
+  readonly onResume: (stageId: string, snapshot: SessionSnapshot) => void;
   readonly onBack: () => void;
 };
 
@@ -51,33 +62,63 @@ export function byAct(all: readonly Stage[]): { readonly act: number; readonly s
   return out;
 }
 
-export function SelectScreen({ onOpen, onBack }: SelectScreenProps) {
+export function SelectScreen({ progress, unlocked, resume, onOpen, onResume, onBack }: SelectScreenProps) {
+  const resumeStage = resume === undefined ? undefined : stages.find((s) => s.id === resume.stageId);
+
   return (
     <div className="screen">
       <h1>stages</h1>
+
+      {resumeStage === undefined || resume === undefined ? null : (
+        <p className="note">
+          <strong>{resumeStage.title}</strong> is where you left it — {resume.keystrokes}{' '}
+          {resume.keystrokes === 1 ? 'key' : 'keys'} in, at <code>:set {resume.difficulty}</code>.{' '}
+          <button type="button" onClick={(event) => { event.currentTarget.blur(); onResume(resumeStage.id, resume); }}>
+            resume
+          </button>{' '}
+          <span className="dim">
+            — or open it below to start it again. Leaving a stage with <code>:q!</code> throws the saved run away.
+          </span>
+        </p>
+      )}
 
       {byAct(stages).map((group, i) => (
         <section key={`${group.act}-${i}`} className="act">
           <h2>act {group.act}</h2>
           <ul className="stages">
-            {group.stages.map((stage) => (
-              <li key={stage.id}>
-                <button type="button" onClick={(event) => { event.currentTarget.blur(); onOpen(stage.id); }}>
-                  {stage.title}
-                </button>
-                <span className="dim">
-                  par {stage.par}
-                  {stage.teachesKeys.length === 0 ? '' : ` · teaches ${stage.teachesKeys.join(' ')}`}
-                </span>
-              </li>
-            ))}
+            {group.stages.map((stage) => {
+              const open = unlocked.has(stage.id);
+              const done = progress[stage.id];
+              return (
+                <li key={stage.id}>
+                  <button
+                    type="button"
+                    disabled={!open}
+                    onClick={(event) => { event.currentTarget.blur(); onOpen(stage.id); }}
+                  >
+                    {/* The marker is the signal, not the disabled tint: `[x]`
+                        completed, `[*]` completed clean, `[ ]` open and unplayed,
+                        `[-]` locked. */}
+                    <code>{!open ? '[-]' : done === undefined ? '[ ]' : done.cleanRun ? '[*]' : '[x]'}</code>{' '}
+                    {stage.title}
+                  </button>
+                  <span className="dim">
+                    {open ? '' : 'locked · '}
+                    par {stage.par}
+                    {done === undefined ? '' : ` · best ${done.bestKeystrokes}${done.cleanRun ? ' clean' : ''}`}
+                    {stage.teachesKeys.length === 0 ? '' : ` · teaches ${stage.teachesKeys.join(' ')}`}
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         </section>
       ))}
 
       <p className="note">
-        Every stage is open. Progress, best scores and resuming a stage you left arrive with the save, one wave from
-        now — until then a reload starts everything fresh.
+        A stage opens when the one before it has been completed, at any difficulty —{' '}
+        <code>:set nomagic</code> is not a prerequisite for anything. <code>[x]</code> is completed,{' '}
+        <code>[*]</code> completed without a hint or an undo, <code>[-]</code> still locked.
       </p>
 
       <div className="run-actions">
